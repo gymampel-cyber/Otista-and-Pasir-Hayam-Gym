@@ -2428,6 +2428,9 @@
         <div id="adminMenu" class="menu-item hidden" data-view="admin" onclick="showView('admin')">
           <i class="fas fa-cogs"></i><span>Admin Panel</span>
         </div>
+        <div id="brandingMenu" class="menu-item hidden" onclick="openBrandingModal()">
+          <i class="fas fa-paint-brush"></i><span>Pengaturan Branding</span>
+        </div>
       </nav>
       <div style="padding:16px;border-top:1px solid rgba(255,255,255,0.1)">
         <div class="menu-item" onclick="toggleDarkMode()">
@@ -10068,7 +10071,7 @@
             if (s.name) {
               document.title = s.name + " Management";
               document.querySelectorAll('h2').forEach(el => {
-                if (el.textContent === 'AMPEL GYM') el.textContent = s.name;
+                if (el.textContent === 'AMPEL GYM' || el.textContent === 'UGYM') el.textContent = s.name;
               });
               const brandElements = [
                 { id: 'userNameBrand', text: s.name },
@@ -10080,13 +10083,73 @@
               });
             }
             if (s.logo) {
-              document.querySelectorAll('img[src*="i.imgur.com/TPoUeRJ.jpeg"]').forEach(img => {
+              document.querySelectorAll('img[src*="i.imgur.com/TPoUeRJ.jpeg"], img[src*="i.imgur.com/PAB0dhW.png"]').forEach(img => {
                 img.src = s.logo;
               });
             }
           }
         })
         .getSettings();
+    }
+
+    function openBrandingModal() {
+      document.getElementById('brandingModal').style.display = 'flex';
+      showLoading();
+      google.script.run
+        .withSuccessHandler(function(res) {
+          hideLoading();
+          if (res.success) {
+            const s = res.settings;
+            document.getElementById('set_name').value = s.name || '';
+            document.getElementById('set_address').value = s.address || '';
+            document.getElementById('set_phone').value = s.phone || '';
+            document.getElementById('set_email').value = s.email || '';
+            document.getElementById('set_bank').value = s.bank || '';
+            document.getElementById('set_logo_preview').src = s.logo || 'https://i.imgur.com/TPoUeRJ.jpeg';
+          }
+        })
+        .getSettings();
+    }
+
+    function closeBrandingModal() {
+      document.getElementById('brandingModal').style.display = 'none';
+    }
+
+    function changeLogo() {
+      const url = prompt("Masukkan URL Logo Baru (Imgur/Drive Direct Link):");
+      if (url) {
+        document.getElementById('set_logo_preview').src = url;
+      }
+    }
+
+    function saveBrandingSettings() {
+      const settings = {
+        name: document.getElementById('set_name').value,
+        address: document.getElementById('set_address').value,
+        phone: document.getElementById('set_phone').value,
+        email: document.getElementById('set_email').value,
+        bank: document.getElementById('set_bank').value,
+        logo: document.getElementById('set_logo_preview').src
+      };
+
+      const btn = document.querySelector('#brandingModal .btn-primary');
+      const origText = btn.innerHTML;
+      btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Menyimpan...';
+      btn.disabled = true;
+
+      google.script.run
+        .withSuccessHandler(function(res) {
+          btn.innerHTML = origText;
+          btn.disabled = false;
+          if (res.success) {
+            showToast('Pengaturan branding berhasil disimpan!', 'success');
+            closeBrandingModal();
+            loadAndApplyBranding(); // Refresh UI
+          } else {
+            showToast('Gagal menyimpan: ' + res.message, 'error');
+          }
+        })
+        .updateBranding(settings);
     }
   </script>
 </body>
