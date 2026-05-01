@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Perpanjangan Member - UGYM</title>
+  <title>Perpanjangan Member</title>
   <script>
     const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzKWdekXY27eWx5h4CI7HvLxnTboVPryp_gTpqTtCNM-G7yqLe4m0owvj7YwGgTm8bv/exec';
     const google = {
@@ -65,6 +65,7 @@
       --border-color: #e5e5ea;
       --text-main: #000000;
       --text-secondary: #555555;
+      --shadow-premium: 0 10px 30px rgba(0, 0, 0, 0.05);
     }
     * { margin: 0; padding: 0; box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; -webkit-font-smoothing: antialiased; }
     body { 
@@ -449,21 +450,21 @@
 
     <div class="footer" id="gymFooter">
       <div style="margin-bottom: 8px;">
-        <strong id="footerBranchName" style="font-size: 16px; color: #000;">UGYM</strong>
+        <strong id="footerBranchName" style="font-size: 16px; color: #000;">Gym Name</strong>
       </div>
       <div style="display: flex; align-items: center; justify-content: center; gap: 16px; flex-wrap: wrap; font-size: 13px; color: #555;">
         <span><i class="fas fa-phone" style="color: var(--primary); margin-right: 4px;"></i> <span id="footerPhone">-</span></span>
         <span><i class="fas fa-envelope" style="color: var(--primary); margin-right: 4px;"></i> <span id="footerEmail">-</span></span>
       </div>
       <div id="footerAddress" style="font-size: 12px; color: #888; margin-top: 6px;"></div>
-      <p style="margin-top: 10px; font-size: 12px; color: #aaa;">© UGYM · Pertanyaan? Hubungi admin kami</p>
+      <p style="margin-top: 10px; font-size: 12px; color: #aaa;">© <span id="copyrightName">Gym</span> · Pertanyaan? Hubungi admin kami</p>
     </div>
 
     <!-- Developer Branding -->
-    <div class="developer-branding" style="text-align: center; padding: 24px 0; cursor: pointer; opacity: 0.85; transition: all 0.3s ease; display: flex; flex-direction: column; align-items: center;" onclick="window.open('https://wa.me/6285777723458', '_blank')" onmouseover="this.style.opacity='1'; this.style.transform='scale(1.05)'" onmouseout="this.style.opacity='0.85'; this.style.transform='scale(1)'">
-      <img src="https://i.imgur.com/NO5dVfb.png" alt="KIZIY Logo" style="width: 80px; height: auto; margin-bottom: 6px; object-fit: contain; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.1));">
-      <div style="font-weight: 800; color: #000; font-size: 16px; letter-spacing: 2px; text-transform: uppercase;">KIZIY</div>
-      <div style="font-weight: 500; font-size: 11px; color: #888; margin-top: 2px; letter-spacing: 1.5px;">key to easy</div>
+    <div class="developer-branding" style="text-align: center; padding: 30px 0; margin-top: 40px; border-top: 1px solid var(--border-color); cursor: pointer; opacity: 0.8; transition: all 0.3s ease; display: flex; flex-direction: column; align-items: center;" onclick="window.open('https://wa.me/6285777723458', '_blank')" onmouseover="this.style.opacity='1'; this.style.transform='scale(1.05)'" onmouseout="this.style.opacity='0.8'; this.style.transform='scale(1)'">
+      <img src="https://i.imgur.com/NO5dVfb.png" alt="KIZIY Logo" style="width: 100px; height: auto; margin-bottom: 8px; object-fit: contain; filter: drop-shadow(0 4px 6px rgba(0,0,0,0.1));">
+      <div style="font-weight: 800; color: var(--text-main); font-size: 18px; letter-spacing: 3px; text-align: center; text-transform: uppercase;">KIZIY</div>
+      <div style="font-family: 'Outfit', sans-serif; font-weight: 500; font-size: 12px; color: var(--text-secondary); margin-top: 4px; text-align: center; letter-spacing: 1.5px;">key to easy</div>
     </div>
   </div>
 
@@ -532,8 +533,11 @@
       
       document.getElementById('footerPhone').textContent = branchSettings.phone || '-';
       document.getElementById('footerEmail').textContent = branchSettings.email || '-';
-      document.getElementById('footerBranchName').textContent = branchSettings.name || 'UGYM';
+      document.getElementById('footerBranchName').textContent = branchSettings.name || 'Gym Name';
       document.getElementById('footerAddress').textContent = branchSettings.address || '';
+      if (document.getElementById('copyrightName')) {
+        document.getElementById('copyrightName').textContent = branchSettings.name || 'Gym';
+      }
 
       const bankEl = document.getElementById('extensionForm').querySelector('.bank-info');
       if (bankEl) {
