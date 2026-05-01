@@ -466,10 +466,16 @@
       margin: 8px 0;
     }
     .bank-account {
-      font-size: 20px;
-      font-weight: 700;
+      font-size: 22px;
+      font-weight: 800;
       color: var(--primary);
       letter-spacing: 1px;
+      margin: 10px 0;
+      padding: 10px;
+      background: #fdf8e7;
+      border-radius: 8px;
+      display: inline-block;
+      border: 1px dashed var(--primary);
     }
     
     /* File Upload */
@@ -1282,7 +1288,7 @@
               ${packages.map(p => `
                 <div class="package-card" id="pkg_${p.id}" onclick="selectPackage(${JSON.stringify(p).replace(/"/g,'&quot;')})">
                   <div class="package-name">${p.name}</div>
-                  <div class="package-price">${formatCurrency(p.price)}</div>
+                  <div class="package-price">${formatCurrency(p.total || p.price)}</div>
                   <div class="package-duration">
                     <i class="far fa-clock"></i> ${p.duration || '-'}
                   </div>
@@ -1315,7 +1321,7 @@
       document.getElementById('packageSummary').style.display = 'block';
       document.getElementById('selectedPackageName').textContent = pkg.name;
       document.getElementById('selectedPackageDuration').textContent = pkg.duration || '-';
-      document.getElementById('selectedPackagePrice').textContent = formatCurrency(pkg.price);
+      document.getElementById('selectedPackagePrice').textContent = formatCurrency(pkg.total || pkg.price);
       
       // Enable next button
       document.getElementById('btnNextToPayment').disabled = false;
@@ -1377,7 +1383,7 @@
         return; 
       }
 
-      const totalAmount = selectedPackage.price + 0;
+      const totalAmount = (selectedPackage.total || selectedPackage.price) + 0;
 
       const btn = document.getElementById('btnSubmit');
       btn.innerHTML = '<span class="spinner"></span> Mengirim...'; 
@@ -1496,8 +1502,11 @@
         const bankEl = document.getElementById('bankInfoContent');
         if (bankEl) {
           bankEl.innerHTML = `
-            <div style="font-size:18px;font-weight:800;color:var(--primary);margin:8px 0">${branchSettings.bankInfo || '-'}</div>
-            <p style="color:#64748b;font-size:13px;margin-top:8px">* Kirimkan bukti transfer sesuai total pembayaran di bawah ini</p>
+            <div style="font-weight: 600; color: #334155; margin-bottom: 5px;">Silakan transfer ke rekening berikut:</div>
+            <div class="bank-account">${branchSettings.bank || '-'}</div>
+            <p style="color:#64748b;font-size:13px;margin-top:8px">
+              <i class="fas fa-info-circle"></i> Pastikan nominal transfer sesuai dengan total pembayaran di bawah ini.
+            </p>
           `;
         }
       }
