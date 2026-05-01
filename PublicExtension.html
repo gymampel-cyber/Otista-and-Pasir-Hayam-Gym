@@ -338,10 +338,10 @@
       <div style="margin-top: 32px; padding-top: 24px; border-top: 1px solid #e5e5ea; width: 100%;">
         <p style="color: #555; font-size: 14px; margin-bottom: 16px; font-weight: 600;">Belum punya membership? Daftar sekarang:</p>
         <div style="display: flex; gap: 12px; width: 100%;">
-          <a href="PublicRegistration.html?branch=OTISTA" style="flex: 1; display: flex; align-items: center; justify-content: center; gap: 8px; padding: 14px; background: linear-gradient(135deg, #000, #1a1a1a); color: #d4af37; border-radius: 14px; text-decoration: none; font-weight: 600; font-size: 14px; transition: all 0.25s; border: 1px solid rgba(212,175,55,0.3);" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 8px 20px rgba(0,0,0,0.2)'" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='none'">
+          <a href="#" onclick="goToRegistration('OTISTA'); return false;" style="flex: 1; display: flex; align-items: center; justify-content: center; gap: 8px; padding: 14px; background: linear-gradient(135deg, #000, #1a1a1a); color: #d4af37; border-radius: 14px; text-decoration: none; font-weight: 600; font-size: 14px; transition: all 0.25s; border: 1px solid rgba(212,175,55,0.3);" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 8px 20px rgba(0,0,0,0.2)'" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='none'">
             <i class="fas fa-user-plus"></i> Daftar Otista
           </a>
-          <a href="PublicRegistration.html?branch=PASIR_HAYAM" style="flex: 1; display: flex; align-items: center; justify-content: center; gap: 8px; padding: 14px; background: linear-gradient(135deg, #000, #1a1a1a); color: #d4af37; border-radius: 14px; text-decoration: none; font-weight: 600; font-size: 14px; transition: all 0.25s; border: 1px solid rgba(212,175,55,0.3);" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 8px 20px rgba(0,0,0,0.2)'" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='none'">
+          <a href="#" onclick="goToRegistration('PASIR_HAYAM'); return false;" style="flex: 1; display: flex; align-items: center; justify-content: center; gap: 8px; padding: 14px; background: linear-gradient(135deg, #000, #1a1a1a); color: #d4af37; border-radius: 14px; text-decoration: none; font-weight: 600; font-size: 14px; transition: all 0.25s; border: 1px solid rgba(212,175,55,0.3);" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 8px 20px rgba(0,0,0,0.2)'" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='none'">
             <i class="fas fa-user-plus"></i> Daftar Pasir Hayam
           </a>
         </div>
@@ -473,6 +473,16 @@
     var selectedFile = null;
     var currentBranch = null;
     var branchSettings = null;
+
+    // ================ NAVIGATION ================
+    function goToRegistration(branch) {
+      var baseUrl = SCRIPT_URL;
+      if (baseUrl.includes('script.google.com')) {
+        window.open(baseUrl + '?page=register&branch=' + branch, '_blank');
+      } else {
+        window.open('PublicRegistration.html?branch=' + branch, '_blank');
+      }
+    }
 
     window.onload = function() {
       const urlParams = new URLSearchParams(window.location.search);
