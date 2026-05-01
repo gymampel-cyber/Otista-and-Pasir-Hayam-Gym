@@ -719,14 +719,14 @@
         </div>
       </div>
 
-      <!-- Public Registration Buttons -->
+      <!-- Public Extension Buttons -->
       <div style="margin-top: 40px; padding-top: 28px; border-top: 1px solid #e5e5ea; max-width: 800px; margin-left: auto; margin-right: auto;">
         <p style="color: #555; font-size: 15px; margin-bottom: 20px; font-weight: 600;">Sudah punya membership? Perpanjang di sini:</p>
         <div style="display: flex; gap: 16px; justify-content: center; flex-wrap: wrap;">
-          <a href="PublicExtension.html?branch=OTISTA" style="display: flex; align-items: center; justify-content: center; gap: 8px; padding: 14px 28px; background: linear-gradient(135deg, #000, #1a1a1a); color: #d4af37; border-radius: 14px; text-decoration: none; font-weight: 600; font-size: 14px; transition: all 0.25s; border: 1px solid rgba(212,175,55,0.3);" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 8px 20px rgba(0,0,0,0.2)'" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='none'">
+          <a id="extLinkOtista" href="#" onclick="goToExtension('OTISTA'); return false;" style="display: flex; align-items: center; justify-content: center; gap: 8px; padding: 14px 28px; background: linear-gradient(135deg, #000, #1a1a1a); color: #d4af37; border-radius: 14px; text-decoration: none; font-weight: 600; font-size: 14px; transition: all 0.25s; border: 1px solid rgba(212,175,55,0.3);" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 8px 20px rgba(0,0,0,0.2)'" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='none'">
             <i class="fas fa-sync-alt"></i> Perpanjang Otista
           </a>
-          <a href="PublicExtension.html?branch=PASIR_HAYAM" style="display: flex; align-items: center; justify-content: center; gap: 8px; padding: 14px 28px; background: linear-gradient(135deg, #000, #1a1a1a); color: #d4af37; border-radius: 14px; text-decoration: none; font-weight: 600; font-size: 14px; transition: all 0.25s; border: 1px solid rgba(212,175,55,0.3);" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 8px 20px rgba(0,0,0,0.2)'" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='none'">
+          <a id="extLinkPasirHayam" href="#" onclick="goToExtension('PASIR_HAYAM'); return false;" style="display: flex; align-items: center; justify-content: center; gap: 8px; padding: 14px 28px; background: linear-gradient(135deg, #000, #1a1a1a); color: #d4af37; border-radius: 14px; text-decoration: none; font-weight: 600; font-size: 14px; transition: all 0.25s; border: 1px solid rgba(212,175,55,0.3);" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 8px 20px rgba(0,0,0,0.2)'" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='none'">
             <i class="fas fa-sync-alt"></i> Perpanjang Pasir Hayam
           </a>
         </div>
@@ -1000,6 +1000,19 @@
       email: '',
       dob: ''
     };
+
+    // ================ NAVIGATION ================
+    function goToExtension(branch) {
+      // Build the extension URL using the same base as SCRIPT_URL
+      var baseUrl = SCRIPT_URL;
+      // If served from Google Apps Script, use page= routing
+      if (baseUrl.includes('script.google.com')) {
+        window.open(baseUrl + '?page=extension&branch=' + branch, '_blank');
+      } else {
+        // Fallback for local/GitHub hosting
+        window.open('PublicExtension.html?branch=' + branch, '_blank');
+      }
+    }
 
     // ================ UTILS ================
     function showLoading() { 
