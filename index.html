@@ -2459,6 +2459,12 @@
           </div>
         </div>
         <div style="display:flex;gap:12px; align-items:center">
+          <div id="branchSwitcherContainer" class="hidden" style="display:flex; align-items:center; gap:8px; background:var(--bg-card); padding:4px 12px; border-radius:12px; border:1px solid var(--border-color)">
+            <i class="fas fa-store-alt" style="color:var(--primary-color)"></i>
+            <select id="branchSwitcher" class="form-input" style="border:none; padding:4px; width:auto; font-weight:600; background:transparent" onchange="switchBranch()">
+              <option value="All">Semua Cabang</option>
+            </select>
+          </div>
           <div id="lastSyncTime" style="font-size:10px; color:var(--text-secondary); font-family:monospace"></div>
           <button class="btn btn-outline btn-sm" onclick="refreshPage()">
             <i class="fas fa-sync-alt"></i> Refresh
@@ -2983,6 +2989,7 @@
             document.getElementById('dashboardView').style.display = 'flex';
 
             applyRolePermissions();
+            initMultiGym();
             showView('dashboard');
             loadApprovalCount();
           } else {
@@ -3036,7 +3043,7 @@
       stopScanner();
 
       switch (view) {
-        case 'dashboard': loadDashboard(); break;
+        case 'dashboard': loadDashboard(null, null, currentBranch); break;
         case 'members': loadMemberForm(); break;
         case 'transactions': loadTransactionForm(); break;
         case 'checkin': loadCheckinView(); break;
@@ -10063,6 +10070,44 @@
   </div>
 
   <script>
+    let currentBranch = localStorage.getItem('current_branch') || 'All';
+
+    function initMultiGym() {
+      if (currentUser && currentUser.role === 'Admin') {
+        document.getElementById('branchSwitcherContainer').classList.remove('hidden');
+        google.script.run
+          .withSuccessHandler(function(res) {
+            if (res.success) {
+              const select = document.getElementById('branchSwitcher');
+              // Clear existing except default
+              select.innerHTML = '<option value="All">Semua Cabang</option>';
+              res.branches.forEach(b => {
+                const opt = document.createElement('option');
+                opt.value = b.id;
+                opt.textContent = b.name;
+                select.appendChild(opt);
+              });
+              select.value = currentBranch;
+            }
+          })
+          .getBranches();
+      } else if (currentUser) {
+        // For Staff/Kasir, force their branch
+        currentBranch = currentUser.branch || 'All';
+        document.getElementById('branchSwitcherContainer').classList.add('hidden');
+      }
+      loadAndApplyBranding();
+    }
+
+    function switchBranch() {
+      currentBranch = document.getElementById('branchSwitcher').value;
+      localStorage.setItem('current_branch', currentBranch);
+      loadAndApplyBranding();
+      if (document.querySelector('.menu-item[data-view="dashboard"]').classList.contains('active')) {
+        loadDashboard(null, null, currentBranch);
+      }
+    }
+
     function loadAndApplyBranding() {
       google.script.run
         .withSuccessHandler(function(res) {
@@ -10071,7 +10116,7 @@
             if (s.name) {
               document.title = s.name + " Management";
               document.querySelectorAll('h2').forEach(el => {
-                if (el.textContent === 'AMPEL GYM' || el.textContent === 'UGYM') el.textContent = s.name;
+                if (el.textContent === 'AMPEL GYM' || el.textContent === 'UGYM' || el.classList.contains('gym-name-brand')) el.textContent = s.name;
               });
               const brandElements = [
                 { id: 'userNameBrand', text: s.name },
@@ -10089,7 +10134,7 @@
             }
           }
         })
-        .getSettings();
+        .getSettings(currentBranch);
     }
 
     function openBrandingModal() {
