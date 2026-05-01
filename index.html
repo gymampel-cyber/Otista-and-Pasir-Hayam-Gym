@@ -4,103 +4,69 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>AMPEL GYM Management</title>
+  <title>UGYM Management</title>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script>
     const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzKWdekXY27eWx5h4CI7HvLxnTboVPryp_gTpqTtCNM-G7yqLe4m0owvj7YwGgTm8bv/exec';
+    
     // ================ IMPROVED PROXY FOR google.script.run ================
-    const google = {
-      script: {
-        run: new Proxy({}, {
-          get: function (target, methodName) {
-            // Untuk method seperti withSuccessHandler / withFailureHandler
-            if (methodName === 'withSuccessHandler') {
-              return function (successCallback) {
-                return new Proxy({}, {
-                  get: function (t, nextMethod) {
-                    if (nextMethod === 'withFailureHandler') {
-                      return function (failureCallback) {
-                        return new Proxy({}, {
-                          get: function (tt, finalMethod) {
-                            return function (...args) {
-                              // Kirim request dengan kedua handler
-                              fetch(SCRIPT_URL, {
-                                method: 'POST',
-                                body: JSON.stringify({ action: finalMethod, args: args }),
-                                headers: { 'Content-Type': 'text/plain;charset=utf-8' }
-                              })
-                                .then(response => response.json())
-                                .then(data => {
-                                  if (!data.success) {
-                                    if (failureCallback) failureCallback(new Error(data.message));
-                                    else console.error('Backend Error:', data.message);
-                                  } else {
-                                    if (successCallback) successCallback(data.result);
-                                  }
-                                })
-                                .catch(err => {
-                                  if (failureCallback) failureCallback(err);
-                                  else console.error('Network Error:', err);
-                                });
-                            };
-                          }
-                        });
-                      };
-                    }
-                    // Jika hanya withSuccessHandler tanpa withFailureHandler
-                    return function (...args) {
-                      fetch(SCRIPT_URL, {
-                        method: 'POST',
-                        body: JSON.stringify({ action: nextMethod, args: args }),
-                        headers: { 'Content-Type': 'text/plain;charset=utf-8' }
-                      })
-                        .then(response => response.json())
-                        .then(data => {
-                          if (!data.success) console.error('Backend Error:', data.message);
-                          else if (successCallback) successCallback(data.result);
-                        })
-                        .catch(err => console.error('Network Error:', err));
-                    };
+    if (typeof google === 'undefined' || !google.script || !google.script.run) {
+      window.google = {
+        script: {
+          run: (function() {
+            function createProxy(handlers) {
+              return new Proxy({}, {
+                get: function(target, name) {
+                  if (name === 'withSuccessHandler') {
+                    return function(cb) { return createProxy({ ...handlers, success: cb }); };
                   }
-                });
-              };
+                  if (name === 'withFailureHandler') {
+                    return function(cb) { return createProxy({ ...handlers, failure: cb }); };
+                  }
+                  return function(...args) {
+                    fetch(SCRIPT_URL, {
+                      method: 'POST',
+                      body: JSON.stringify({ action: name, args: args }),
+                      headers: { 'Content-Type': 'text/plain;charset=utf-8' }
+                    })
+                      .then(res => res.json())
+                      .then(res => {
+                        if (res.success && handlers.success) handlers.success(res.result || res);
+                        else if (!res.success && handlers.failure) handlers.failure(new Error(res.message));
+                      })
+                      .catch(err => {
+                        if (handlers.failure) handlers.failure(err);
+                        else console.error('Script Run Error:', err);
+                      });
+                  };
+                }
+              });
             }
-            // Jika langsung memanggil fungsi tanpa handler (misal untuk testing)
-            return function (...args) {
-              fetch(SCRIPT_URL, {
-                method: 'POST',
-                body: JSON.stringify({ action: methodName, args: args }),
-                headers: { 'Content-Type': 'text/plain;charset=utf-8' }
-              })
-                .then(response => response.json())
-                .then(data => {
-                  if (!data.success) console.error('Backend Error:', data.message);
-                  else console.log('Result:', data.result);
-                })
-                .catch(err => console.error('Network Error:', err));
-            };
-          }
-        })
-      }
-    };  </script>
+            return createProxy({ success: null, failure: null });
+          })()
+        }
+      };
+    }
+  </script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <style>
     :root {
-      --primary: #5856d6;
-      --primary-light: #f0efff;
-      --primary-dark: #3634A3;
-      --secondary: #ff9500;
-      --accent: #FFCC00;
-      --dark: #1C1C1E;
-      --bg-light: #f2f2f7;
+      --primary: #d4af37;
+      --primary-light: #fdf8e7;
+      --primary-dark: #b5952f;
+      --secondary: #000000;
+      --accent: #d4af37;
+      --dark: #000000;
+      --bg-light: #f9f9f9;
       --bg-card: #ffffff;
-      --text-main: #1c1c1e;
-      --text-secondary: #8e8e93;
-      --sidebar-bg: rgba(28, 28, 30, 0.85);
+      --text-main: #000000;
+      --text-secondary: #555555;
+      --sidebar-bg: #000000;
       --border-color: #e5e5ea;
       --shadow-premium: 0 10px 30px rgba(0, 0, 0, 0.05);
-      --glass-bg: rgba(255, 255, 255, 0.7);
+      --glass-bg: rgba(255, 255, 255, 0.9);
     }
+
 
     body.dark-mode {
       --bg-light: #000000;
@@ -166,30 +132,29 @@
     /* Login Page Centering */
     .auth-layout {
       position: fixed;
-      top: 0;
-      left: 0;
-      right: 0;
-      bottom: 0;
-      background: var(--bg-light);
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
       display: flex;
       align-items: center;
       justify-content: center;
       z-index: 10000;
       overflow-y: auto;
-      padding: 20px;
+      padding: 24px;
     }
 
     .auth-card {
-      background: var(--bg-card, #ffffff);
-      padding: 40px;
-      border-radius: 24px;
-      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.1);
+      background: rgba(255, 255, 255, 0.95);
+      padding: 48px 40px;
+      border-radius: 32px;
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.15);
       width: 100%;
-      max-width: 400px;
-      border: 1px solid var(--border-color, #e5e5ea);
-      animation: slideUp 0.6s cubic-bezier(0.16, 1, 0.3, 1);
-      margin: auto;
+      max-width: 420px;
+      border: 1px solid rgba(255, 255, 255, 1);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      animation: slideUp 0.8s cubic-bezier(0.16, 1, 0.3, 1);
       z-index: 10001;
+      text-align: center;
     }
 
     .auth-header {
@@ -404,16 +369,18 @@
       }
     }
 
-    border: none;
-    color: white;
-    width: 32px;
-    height: 32px;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-    transition: all 0.2s;
+
+    .btn-close-sidebar {
+      border: none;
+      color: white;
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: all 0.2s;
     }
 
     .btn-close-sidebar:hover {
@@ -535,6 +502,13 @@
       margin-bottom: 20px;
     }
 
+    @media (max-width: 640px) {
+      .form-row {
+        grid-template-columns: 1fr;
+        gap: 12px;
+      }
+    }
+
     .form-input {
       width: 100%;
       padding: 14px 16px;
@@ -572,6 +546,11 @@
       gap: 10px;
       transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
       text-decoration: none;
+    }
+
+    .btn-block {
+      display: flex;
+      width: 100%;
     }
 
     .btn:hover {
@@ -792,9 +771,20 @@
       color: var(--primary);
     }
 
+    .table-responsive {
+      width: 100%;
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+      margin-bottom: 1rem;
+      border-radius: 12px;
+      border: 1px solid var(--border-color);
+    }
+
     .data-table {
       width: 100%;
       border-collapse: collapse;
+      background-color: transparent;
+      min-width: 800px; /* Ensure table doesn't squash columns */
     }
 
     .data-table th {
@@ -806,6 +796,7 @@
       color: var(--text-secondary);
       text-transform: uppercase;
       border-bottom: 0.5px solid var(--border-color);
+      white-space: nowrap;
     }
 
     .data-table td {
@@ -813,6 +804,12 @@
       border-bottom: 0.5px solid var(--border-color);
       font-size: 14px;
       color: var(--text-main);
+      vertical-align: middle;
+    }
+
+    .data-table td b {
+      display: block;
+      min-width: 150px; /* Min width for names */
     }
 
     .data-table tr:hover td {
@@ -1657,7 +1654,7 @@
     /* POS Specific - Professional Layout */
     .pos-container {
       display: grid;
-      grid-template-columns: 1fr 400px;
+      grid-template-columns: minmax(0, 1fr) 400px;
       gap: 24px;
       min-height: calc(100vh - 120px);
       align-items: stretch;
@@ -1742,7 +1739,7 @@
     /* POS Specific - Professional Layout */
     .pos-layout {
       display: grid;
-      grid-template-columns: 1fr 400px;
+      grid-template-columns: minmax(0, 1fr) 400px;
       gap: 24px;
       height: calc(100vh - 100px);
     }
@@ -2179,6 +2176,52 @@
   </div>
 
   <!-- Toast Container -->
+
+  <!-- Change Photo Modal -->
+  <div id="changePhotoModal" class="modal-overlay" style="display:none;z-index:9999">
+    <div class="modal-content" style="max-width:400px">
+      <div class="modal-header">
+        <h3 class="modal-title">Ganti Foto Member</h3>
+        <button class="btn-close" onclick="closeChangePhotoModal()"><i class="fas fa-times"></i></button>
+      </div>
+      <div class="modal-body text-center">
+        <div id="changePhotoPreviewBox"
+          style="width:160px;height:160px;border-radius:50%;margin:0 auto 20px;border:4px solid #f1f5f9;overflow:hidden;background:#f8fafc;display:flex;align-items:center;justify-content:center">
+          <img id="changePhotoPreview" src="" style="width:100%;height:100%;object-fit:cover;display:none">
+          <i id="changePhotoPlaceholder" class="fas fa-user fa-4x" style="color:#cbd5e1"></i>
+        </div>
+
+        <input type="file" id="changePhotoInput" accept="image/*" style="display:none"
+          onchange="previewChangedPhoto(this)">
+        <input type="hidden" id="changePhotoBase64">
+
+        <div style="display:flex;gap:12px;justify-content:center;margin-bottom:20px">
+          <button class="btn btn-outline" onclick="document.getElementById('changePhotoInput').click()">
+            <i class="fas fa-upload"></i> Upload
+          </button>
+          <button class="btn btn-outline" onclick="openChangePhotoWebcam()">
+            <i class="fas fa-camera"></i> Kamera
+          </button>
+        </div>
+
+        <div id="changePhotoWebcamContainer" style="display:none;margin-bottom:20px">
+          <video id="changePhotoVideo" autoplay playsinline
+            style="width:100%;border-radius:12px;background:#000"></video>
+          <canvas id="changePhotoCanvas" style="display:none"></canvas>
+          <button class="btn btn-primary" style="margin-top:10px" onclick="snapChangedPhoto()"><i
+              class="fas fa-camera"></i> Ambil Foto</button>
+          <button class="btn btn-secondary" style="margin-top:10px" onclick="closeChangePhotoWebcam()"><i
+              class="fas fa-times"></i> Batal</button>
+        </div>
+
+      </div>
+      <div class="modal-footer" style="display:flex;gap:12px;justify-content:flex-end">
+        <button class="btn btn-outline" onclick="closeChangePhotoModal()">Batal</button>
+        <button id="btnSubmitChangePhoto" class="btn btn-primary" onclick="submitChangedPhoto()">Simpan Foto</button>
+      </div>
+    </div>
+  </div>
+
   <div id="toastContainer" class="toast-container"></div>
 
   <!-- Confirm Modal -->
@@ -2251,15 +2294,25 @@
             <label class="form-label">Nomor HP *</label>
             <input id="visit_phone" class="form-input" placeholder="Contoh: 081234567890">
           </div>
+          <div class="form-group">
+            <label class="form-label">Tipe Visit *</label>
+            <select id="visit_type" class="form-input" onchange="updateVisitPrice()">
+              <option value="Gym" selected>Gym</option>
+              <option value="Calistenics Privat">Calistenics Privat</option>
+              <option value="Calistenics Group">Calistenics Group</option>
+              <option value="Yoga">Yoga</option>
+              <option value="Zumba">Zumba</option>
+            </select>
+          </div>
         </div>
         <div class="payment-info" style="margin-top:0">
           <div class="payment-row">
             <span>Biaya Visit</span>
-            <span>Rp 25.000</span>
+            <span id="visitPriceSpan">Rp 25.000</span>
           </div>
           <div class="payment-row payment-total">
             <span>Total</span>
-            <span>Rp 25.000</span>
+            <span id="visitTotalSpan">Rp 25.000</span>
           </div>
         </div>
       </div>
@@ -2294,9 +2347,16 @@
     </div>
   </div>
 
-  <!-- Auth View -->
   <div id="authView" class="auth-layout">
-    <div id="authCard" class="auth-card">Memuat Form Login...</div>
+    <div style="display: flex; flex-direction: column; align-items: center; gap: 20px;">
+      <div id="authCard" class="auth-card">Memuat Form Login...</div>
+      <!-- Developer Branding -->
+      <div class="developer-branding" style="text-align: center; cursor: pointer; opacity: 0.9; transition: all 0.3s ease; display: flex; flex-direction: column; align-items: center;" onclick="window.open('https://wa.me/6285777723458', '_blank')" onmouseover="this.style.opacity='1'; this.style.transform='scale(1.05)'" onmouseout="this.style.opacity='0.9'; this.style.transform='scale(1)'">
+        <img src="https://i.imgur.com/uFGDJ3a.png" alt="KIZIY Logo" style="width: 80px; height: auto; margin-bottom: 6px; object-fit: contain; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.1));">
+        <div style="font-weight: 800; color: #1e293b; font-size: 16px; letter-spacing: 2px; text-align: center; text-transform: uppercase;">KIZIY</div>
+        <div style="font-family: 'Outfit', sans-serif; font-weight: 500; font-size: 11px; color: #64748b; margin-top: 2px; text-align: center; letter-spacing: 1px;">key to easy</div>
+      </div>
+    </div>
   </div>
 
   <!-- Dashboard View -->
@@ -2316,7 +2376,7 @@
     <div class="sidebar" id="sidebar">
       <div class="sidebar-header">
         <div style="display:flex;align-items:center;gap:12px">
-          <img src="https://i.imgur.com/TPoUeRJ.jpeg" style="width:48px;height:48px;border-radius:50%;object-fit:cover">
+          <img src="https://i.imgur.com/PAB0dhW.png" style="width:48px;height:48px;border-radius:50%;object-fit:cover">
           <div>
             <div id="userName" style="font-size:15px;font-weight:600">-</div>
             <span id="userRole"
@@ -2359,6 +2419,9 @@
         <div class="menu-item" data-view="expenses" onclick="showView('expenses')">
           <i class="fas fa-file-invoice-dollar"></i><span>Pengeluaran Toko</span>
         </div>
+        <div class="menu-item" data-view="birthdays" onclick="showView('birthdays')">
+          <i class="fas fa-birthday-cake"></i><span>Ulang Tahun Member</span>
+        </div>
         <div class="menu-item" data-view="analytics" onclick="showView('analytics')">
           <i class="fas fa-chart-pie"></i><span>Laporan Analitik</span>
         </div>
@@ -2400,6 +2463,13 @@
         </div>
       </div>
       <div id="contentArea"></div>
+      
+      <!-- Developer Branding -->
+      <div class="developer-branding" style="text-align: center; padding: 30px 0; margin-top: 40px; border-top: 1px solid var(--border-color); cursor: pointer; opacity: 0.8; transition: all 0.3s ease; display: flex; flex-direction: column; align-items: center;" onclick="window.open('https://wa.me/6285777723458', '_blank')" onmouseover="this.style.opacity='1'; this.style.transform='scale(1.05)'" onmouseout="this.style.opacity='0.8'; this.style.transform='scale(1)'">
+        <img src="https://i.imgur.com/uFGDJ3a.png" alt="KIZIY Logo" style="width: 100px; height: auto; margin-bottom: 8px; object-fit: contain; filter: drop-shadow(0 4px 6px rgba(0,0,0,0.1));">
+        <div style="font-weight: 800; color: var(--text-main); font-size: 18px; letter-spacing: 3px; text-align: center; text-transform: uppercase;">KIZIY</div>
+        <div style="font-family: 'Outfit', sans-serif; font-weight: 500; font-size: 12px; color: var(--text-secondary); margin-top: 4px; text-align: center; letter-spacing: 1.5px;">key to easy</div>
+      </div>
     </div>
   </div>
 
@@ -2526,7 +2596,7 @@
       const now = formatDateTime(new Date());
       let text = '';
       if (type === 'registration') {
-        text = `*RECEIPT REGISTRASI AMPEL GYM*\n` +
+        text = `*RECEIPT REGISTRASI UGYM*\n` +
           `--------------------------------\n` +
           `Waktu: ${now}\n` +
           `Member ID: ${data.memberId}\n` +
@@ -2535,8 +2605,8 @@
           `Berlaku s/d: ${formatDate(data.expiry)}\n` +
           `No. Transaksi: ${data.receipt}\n` +
           `--------------------------------\n` +
-          `Alamat: Jln. K.H.M. Mansyur No. 88 Surabaya\n` +
-          `No HP: 087795175243\n` +
+          `Alamat: Jl. Imogiri Tim., Nglebeng, Tamanan, Kec. Banguntapan, Kabupaten Bantul, Daerah Istimewa Yogyakarta 55198\n` +
+          `No HP: 08158905889\n` +
           `--------------------------------\n` +
           `*Rincian Pembayaran*\n` +
           `Harga Paket: ${formatCurrency(data.price)}\n` +
@@ -2547,7 +2617,7 @@
           `${data.qr}\n\n` +
           `Terima kasih telah bergabung!`;
       } else if (type === 'extension') {
-        text = `*RECEIPT PERPANJANGAN AMPEL GYM*\n` +
+        text = `*RECEIPT PERPANJANGAN UGYM*\n` +
           `--------------------------------\n` +
           `Waktu: ${now}\n` +
           `Member ID: ${data.memberId}\n` +
@@ -2556,8 +2626,8 @@
           `Berlaku s/d: ${formatDate(data.expiry)}\n` +
           `No. Transaksi: ${data.receipt}\n` +
           `--------------------------------\n` +
-          `Alamat: Jln. K.H.M. Mansyur No. 88 Surabaya\n` +
-          `No HP: 087795175243\n` +
+          `Alamat: Jl. Imogiri Tim., Nglebeng, Tamanan, Kec. Banguntapan, Kabupaten Bantul, Daerah Istimewa Yogyakarta 55198\n` +
+          `No HP: 08158905889\n` +
           `--------------------------------\n` +
           `*Rincian Pembayaran*\n` +
           `Total: ${formatCurrency(data.total)}\n` +
@@ -2565,7 +2635,7 @@
           `--------------------------------\n` +
           `Terima kasih!`;
       } else if (type === 'pt') {
-        text = `*RECEIPT REGISTRASI PT AMPEL GYM*\n` +
+        text = `*RECEIPT REGISTRASI PT UGYM*\n` +
           `--------------------------------\n` +
           `Waktu: ${now}\n` +
           `Member: ${data.name}\n` +
@@ -2574,8 +2644,8 @@
           `Berlaku s/d: ${formatDate(data.expiry)}\n` +
           `No. Transaksi: ${data.receipt}\n` +
           `--------------------------------\n` +
-          `Alamat: Jln. K.H.M. Mansyur No. 88 Surabaya\n` +
-          `No HP: 087795175243\n` +
+          `Alamat: Jl. Imogiri Tim., Nglebeng, Tamanan, Kec. Banguntapan, Kabupaten Bantul, Daerah Istimewa Yogyakarta 55198\n` +
+          `No HP: 08158905889\n` +
           `--------------------------------\n` +
           `*Rincian Pembayaran*\n` +
           `Total: ${formatCurrency(data.total)}\n` +
@@ -2589,9 +2659,9 @@
     // printReceipt removed
     /*
           <div style="text-align:center;margin-bottom:10px">
-            <h2 style="margin:0">AMPEL GYM</h2>
-            <p style="margin:2px 0;font-size:12px">Jln. K.H.M. Mansyur No. 88 Surabaya</p>
-            <p style="margin:2px 0;font-size:12px">HP: 087795175243</p>
+            <h2 style="margin:0">UGYM</h2>
+            <p style="margin:2px 0;font-size:12px">Jl. Imogiri Tim., Nglebeng, Tamanan, Kec. Banguntapan, Kabupaten Bantul, Daerah Istimewa Yogyakarta 55198</p>
+            <p style="margin:2px 0;font-size:12px">HP: 08158905889</p>
             <p style="margin:5px 0">Receipt Registrasi Member</p>
           </div>
           <hr>
@@ -2619,9 +2689,9 @@
       } else if (type === 'extension') {
         content = `
           <div style="text-align:center;margin-bottom:10px">
-            <h2 style="margin:0">AMPEL GYM</h2>
-            <p style="margin:2px 0;font-size:12px">Jln. K.H.M. Mansyur No. 88 Surabaya</p>
-            <p style="margin:2px 0;font-size:12px">HP: 087795175243</p>
+            <h2 style="margin:0">UGYM</h2>
+            <p style="margin:2px 0;font-size:12px">Jl. Imogiri Tim., Nglebeng, Tamanan, Kec. Banguntapan, Kabupaten Bantul, Daerah Istimewa Yogyakarta 55198</p>
+            <p style="margin:2px 0;font-size:12px">HP: 08158905889</p>
             <p style="margin:5px 0">Receipt Perpanjangan</p>
           </div>
           <hr>
@@ -2642,9 +2712,9 @@
       } else if (type === 'pt') {
         content = `
           <div style="text-align:center;margin-bottom:10px">
-            <h2 style="margin:0">AMPEL GYM</h2>
-            <p style="margin:2px 0;font-size:12px">Jln. K.H.M. Mansyur No. 88 Surabaya</p>
-            <p style="margin:2px 0;font-size:12px">HP: 087795175243</p>
+            <h2 style="margin:0">UGYM</h2>
+            <p style="margin:2px 0;font-size:12px">Jl. Imogiri Tim., Nglebeng, Tamanan, Kec. Banguntapan, Kabupaten Bantul, Daerah Istimewa Yogyakarta 55198</p>
+            <p style="margin:2px 0;font-size:12px">HP: 08158905889</p>
             <p style="margin:5px 0">Receipt Registrasi PT</p>
           </div>
           <hr>
@@ -2679,9 +2749,10 @@
             ${content}
             <div style="text-align:center;margin-top:20px;font-size:10px">
               <p>Terima Kasih</p>
-              <p>AMPEL GYM MANAGEMENT</p>
+              <p>UGYM MANAGEMENT</p>
             </div>
-          </body>
+          
+</body>
         </html>
       `);
     */
@@ -2767,33 +2838,50 @@
 
     function renderLoginForm() {
       document.getElementById('authCard').innerHTML = `
-        <div class="auth-header">
-          <img src="https://i.imgur.com/TPoUeRJ.jpeg" style="width:64px;height:64px;border-radius:50%;margin:0 auto 16px;display:block;object-fit:cover">
-          <h2 style="font-size:22px;font-weight:700">AMPEL GYM</h2>
-          <p style="opacity:0.85;margin-top:4px;font-size:13px">Management System</p>
+        <div class="auth-header" style="text-align: center; margin-bottom: 32px;">
+          <div style="background: var(--primary); width: 80px; height: 80px; border-radius: 24px; margin: 0 auto 20px; display: flex; align-items: center; justify-content: center; box-shadow: 0 10px 20px rgba(88, 86, 214, 0.2);">
+            <img src="https://i.imgur.com/PAB0dhW.png" style="width: 100%; height: 100%; border-radius: 24px; object-fit: cover;">
+          </div>
+          <h2 style="font-size: 28px; font-weight: 800; color: #1c1c1e; letter-spacing: -0.5px;">UGYM</h2>
+          <p style="color: #636366; margin-top: 6px; font-size: 14px; font-weight: 500;">Management System v2.0</p>
         </div>
-        <div class="auth-form">
-          <div id="loginAlert" class="alert" style="display:none"></div>
-          <div class="form-group">
-            <label class="form-label"><i class="fas fa-user"></i> Username</label>
-            <input id="loginUser" class="form-input" placeholder="Masukkan username" 
-                   autocomplete="username" onkeypress="if(event.key==='Enter') doLogin()">
+        
+        <div class="auth-form" style="display: flex; flex-direction: column; align-items: center; gap: 16px;">
+          <div id="loginAlert" class="alert" style="display:none; width: 100%; border-radius: 12px; font-size: 13px;"></div>
+          
+          <div class="form-group" style="width: 100%;">
+            <label class="form-label" style="display: flex; align-items: center; justify-content: center; gap: 8px; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; color: #8e8e93; margin-bottom: 8px;">
+              <i class="fas fa-user-circle"></i> Username Access
+            </label>
+            <input id="loginUser" class="form-input" placeholder="Username" 
+                   autocomplete="username" onkeypress="if(event.key==='Enter') doLogin()" 
+                   style="text-align: center; background: #f2f2f7; border: none; border-radius: 16px; padding: 16px;">
           </div>
-          <div class="form-group">
-            <label class="form-label"><i class="fas fa-lock"></i> Password</label>
-            <input id="loginPass" type="password" class="form-input" placeholder="Masukkan password" 
-                   autocomplete="current-password" onkeypress="if(event.key==='Enter') doLogin()">
+          
+          <div class="form-group" style="width: 100%;">
+            <label class="form-label" style="display: flex; align-items: center; justify-content: center; gap: 8px; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; color: #8e8e93; margin-bottom: 8px;">
+              <i class="fas fa-shield-alt"></i> Security Key
+            </label>
+            <input id="loginPass" type="password" class="form-input" placeholder="••••••••" 
+                   autocomplete="current-password" onkeypress="if(event.key==='Enter') doLogin()" 
+                   style="text-align: center; background: #f2f2f7; border: none; border-radius: 16px; padding: 16px;">
           </div>
-          <button id="btnLogin" class="btn btn-primary btn-block" onclick="doLogin()">
-            <i class="fas fa-sign-in-alt"></i> Masuk
+          
+          <button id="btnLogin" class="btn btn-primary btn-block" onclick="doLogin()" style="justify-content: center; padding: 16px; border-radius: 16px; font-size: 16px; box-shadow: 0 8px 16px rgba(88, 86, 214, 0.25);">
+            <i class="fas fa-lock-open"></i> Log In to System
           </button>
-          <div class="divider"><span>atau akses</span></div>
-          <button class="btn btn-outline btn-block" onclick="window.open('PublicRegistration.html', '_blank')">
-          <i class="fas fa-user-plus"></i> Registrasi Online
+          
+          <div class="divider" style="width: 100%; margin: 8px 0; color: #c7c7cc; font-size: 11px; text-transform: uppercase; letter-spacing: 1px;">
+            <span style="background: #fff; padding: 0 12px;">External Access</span>
+          </div>
+          
+          <button class="btn btn-outline btn-block" onclick="window.open('PublicRegistration.html', '_blank')" style="justify-content: center; padding: 14px; border-radius: 16px; border-color: #e5e5ea; color: #1c1c1e;">
+            <i class="fas fa-user-plus"></i> Public Registration
           </button>
-          <div style="margin-top:12px; text-align:center">
-            <a href="javascript:void(0)" onclick="renderMemberCheckForm()" style="font-size:13px; color:var(--primary); font-weight:600; text-decoration:none">
-              <i class="fas fa-search"></i> Cek Status Member
+          
+          <div style="margin-top: 8px; text-align: center; width: 100%;">
+            <a href="javascript:void(0)" onclick="renderMemberCheckForm()" style="font-size: 13px; color: var(--primary); font-weight: 600; text-decoration: none; display: inline-flex; align-items: center; gap: 6px; padding: 8px 16px; border-radius: 10px; background: rgba(88, 86, 214, 0.05);">
+              <i class="fas fa-search"></i> Check Membership Status
             </a>
           </div>
         </div>
@@ -2935,11 +3023,12 @@
         pos: 'Point of Sale',
         catalog: 'Katalog & Inventori',
         expenses: 'Pengeluaran Toko',
-        analytics: 'Laporan Analitik & Grafik'
+        analytics: 'Laporan Analitik & Grafik',
+        birthdays: 'Ulang Tahun Member'
       };
 
       document.getElementById('pageTitle').textContent = titles[view] || view;
-      document.getElementById('pageSubtitle').textContent = 'AMPEL GYM Management System';
+      document.getElementById('pageSubtitle').textContent = 'UGYM Management System';
 
       stopScanner();
 
@@ -2955,6 +3044,7 @@
         case 'catalog': loadCatalogView(); break;
         case 'expenses': loadExpensesView(); break;
         case 'analytics': loadAnalyticsView(); break;
+        case 'birthdays': loadBirthdaysView(); break;
         case 'gallery': loadGalleryView(); break;
       }
     }
@@ -2971,7 +3061,7 @@
         <div class="view-header dashboard-header-flex">
           <div>
             <h2 class="view-title"><i class="fas fa-chart-line"></i> Dashboard Analytics</h2>
-            <p class="view-subtitle">Ringkasan performa operasional dan keuangan AMPEL GYM</p>
+            <p class="view-subtitle">Ringkasan performa operasional dan keuangan UGYM</p>
           </div>
           <div style="display:flex; flex-wrap:wrap; gap:12px">
             <div class="filter-group" style="display:flex; align-items:center; gap:8px; background:white; padding:4px 12px; border-radius:10px; border:1px solid #e2e8f0">
@@ -3012,6 +3102,22 @@
             </div>
             <div class="stat-value" id="statAktif">0</div>
             <div class="stat-label">Sesuai Masa Aktif</div>
+          </div>
+          <div class="stat-card stat-card-clickable" id="cardGallery" style="border-top-color:#f472b6" onclick="showView('gallery')">
+            <div class="stat-header">
+              <span class="stat-label">Galeri Member</span>
+              <div class="stat-icon" style="background:#fdf2f8; color:#db2777"><i class="fas fa-images"></i></div>
+            </div>
+            <div class="stat-value" id="statGallery">0</div>
+            <div class="stat-label">Member Berfoto</div>
+          </div>
+          <div class="stat-card stat-card-clickable" id="cardBirthday" style="border-top-color:#fbbf24" onclick="showView('birthdays')">
+            <div class="stat-header">
+              <span class="stat-label">Ulang Tahun</span>
+              <div class="stat-icon" style="background:#fffbeb; color:#d97706"><i class="fas fa-birthday-cake"></i></div>
+            </div>
+            <div class="stat-value" id="statBirthday">0</div>
+            <div class="stat-label">Hari Ini</div>
           </div>
           <div class="stat-card stat-card-clickable" style="border-top-color:#3b82f6" onclick="showDashboardDetail('checkins')">
             <div class="stat-header">
@@ -3195,6 +3301,8 @@
             // Fitness Stats
             if (document.getElementById('statTotal')) document.getElementById('statTotal').textContent = s.total || 0;
             if (document.getElementById('statAktif')) document.getElementById('statAktif').textContent = s.active || 0;
+            if (document.getElementById('statGallery')) document.getElementById('statGallery').textContent = s.galleryCount || 0;
+            if (document.getElementById('statBirthday')) document.getElementById('statBirthday').textContent = s.birthdayCount || 0;
             if (document.getElementById('statExpiring')) document.getElementById('statExpiring').textContent = s.expiring || 0;
             if (document.getElementById('statExpired')) document.getElementById('statExpired').textContent = s.expired || 0;
             if (document.getElementById('statCheckin')) document.getElementById('statCheckin').textContent = s.checkins || 0;
@@ -3256,7 +3364,7 @@
           console.error('Dashboard fetch error:', err);
           showToast('Gagal memuat data: ' + err.message, 'error');
         })
-        .getDashboardStats(start, end, currentUser.gym);
+        .getDashboardStats(start, end);
     }
 
     // printDashboard removed
@@ -3285,7 +3393,7 @@
       printTitle.style.marginBottom = '20px';
       printTitle.innerHTML = `
         <div style="text-align:center; margin-bottom:20px; border-bottom:2px solid #000; padding-bottom:10px">
-          <h1 style="margin:0">LAPORAN DASHBOARD AMPEL GYM</h1>
+          <h1 style="margin:0">LAPORAN DASHBOARD UGYM</h1>
           <p style="margin:5px 0">Periode: ${period}</p>
           <p style="font-size:12px; color:#666">Dicetak pada: ${formatDateTime(new Date())}</p>
         </div>
@@ -3434,7 +3542,7 @@
           hideLoading();
           showToast('Gagal memuat galeri: ' + err.message, 'error');
         })
-        .getAllMembers(currentUser.gym);
+        .getAllMembers();
     }
 
     function renderGallery(members) {
@@ -3455,12 +3563,8 @@
               </div>
               <div style="font-weight:700; color:var(--text-main); margin-bottom:4px; font-size:16px">${escapeHtml(m.fullName)}</div>
               <div style="font-size:12px; color:var(--text-secondary); margin-bottom:16px; font-family:monospace; background:var(--bg-light); padding:4px 8px; border-radius:6px">ID: ${escapeHtml(m.memberId)}</div>
-              <div style="display:flex; flex-direction:column; gap:8px">
-                ${m.photoUrl ? `<a href="${getDirectLink(m.photoUrl)}" target="_blank" class="btn btn-outline" style="padding:8px 16px; font-size:12px; width:100%; border-radius:10px">Buka Foto <i class="fas fa-external-link-alt"></i></a>` : `<button class="btn btn-secondary" style="padding:8px 16px; font-size:12px; width:100%; border-radius:10px" disabled>Tidak Ada Foto</button>`}
-                <button class="btn btn-primary" style="padding:8px 16px; font-size:12px; width:100%; border-radius:10px" onclick="openUpdatePhotoModal('${m.memberId}')">
-                  <i class="fas fa-camera"></i> Ganti Foto
-                </button>
-              </div>
+              ${m.photoUrl ? `<a href="${getDirectLink(m.photoUrl)}" target="_blank" class="btn btn-outline" style="padding:8px 16px; font-size:12px; width:100%; border-radius:10px">Buka Foto <i class="fas fa-external-link-alt"></i></a>` : `<button class="btn btn-secondary" style="padding:8px 16px; font-size:12px; width:100%; border-radius:10px" disabled>Tidak Ada Foto</button>`}
+              <button class="btn btn-primary" style="padding:8px 16px; font-size:12px; width:100%; border-radius:10px; margin-top:8px" onclick="openChangePhotoModal('${m.memberId}', '${m.photoUrl ? getDirectLink(m.photoUrl) : ''}')"><i class="fas fa-camera"></i> Ganti Foto</button>
             </div>
           `).join('')}
         </div>
@@ -3476,47 +3580,6 @@
           if (matches) count++;
         });
       });
-    }
-
-    function openUpdatePhotoModal(memberId) {
-      // Reuse the existing member photo logic from registration
-      const choice = confirm("Pilih 'OK' untuk Ambil lewat Kamera, atau 'Cancel' untuk Upload File.");
-      if (choice) {
-        // Ambil lewat kamera
-        adminOpenWebcam(function (base64) {
-          updateMemberPhotoFinal(memberId, base64);
-        });
-      } else {
-        // Upload file
-        const input = document.createElement('input');
-        input.type = 'file';
-        input.accept = 'image/*';
-        input.onchange = function (e) {
-          const file = e.target.files[0];
-          if (!file) return;
-          const reader = new FileReader();
-          reader.onload = function (re) {
-            updateMemberPhotoFinal(memberId, re.target.result);
-          };
-          reader.readAsDataURL(file);
-        };
-        input.click();
-      }
-    }
-
-    function updateMemberPhotoFinal(memberId, base64) {
-      showLoading();
-      google.script.run
-        .withSuccessHandler(function (res) {
-          hideLoading();
-          if (res.success) {
-            showToast('✅ Foto berhasil diperbarui', 'success');
-            loadGalleryView(); // Refresh gallery
-          } else {
-            showToast('❌ ' + res.message, 'error');
-          }
-        })
-        .updateMemberPhoto(memberId, base64);
     }
 
     // ================ MEMBER REGISTRATION ================
@@ -3572,9 +3635,9 @@
                     <span>Harga Paket</span>
                     <span id="paymentPackagePrice">Rp 0</span>
                   </div>
-                  <div class="payment-row" id="regFeeRow" style="display:none">
+                  <div class="payment-row" id="regFeeRow" style="display:flex">
                     <span>Biaya Registrasi</span>
-                    <span>${formatCurrency(0)}</span>
+                    <span>Rp 50.000</span>
                   </div>
                   <div class="payment-row payment-total">
                     <span>Total</span>
@@ -3672,7 +3735,7 @@
       const totalEl = document.getElementById('paymentTotal');
 
       if (selectedPkg) {
-        const total = selectedPkg.price + 0;
+        const total = selectedPkg.price + 50000;
         packagePriceEl.textContent = formatCurrency(selectedPkg.price);
         packagePriceEl.style.color = '#667eea';
         totalEl.textContent = formatCurrency(total);
@@ -3874,7 +3937,7 @@
         return;
       }
 
-      const totalAmount = pkg.price + 0;
+      const totalAmount = pkg.price + 50000;
 
       showConfirm(
         `KONFIRMASI REGISTRASI MEMBER\n\n` +
@@ -3884,7 +3947,7 @@
         `Paket       : ${pkg.name}\n` +
         `Durasi      : ${pkg.duration}\n` +
         `Harga Paket : ${formatCurrency(pkg.price)}\n` +
-        (0 > 0 ? `Biaya Reg   : ${formatCurrency(0)}\n` : '') +
+        `Biaya Reg   : Rp 50.000\n` +
         `Total       : ${formatCurrency(totalAmount)}\n` +
         `Metode      : ${pay}\n\n` +
         `Lanjutkan registrasi member?`,
@@ -4194,7 +4257,7 @@
                       <div class="card-right">
                         <div>
                           <div class="header">
-                            <div class="gym-name">AMPEL GYM</div>
+                            <div class="gym-name">UGYM</div>
                             <div class="tagline">Power • Fitness • Health</div>
                           </div>
                           <div class="member-info">
@@ -4210,7 +4273,8 @@
                     </div>
                     <div class="footer-tag">VIP MEMBER</div>
                   </div>
-                </body>
+                
+</body>
               </html>
             `);
             printWindow.document.close();
@@ -4941,7 +5005,7 @@
             `;
           }
         })
-        .getTodayPOSTransactions(currentUser.gym);
+        .getTodayPOSTransactions();
     }
 
     function loadPOSProducts(force = false) {
@@ -5167,7 +5231,6 @@
           memberId: posSelectedMember ? posSelectedMember.id : '',
           customerName: posSelectedMember ? posSelectedMember.name : 'Guest',
           cashier: currentUser?.name || 'Admin',
-          gym: currentUser.gym,
           whatsapp: document.getElementById('pos_wa_number').value.trim(),
           notes: ''
         };
@@ -5212,7 +5275,7 @@
           hideLoading();
           if (res.success) {
             let itemsText = data.items.map(it => `• ${it.name} x${it.qty}`).join('\n');
-            let text = `*STRUK PENJUALAN - AMPEL GYM*\n` +
+            let text = `*STRUK PENJUALAN - UGYM*\n` +
               `--------------------------------\n` +
               `ID Trx: ${trxId}\n` +
               `Tanggal: ${new Date().toLocaleString('id-ID')}\n` +
@@ -5225,7 +5288,7 @@
               `*Total: ${formatCurrency(data.total)}*\n` +
               `Pembayaran: ${data.paymentMethod}\n\n` +
               `Download Struk PDF:\n${res.url}\n\n` +
-              `Terima kasih telah berbelanja di AMPEL GYM!`;
+              `Terima kasih telah berbelanja di UGYM!`;
 
             const waNumber = data.whatsapp || '';
             if (waNumber) {
@@ -5353,12 +5416,14 @@
                         <td>${formatCurrency(p['Harga'])}</td>
                         <td><span class="badge badge-${p['Is Active'] ? 'success' : 'secondary'}">${p['Is Active'] ? 'Aktif' : 'Non-Aktif'}</span></td>
                         <td>
-                          <button class="btn btn-sm btn-outline" onclick="openPackageModal('${p['ID Paket']}')" title="Edit Paket">
-                            <i class="fas fa-edit"></i>
-                          </button>
-                          <button class="btn btn-sm btn-danger" onclick="deletePackage('${p['ID Paket']}')" title="Hapus Paket">
-                            <i class="fas fa-trash"></i>
-                          </button>
+                          <div style="display:flex; gap:4px">
+                            <button class="btn btn-sm btn-outline" onclick="openPackageModal('${p['ID Paket']}')" title="Edit Paket">
+                              <i class="fas fa-edit"></i>
+                            </button>
+                            <button class="btn btn-sm btn-outline" style="color:#ef4444; border-color:#fecaca" onclick="confirmDeletePackage('${p['ID Paket']}', '${escapeJs(p['Nama Paket'])}')" title="Hapus Paket">
+                              <i class="fas fa-trash"></i>
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     `).join('')}
@@ -5368,7 +5433,7 @@
             `;
           }
         })
-        .getFullCatalogue(currentUser.gym);
+        .getFullCatalogue();
     }
 
     function showProductCatalog() {
@@ -5411,7 +5476,7 @@
           }
         })
         .withFailureHandler(function () { hideLoading(); })
-        .getFullProducts(currentUser.gym);
+        .getFullProducts();
     }
 
     function _renderProductTable(list) {
@@ -5446,14 +5511,14 @@
                       <button class="btn btn-sm btn-outline" onclick="openProductModal('${p.id}')" title="Edit Data">
                         <i class="fas fa-edit"></i>
                       </button>
-                      <button class="btn btn-sm btn-danger" onclick="deleteProduct('${p.id}')" title="Hapus Produk">
-                        <i class="fas fa-trash"></i>
-                      </button>
                       <button class="btn btn-sm btn-success" onclick="openRestockModal('${p.id}', '${escapeJs(p.name)}')" title="Restock / Kulakan">
                         <i class="fas fa-plus-circle"></i>
                       </button>
                       <button class="btn btn-sm btn-outline" onclick="openAdjustModal('${p.id}', '${escapeJs(p.name)}', ${p.stock})" title="Penyesuaian Stok">
                         <i class="fas fa-sliders-h"></i>
+                      </button>
+                      <button class="btn btn-sm btn-outline" style="color:#ef4444; border-color:#fecaca" onclick="confirmDeleteProduct('${p.id}', '${escapeJs(p.name)}')" title="Hapus Produk">
+                        <i class="fas fa-trash"></i>
                       </button>
                     </div>
                   </td>
@@ -5590,7 +5655,7 @@
               }
             }
           })
-          .getFullProducts(currentUser.gym);
+          .getFullProducts();
       }
     }
 
@@ -5687,7 +5752,7 @@
             }
           }
         })
-        .getFullProducts(currentUser.gym);
+        .getFullProducts();
     }
 
     function openQuickUpdateModal(p) {
@@ -5769,6 +5834,42 @@
         .processRestock(payload);
     }
 
+    function confirmDeletePackage(id, name) {
+      showConfirm(`Apakah Anda yakin ingin menghapus paket "${name}"?\n\nTindakan ini tidak dapat dibatalkan.`, function (ok) {
+        if (!ok) return;
+        showLoading();
+        google.script.run
+          .withSuccessHandler(function (res) {
+            hideLoading();
+            if (res.success) {
+              showToast('✅ ' + res.message, 'success');
+              loadPackageList();
+            } else {
+              showToast('❌ ' + res.message, 'error');
+            }
+          })
+          .deletePackage(id);
+      });
+    }
+
+    function confirmDeleteProduct(id, name) {
+      showConfirm(`Apakah Anda yakin ingin menghapus produk "${name}"?\n\nTindakan ini tidak dapat dibatalkan.`, function (ok) {
+        if (!ok) return;
+        showLoading();
+        google.script.run
+          .withSuccessHandler(function (res) {
+            hideLoading();
+            if (res.success) {
+              showToast('✅ ' + res.message, 'success');
+              loadProductList(true);
+            } else {
+              showToast('❌ ' + res.message, 'error');
+            }
+          })
+          .deleteProduct(id);
+      });
+    }
+
     function openAdjustModal(id, name, currentStock) {
       document.getElementById('adjust_prod_id').value = id;
       document.getElementById('adjust_prod_name').value = name;
@@ -5838,7 +5939,7 @@
               document.getElementById('pkg_active').checked = p['Is Active'] === true || p['Is Active'] === 'TRUE';
             }
           })
-          .getFullCatalogue(currentUser.gym);
+          .getFullCatalogue();
       } else {
         document.getElementById('packageModalTitle').textContent = 'Tambah Paket';
         document.getElementById('pkg_id').value = '';
@@ -5866,8 +5967,7 @@
         'Harga': document.getElementById('pkg_price').value,
         'Total Harga': document.getElementById('pkg_price').value,
         'Deskripsi': document.getElementById('pkg_desc').value,
-        'Is Active': document.getElementById('pkg_active').checked,
-        'Gym': currentUser.gym
+        'Is Active': document.getElementById('pkg_active').checked
       };
 
       if (!data['Nama Paket']) { showToast('Nama paket wajib diisi', 'warning'); return; }
@@ -5883,42 +5983,6 @@
           }
         })
         .savePackage(data);
-    }
-
-    function deletePackage(id) {
-      showConfirm(`Apakah Anda yakin ingin menghapus paket ${id}?`, function (ok) {
-        if (!ok) return;
-        showLoading();
-        google.script.run
-          .withSuccessHandler(function (res) {
-            hideLoading();
-            if (res.success) {
-              showToast('✅ Paket berhasil dihapus', 'success');
-              loadPackageList();
-            } else {
-              showToast('❌ ' + res.message, 'error');
-            }
-          })
-          .deletePackage(id);
-      });
-    }
-
-    function deleteProduct(id) {
-      showConfirm(`Apakah Anda yakin ingin menghapus produk ${id}?`, function (ok) {
-        if (!ok) return;
-        showLoading();
-        google.script.run
-          .withSuccessHandler(function (res) {
-            hideLoading();
-            if (res.success) {
-              showToast('✅ Produk berhasil dihapus', 'success');
-              loadProductList(true);
-            } else {
-              showToast('❌ ' + res.message, 'error');
-            }
-          })
-          .deleteProduct(id);
-      });
     }
 
     let productModalScanner = null;
@@ -5976,7 +6040,7 @@
                 populateForm(res.products.find(x => x.id == id));
               }
             })
-            .getFullProducts(currentUser.gym);
+            .getFullProducts();
         }
       } else {
         document.getElementById('productModalTitle').textContent = 'Tambah Produk';
@@ -6057,8 +6121,7 @@
         'Satuan': document.getElementById('prod_unit').value,
         'Foto URL': document.getElementById('prod_photo_url').value,
         'productPhoto': productPhotoBase64,
-        'Status': 'Aktif',
-        'Gym': currentUser.gym
+        'Status': 'Aktif'
       };
 
       if (!data['Nama Produk']) { showToast('Nama produk wajib diisi', 'warning'); return; }
@@ -6399,13 +6462,18 @@
                       <div><span class="text-muted">Sisa Hari:</span><br><b style="color:${m.daysLeft <= 7 ? '#f59e0b' : '#22c55e'}">${m.daysLeft} hari</b></div>
                       <div><span class="text-muted">Berlaku s/d:</span><br><b>${formatDate(m.expiry)}</b></div>
                       <div><span class="text-muted">Nomor HP:</span><br><b>${escapeHtml(m.phone)}</b></div>
+                      <div style="grid-column: span 2; padding-top: 8px; border-top: 1px solid #f1f5f9; display: flex; gap: 20px;">
+                        <div><span class="text-muted">Sisa Paket PT:</span><br><b>${escapeHtml(m.ptPackage || '-')}</b></div>
+                        <div><span class="text-muted">Sisa Sesi PT:</span><br><b style="color:${m.ptSessionsLeft > 0 ? '#8b5cf6' : '#ef4444'}">${m.ptSessionsLeft || 0} Sesi</b></div>
+                      </div>
                     </div>
                     
-                    <div style="margin-bottom:16px;padding:10px;background:#f8fafc;border-radius:8px;border:1px solid #e2e8f0">
-                      <label style="display:flex;align-items:center;gap:10px;cursor:pointer">
-                        <input type="checkbox" id="ci_usePT" style="width:18px;height:18px">
+                    <div style="margin-bottom:16px;padding:10px;background:${m.ptSessionsLeft > 0 ? '#f8fafc' : '#fff1f2'};border-radius:8px;border:1px solid ${m.ptSessionsLeft > 0 ? '#e2e8f0' : '#fecaca'}">
+                      <label style="display:flex;align-items:center;gap:10px;cursor:${m.ptSessionsLeft > 0 ? 'pointer' : 'not-allowed'}; opacity: ${m.ptSessionsLeft > 0 ? '1' : '0.6'}">
+                        <input type="checkbox" id="ci_usePT" style="width:18px;height:18px" ${m.ptSessionsLeft > 0 ? '' : 'disabled'}>
                         <div>
                           <span style="font-weight:600;font-size:13px"><i class="fas fa-dumbbell" style="color:#8b5cf6"></i> Gunakan Sesi Personal Trainer</span>
+                          ${m.ptSessionsLeft <= 0 ? '<div style="font-size:10px;color:#ef4444">Sesi PT tidak tersedia atau sudah habis</div>' : ''}
                         </div>
                       </label>
                     </div>
@@ -6814,7 +6882,39 @@
       document.getElementById('visitSearchResults').innerHTML = '';
       document.getElementById('visit_name').value = '';
       document.getElementById('visit_phone').value = '';
+      document.getElementById('visit_type').value = 'Gym'; // reset to default
+      updateVisitPrice();
       document.getElementById('visitModal').style.display = 'flex';
+    }
+
+    function updateVisitPrice() {
+      const type = document.getElementById('visit_type').value;
+      const priceSpan = document.getElementById('visitPriceSpan');
+      const totalSpan = document.getElementById('visitTotalSpan');
+      priceSpan.innerHTML = '<span class="spinner"></span>';
+
+      google.script.run
+        .withSuccessHandler(function (res) {
+          let price = 25000;
+          if (res && res.success && res.packages) {
+            const vName = type.toLowerCase().startsWith('visit') ? type : 'visit ' + type;
+            const pkg = res.packages.find(p => p.name.toLowerCase() === vName.toLowerCase());
+            if (pkg) price = pkg.price || pkg.total || 25000;
+            else {
+              const fallbacks = { 'Gym': 25000, 'Calistenics Privat': 100000, 'Calistenics Group': 50000, 'Yoga': 35000, 'Zumba': 35000 };
+              price = fallbacks[type] || 25000;
+            }
+          }
+          priceSpan.textContent = formatCurrency(price);
+          totalSpan.textContent = formatCurrency(price);
+        })
+        .withFailureHandler(function (err) {
+          const fallbacks = { 'Gym': 25000, 'Calistenics Privat': 100000, 'Calistenics Group': 50000, 'Yoga': 35000, 'Zumba': 35000 };
+          const price = fallbacks[type] || 25000;
+          priceSpan.textContent = formatCurrency(price);
+          totalSpan.textContent = formatCurrency(price);
+        })
+        .getPackages();
     }
 
     function searchVisitorForVisit(query) {
@@ -6909,7 +7009,7 @@
                 </div>
                 <div class="info-box" style="background:white;border-radius:10px;padding:16px;margin:12px 0">
                   <p><b>${escapeHtml(name)}</b> (${escapeHtml(phone)})</p>
-                  <p style="margin-top:4px;font-size:13px;color:#64748b">Visit Harian - Rp 25.000</p>
+                  <p style="margin-top:4px;font-size:13px;color:#64748b">Visit ${res.visitType || 'Harian'} - ${formatCurrency(res.amount || 25000)}</p>
                 </div>
               </div>
             `;
@@ -6929,7 +7029,7 @@
           btn.disabled = false;
           showToast('Error: ' + err.message, 'error');
         })
-        .processVisitCheckIn({ visitorName: name, visitorPhone: phone, paymentMethod: 'Cash' });
+        .processVisitCheckIn({ visitorName: name, visitorPhone: phone, visitType: document.getElementById('visit_type').value, paymentMethod: 'Cash' });
     }
 
     // ================ QR SCANNER ================
@@ -7874,14 +7974,6 @@
                   </select>
                 </div>
                 <div class="form-group">
-                  <label class="form-label">Lokasi Gym *</label>
-                  <select id="cu_gym" class="form-input">
-                    <option value="Otista">Otista</option>
-                    <option value="Pasir Hayam">Pasir Hayam</option>
-                    <option value="Both">Keduanya (Admin)</option>
-                  </select>
-                </div>
-                <div class="form-group">
                   <label class="form-label">Password *</label>
                   <input id="cu_password" type="password" class="form-input" placeholder="Min 6 karakter">
                 </div>
@@ -7910,15 +8002,14 @@
                   <button class="btn btn-secondary" onclick="loadTransactionList()">
                     <i class="fas fa-receipt"></i> Riwayat Transaksi
                   </button>
-                  <!-- TOMBOL CLEANUP DUPLIKAT BARU -->
                   <button class="btn btn-warning" onclick="showDuplicateCleanupDialog()">
                     <i class="fas fa-broom"></i> Cleanup Duplikat Data
                   </button>
+                  <button class="btn btn-info" onclick="fixPackageIds()">
+                    <i class="fas fa-magic"></i> Rapikan ID Paket
+                  </button>
                   <button class="btn btn-primary" onclick="syncDatabase()">
                     <i class="fas fa-sync"></i> Sinkronisasi Database (Initialisasi)
-                  </button>
-                  <button class="btn btn-success" onclick="openBrandingModal()">
-                    <i class="fas fa-paint-brush"></i> Pengaturan Branding & Kontak
                   </button>
                   <button class="btn btn-secondary" onclick="loadUserList()" style="background:#4b5563; color:white">
                     <i class="fas fa-users-cog"></i> Lihat Daftar User
@@ -7943,6 +8034,24 @@
           createUserCard.innerHTML += '<div style="color:#ef4444; font-size:12px; margin-top:8px">Hanya Super Admin yang dapat mengelola akun user.</div>';
         }
       }
+    }
+
+    function fixPackageIds() {
+      showConfirm('Apakah Anda ingin merapikan ID Katalog Paket?\n\nID akan diperbarui berdasarkan tipe (M untuk Member, PT untuk Trainer, V untuk Visit) dan dipastikan unik.', function(ok) {
+        if (!ok) return;
+        showLoading();
+        google.script.run
+          .withSuccessHandler(function(res) {
+            hideLoading();
+            if (res.success) {
+              showToast('✅ ' + res.message, 'success');
+              if (currentView === 'catalog') loadPackageList();
+            } else {
+              showToast('❌ ' + res.message, 'error');
+            }
+          })
+          .fixPackageCatalogueIds();
+      });
     }
 
     function triggerSetupLeveling() {
@@ -8090,7 +8199,7 @@
           const el = document.getElementById('adminDataView');
           if (el) el.innerHTML = '<p class="text-muted">Error: ' + err.message + '</p>';
         })
-        .getAllMembers(currentUser.gym);
+        .getAllMembers();
     }
 
     function loadTransactionList() {
@@ -8149,7 +8258,7 @@
           const el = document.getElementById('adminDataView');
           if (el) el.innerHTML = '<p class="text-muted">Error: ' + err.message + '</p>';
         })
-        .getTransactionHistory(currentUser.gym);
+        .getTransactionHistory();
     }
 
     function triggerShowSysInfo() {
@@ -8193,7 +8302,6 @@
       const phone = document.getElementById('cu_phone')?.value?.trim();
       const username = document.getElementById('cu_username')?.value?.trim();
       const role = document.getElementById('cu_role')?.value;
-      const gym = document.getElementById('cu_gym')?.value;
       const email = document.getElementById('cu_email')?.value?.trim();
       const password = document.getElementById('cu_password')?.value?.trim();
 
@@ -8246,7 +8354,6 @@
           phone: phone,
           username: username,
           role: role,
-          gym: gym,
           email: email,
           password: password
         }, currentUser?.name || 'Admin');
@@ -8528,7 +8635,7 @@
         .withFailureHandler(function (err) {
           showToast('Error: ' + err.message, 'error');
         })
-        .getExpenses(start, end, currentUser.gym);
+        .getExpenses(start, end);
     }
 
     function resetExpensesFilter() {
@@ -8602,8 +8709,7 @@
         description: document.getElementById('exp_description').value,
         amount: Number(document.getElementById('exp_amount').value),
         paymentMethod: document.getElementById('exp_payment').value,
-        user: currentUser?.fullName || currentUser?.name || 'Admin',
-        gym: currentUser.gym
+        User: currentUser?.fullName || currentUser?.name || 'Admin'
       };
 
       if (!payload.category || !payload.amount || !payload.description) {
@@ -8670,15 +8776,22 @@
         let visible = true;
 
         if (role === 'Staff' || role === 'Kasir') {
-          const staffViews = ['dashboard', 'members', 'transactions', 'checkin', 'pt', 'pos', 'approvals', 'expenses'];
+          const staffViews = ['dashboard', 'members', 'transactions', 'checkin', 'pt', 'pos', 'approvals', 'expenses', 'birthdays', 'gallery'];
           if (!staffViews.includes(view)) visible = false;
 
-          // Hide specific dashboard cards
+          // Dashboard card visibility for Kasir
           if (view === 'dashboard') {
+            // Previously hidden cards are now shown for Kasir as requested
             const cardTotal = document.getElementById('cardTotalMember');
             const cardAktif = document.getElementById('cardMemberAktif');
-            if (cardTotal) cardTotal.style.display = 'none';
-            if (cardAktif) cardAktif.style.display = 'none';
+            if (cardTotal) cardTotal.style.display = 'flex';
+            if (cardAktif) cardAktif.style.display = 'flex';
+            
+            // New Gallery and Birthday cards are also visible
+            const cardGallery = document.getElementById('cardGallery');
+            const cardBirthday = document.getElementById('cardBirthday');
+            if (cardGallery) cardGallery.style.display = 'flex';
+            if (cardBirthday) cardBirthday.style.display = 'flex';
           }
         } else if (role === 'Admin') {
           // Hide pending approvals for Admin as requested
@@ -8850,7 +8963,7 @@
             if (timeEl) timeEl.textContent = 'LIVE: ' + new Date().toLocaleTimeString('id-ID');
           }
         })
-        .getDashboardStats(null, null, currentUser.gym);
+        .getDashboardStats();
     }
 
     function updateDashboardCounters(stats) {
@@ -9494,7 +9607,7 @@
 
           if (res.success) {
             const summary = res.summary;
-            const text = `*LAPORAN HARIAN KASIR - AMPEL GYM*\n` +
+            const text = `*LAPORAN HARIAN KASIR - UGYM*\n` +
               `--------------------------------\n` +
               `Tanggal: ${res.fileName.replace('Laporan_Kasir_', '').replace('.pdf', '').replace(/_/g, ' ')}\n` +
               `--------------------------------\n` +
@@ -9511,10 +9624,10 @@
               `--------------------------------\n` +
               `Detail Lengkap (PDF):\n` +
               `${res.url}\n\n` +
-              `_Laporan dikirim otomatis dari System AMPEL GYM_`;
+              `_Laporan dikirim otomatis dari System UGYM_`;
 
             // Kirim ke nomor owner/manager
-            shareToWhatsApp('081809997575', text);
+            shareToWhatsApp('082221923200', text);
             showToast('Laporan berhasil dikirim!', 'success');
           } else {
             showToast('Gagal: ' + res.message, 'error');
@@ -9614,7 +9727,7 @@
             container.innerHTML = '<div class="alert alert-error">Gagal: ' + res.message + '</div>';
           }
         })
-        .getFilteredPOSTransactions(start, end, currentUser.gym);
+        .getFilteredPOSTransactions(start, end);
     }
 
     // STOCK HISTORY
@@ -9622,50 +9735,331 @@
       // This is already inside showInventoryTools in index.html
       // We'll update the render part there.
     }
-    < !--BRANDING SETTINGS MODAL-- >
-    <div id="brandingModal" class="modal" style="display:none">
-      <div class="modal-content" style="max-width:500px">
-        <div class="modal-header">
-          <h3><i class="fas fa-paint-brush"></i> Pengaturan Branding</h3>
-          <button class="btn-close" onclick="closeBrandingModal()">&times;</button>
-        </div>
-        <div class="modal-body">
-          <div class="form-group" style="text-align:center">
-            <label class="form-label">Logo Gym</label>
-            <div style="margin-bottom:12px">
-              <img id="set_logo_preview" src="" style="max-height:80px; border-radius:8px; border:1px solid var(--border-color); padding:4px">
-            </div>
-            <button class="btn btn-outline btn-sm" onclick="changeLogo()">
-              <i class="fas fa-camera"></i> Ubah Logo
-            </button>
-          </div>
-          <div class="form-group">
-            <label class="form-label">Nama Gym</label>
-            <input id="set_name" class="form-input" placeholder="Nama Gym">
-          </div>
-          <div class="form-group">
-            <label class="form-label">Alamat</label>
-            <textarea id="set_address" class="form-input" style="height:80px" placeholder="Alamat lengkap"></textarea>
-          </div>
-          <div class="form-group">
-            <label class="form-label">Nomor HP / WhatsApp</label>
-            <input id="set_phone" class="form-input" placeholder="0xxxxxxxxxx">
-          </div>
-          <div class="form-group">
-            <label class="form-label">Email</label>
-            <input id="set_email" type="email" class="form-input" placeholder="gym@email.com">
-          </div>
-          <div class="form-group">
-            <label class="form-label">Informasi Rekening Bank</label>
-            <textarea id="set_bank" class="form-input" style="height:60px" placeholder="BCA 123456789 a.n. Nama"></textarea>
-          </div>
-          <button class="btn btn-primary btn-block" onclick="saveBrandingSettings()">
-            <i class="fas fa-save"></i> Simpan Perubahan
+    // ================ BIRTHDAYS VIEW ================
+    function loadBirthdaysView() {
+      const container = document.getElementById('contentArea');
+      container.innerHTML = `
+        <div class="view-header">
+          <h2 class="view-title">Ulang Tahun Member</h2>
+          <button class="btn btn-primary" onclick="refreshBirthdays()">
+            <i class="fas fa-sync-alt"></i> Refresh Data
           </button>
         </div>
+        
+        <div class="row">
+          <!-- List Kolom Kiri -->
+          <div class="col-12 col-md-8">
+            <div class="card">
+              <div class="card-header">
+                <h3 class="card-title">Daftar Ulang Tahun (1 Bulan Kedepan)</h3>
+              </div>
+              <div class="card-body">
+                <div id="birthdaysListContainer" style="min-height:300px; max-height: 600px; overflow-y: auto;">
+                  <div style="text-align:center;padding:20px;color:#94a3b8"><i class="fas fa-spinner fa-spin"></i> Memuat data...</div>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <!-- Editor Template Kolom Kanan -->
+          <div class="col-12 col-md-4">
+            <div class="card">
+              <div class="card-header">
+                <h3 class="card-title">Pesan WhatsApp (Template)</h3>
+              </div>
+              <div class="card-body">
+                <p style="font-size:13px;color:#64748b;margin-bottom:12px;line-height:1.5">
+                  Gunakan parameter berikut dalam pesan:<br>
+                  <code style="background:#f1f5f9;padding:2px 4px;border-radius:4px">{name}</code> : Nama Member<br>
+                  <code style="background:#f1f5f9;padding:2px 4px;border-radius:4px">{age}</code> : Usia yang dirayakan
+                </p>
+                <textarea id="bdayTemplateInput" class="form-input" style="height:200px;resize:vertical;font-size:14px" placeholder="Ketik pesan ulang tahun..."></textarea>
+                <button class="btn btn-primary" style="width:100%;margin-top:16px" onclick="saveBdayTemplate()" id="btnSaveTemplate">
+                  <i class="fas fa-save"></i> Simpan Template
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+
+      refreshBirthdays();
+    }
+
+    let currentBdayTemplate = "";
+
+    function refreshBirthdays() {
+      const container = document.getElementById('birthdaysListContainer');
+      container.innerHTML = '<div style="text-align:center;padding:20px;color:#94a3b8"><i class="fas fa-spinner fa-spin"></i> Memuat data...</div>';
+
+      google.script.run
+        .withSuccessHandler(function (res) {
+          if (!res || !res.success) {
+            container.innerHTML = `<div class="alert alert-error">Gagal memuat: ${res ? res.message : 'Error tidak diketahui'}</div>`;
+            return;
+          }
+
+          // Set template
+          currentBdayTemplate = res.template;
+          const templateInput = document.getElementById('bdayTemplateInput');
+          if (templateInput) templateInput.value = res.template;
+
+          if (!res.birthdays || res.birthdays.length === 0) {
+            container.innerHTML = `
+              <div style="text-align:center;padding:40px 20px">
+                <div style="font-size:40px;color:#cbd5e1;margin-bottom:16px"><i class="fas fa-birthday-cake"></i></div>
+                <h3 style="color:#64748b;margin:0 0 8px">Tidak ada Ulang Tahun</h3>
+                <p style="color:#94a3b8;font-size:14px;margin:0">Tidak ada member aktif yang berulang tahun dalam 1 bulan ke depan.</p>
+              </div>
+            `;
+            return;
+          }
+
+          let html = `<div class="list-container">`;
+          const todayStr = new Date().toDateString();
+
+          res.birthdays.forEach(b => {
+            const isToday = new Date(b.nextBirthday).toDateString() === todayStr;
+            const bdayDate = new Date(b.nextBirthday).toLocaleDateString('id-ID', { day: 'numeric', month: 'long' });
+
+            html += `
+              <div class="list-item" style="${isToday ? 'border-left: 4px solid #d4af37; background: #fffcf0;' : ''}">
+                <div class="list-item-content">
+                  <div class="list-item-title">${escapeHtml(b.name)}</div>
+                  <div class="list-item-subtitle" style="margin-top:4px">
+                    <span class="badge ${isToday ? 'badge-primary' : 'badge-info'}" style="margin-right:8px">
+                      <i class="fas fa-birthday-cake"></i> ${isToday ? 'HARI INI!' : bdayDate}
+                    </span>
+                    <i class="fas fa-calendar-alt"></i> Ke-${b.age} • <i class="fas fa-phone"></i> ${b.phone}
+                  </div>
+                </div>
+                <div class="list-item-action">
+                  <button class="btn ${isToday ? 'btn-primary' : 'btn-outline'} btn-sm" onclick="sendBdayWA('${b.name}', ${b.age}, '${b.phone}')">
+                    <i class="fab fa-whatsapp"></i> ${isToday ? 'Kirim Ucapan' : 'Pesan'}
+                  </button>
+                </div>
+              </div>
+            `;
+          });
+          html += `</div>`;
+          container.innerHTML = html;
+        })
+        .withFailureHandler(function (err) {
+          container.innerHTML = `<div class="alert alert-error">Koneksi gagal: ${err.message}</div>`;
+        })
+        .getUpcomingBirthdays();
+    }
+
+    function sendBdayWA(name, age, phone) {
+      if (!currentBdayTemplate) {
+        showToast('Template belum dimuat', 'warning');
+        return;
+      }
+
+      let message = currentBdayTemplate
+        .replace(/{name}/gi, name)
+        .replace(/{age}/gi, age);
+
+      shareToWhatsApp(phone, message);
+    }
+
+    function saveBdayTemplate() {
+      const template = document.getElementById('bdayTemplateInput').value;
+      const btn = document.getElementById('btnSaveTemplate');
+      const originalText = btn.innerHTML;
+
+      btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Menyimpan...';
+      btn.disabled = true;
+
+      google.script.run
+        .withSuccessHandler(function (res) {
+          btn.innerHTML = originalText;
+          btn.disabled = false;
+          if (res && res.success) {
+            currentBdayTemplate = template;
+            showToast('Template ucapan berhasil disimpan!', 'success');
+          } else {
+            showToast('Gagal: ' + (res ? res.message : ''), 'error');
+          }
+        })
+        .withFailureHandler(function (err) {
+          btn.innerHTML = originalText;
+          btn.disabled = false;
+          showToast('Error: ' + err.message, 'error');
+        })
+        .saveBirthdayTemplate(template);
+    }
+
+
+    // ================ CHANGE PHOTO LOGIC ================
+    let changePhotoMemberId = null;
+    let changePhotoStream = null;
+
+    function openChangePhotoModal(memberId, currentPhotoUrl) {
+      changePhotoMemberId = memberId;
+      document.getElementById('changePhotoBase64').value = '';
+      document.getElementById('changePhotoInput').value = '';
+
+      const img = document.getElementById('changePhotoPreview');
+      const icon = document.getElementById('changePhotoPlaceholder');
+
+      if (currentPhotoUrl) {
+        img.src = currentPhotoUrl;
+        img.style.display = 'block';
+        icon.style.display = 'none';
+      } else {
+        img.style.display = 'none';
+        icon.style.display = 'block';
+      }
+
+      document.getElementById('changePhotoModal').style.display = 'flex';
+    }
+
+    function closeChangePhotoModal() {
+      document.getElementById('changePhotoModal').style.display = 'none';
+      closeChangePhotoWebcam();
+      changePhotoMemberId = null;
+    }
+
+    function previewChangedPhoto(input) {
+      if (!input.files || !input.files[0]) return;
+      const file = input.files[0];
+      if (file.size > 2 * 1024 * 1024) {
+        showToast('Ukuran maksimal 2MB', 'warning'); return;
+      }
+      const reader = new FileReader();
+      reader.onload = function (e) {
+        document.getElementById('changePhotoBase64').value = e.target.result;
+        document.getElementById('changePhotoPreview').src = e.target.result;
+        document.getElementById('changePhotoPreview').style.display = 'block';
+        document.getElementById('changePhotoPlaceholder').style.display = 'none';
+        showToast('Foto berhasil dipilih', 'success');
+      };
+      reader.readAsDataURL(file);
+    }
+
+    async function openChangePhotoWebcam() {
+      const container = document.getElementById('changePhotoWebcamContainer');
+      const video = document.getElementById('changePhotoVideo');
+
+      try {
+        changePhotoStream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 480 } },
+          audio: false
+        });
+        video.srcObject = changePhotoStream;
+        container.style.display = 'block';
+      } catch (e) {
+        showToast('Gagal akses kamera: ' + e.message, 'error');
+      }
+    }
+
+    function closeChangePhotoWebcam() {
+      if (changePhotoStream) {
+        changePhotoStream.getTracks().forEach(t => t.stop());
+        changePhotoStream = null;
+      }
+      document.getElementById('changePhotoWebcamContainer').style.display = 'none';
+    }
+
+    function snapChangedPhoto() {
+      const video = document.getElementById('changePhotoVideo');
+      const canvas = document.getElementById('changePhotoCanvas');
+      canvas.width = video.videoWidth || 640;
+      canvas.height = video.videoHeight || 480;
+      const ctx = canvas.getContext('2d');
+      ctx.translate(canvas.width, 0); ctx.scale(-1, 1);
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+      const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
+
+      document.getElementById('changePhotoBase64').value = dataUrl;
+      document.getElementById('changePhotoPreview').src = dataUrl;
+      document.getElementById('changePhotoPreview').style.display = 'block';
+      document.getElementById('changePhotoPlaceholder').style.display = 'none';
+
+      closeChangePhotoWebcam();
+      showToast('Foto berhasil diambil', 'success');
+    }
+
+    function submitChangedPhoto() {
+      const base64 = document.getElementById('changePhotoBase64').value;
+      if (!base64 || !changePhotoMemberId) {
+        showToast('Pilih foto terlebih dahulu', 'warning');
+        return;
+      }
+
+      const btn = document.getElementById('btnSubmitChangePhoto');
+      const origText = btn.innerHTML;
+      btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Menyimpan...';
+      btn.disabled = true;
+
+      google.script.run
+        .withSuccessHandler(function (res) {
+          btn.innerHTML = origText;
+          btn.disabled = false;
+          if (res && res.success) {
+            showToast('Foto berhasil diperbarui', 'success');
+            closeChangePhotoModal();
+            loadGalleryView(); // Refresh gallery to show new photo
+          } else {
+            showToast('Gagal: ' + (res ? res.message : 'Unknown'), 'error');
+          }
+        })
+        .withFailureHandler(function (err) {
+          btn.innerHTML = origText;
+          btn.disabled = false;
+          showToast('Error: ' + err.message, 'error');
+        })
+        .updateMemberPhoto(changePhotoMemberId, base64);
+    }
+
+  </script>
+
+  <!-- BRANDING SETTINGS MODAL -->
+  <div id="brandingModal" class="modal" style="display:none">
+    <div class="modal-content" style="max-width:500px">
+      <div class="modal-header">
+        <h3><i class="fas fa-paint-brush"></i> Pengaturan Branding</h3>
+        <button class="btn-close" onclick="closeBrandingModal()">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group" style="text-align:center">
+          <label class="form-label">Logo Gym</label>
+          <div style="margin-bottom:12px">
+            <img id="set_logo_preview" src="" style="max-height:80px; border-radius:8px; border:1px solid var(--border-color); padding:4px">
+          </div>
+          <button class="btn btn-outline btn-sm" onclick="changeLogo()">
+            <i class="fas fa-camera"></i> Ubah Logo
+          </button>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Nama Gym</label>
+          <input id="set_name" class="form-input" placeholder="Nama Gym">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Alamat</label>
+          <textarea id="set_address" class="form-input" style="height:80px" placeholder="Alamat lengkap"></textarea>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Nomor HP / WhatsApp</label>
+          <input id="set_phone" class="form-input" placeholder="0xxxxxxxxxx">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Email</label>
+          <input id="set_email" type="email" class="form-input" placeholder="gym@email.com">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Informasi Rekening Bank</label>
+          <textarea id="set_bank" class="form-input" style="height:60px" placeholder="BCA 123456789 a.n. Nama"></textarea>
+        </div>
+        <button class="btn btn-primary btn-block" onclick="saveBrandingSettings()">
+          <i class="fas fa-save"></i> Simpan Perubahan
+        </button>
       </div>
     </div>
-    <script>
+  </div>
+
+  <script>
     function loadAndApplyBranding() {
       google.script.run
         .withSuccessHandler(function(res) {
