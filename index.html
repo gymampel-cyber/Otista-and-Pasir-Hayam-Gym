@@ -4,7 +4,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>UGYM Management</title>
+  <title>Gym Management</title>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script>
     const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzKWdekXY27eWx5h4CI7HvLxnTboVPryp_gTpqTtCNM-G7yqLe4m0owvj7YwGgTm8bv/exec';
@@ -2604,7 +2604,7 @@
       const now = formatDateTime(new Date());
       let text = '';
       if (type === 'registration') {
-        text = `*RECEIPT REGISTRASI UGYM*\n` +
+        text = `*RECEIPT REGISTRASI ${currentBranchName.toUpperCase()}*\n` +
           `--------------------------------\n` +
           `Waktu: ${now}\n` +
           `Member ID: ${data.memberId}\n` +
@@ -2613,8 +2613,8 @@
           `Berlaku s/d: ${formatDate(data.expiry)}\n` +
           `No. Transaksi: ${data.receipt}\n` +
           `--------------------------------\n` +
-          `Alamat: Jl. Imogiri Tim., Nglebeng, Tamanan, Kec. Banguntapan, Kabupaten Bantul, Daerah Istimewa Yogyakarta 55198\n` +
-          `No HP: 08158905889\n` +
+          `Alamat: ${currentBranchAddress}\n` +
+          `No HP: ${currentBranchPhone}\n` +
           `--------------------------------\n` +
           `*Rincian Pembayaran*\n` +
           `Harga Paket: ${formatCurrency(data.price)}\n` +
@@ -2625,7 +2625,7 @@
           `${data.qr}\n\n` +
           `Terima kasih telah bergabung!`;
       } else if (type === 'extension') {
-        text = `*RECEIPT PERPANJANGAN UGYM*\n` +
+        text = `*RECEIPT PERPANJANGAN ${currentBranchName.toUpperCase()}*\n` +
           `--------------------------------\n` +
           `Waktu: ${now}\n` +
           `Member ID: ${data.memberId}\n` +
@@ -2634,8 +2634,8 @@
           `Berlaku s/d: ${formatDate(data.expiry)}\n` +
           `No. Transaksi: ${data.receipt}\n` +
           `--------------------------------\n` +
-          `Alamat: Jl. Imogiri Tim., Nglebeng, Tamanan, Kec. Banguntapan, Kabupaten Bantul, Daerah Istimewa Yogyakarta 55198\n` +
-          `No HP: 08158905889\n` +
+          `Alamat: ${currentBranchAddress}\n` +
+          `No HP: ${currentBranchPhone}\n` +
           `--------------------------------\n` +
           `*Rincian Pembayaran*\n` +
           `Total: ${formatCurrency(data.total)}\n` +
@@ -2643,7 +2643,7 @@
           `--------------------------------\n` +
           `Terima kasih!`;
       } else if (type === 'pt') {
-        text = `*RECEIPT REGISTRASI PT UGYM*\n` +
+        text = `*RECEIPT REGISTRASI PT ${currentBranchName.toUpperCase()}*\n` +
           `--------------------------------\n` +
           `Waktu: ${now}\n` +
           `Member: ${data.name}\n` +
@@ -2850,8 +2850,8 @@
           <div style="background: var(--primary); width: 80px; height: 80px; border-radius: 24px; margin: 0 auto 20px; display: flex; align-items: center; justify-content: center; box-shadow: 0 10px 20px rgba(88, 86, 214, 0.2);">
             <img src="https://i.imgur.com/PAB0dhW.png" style="width: 100%; height: 100%; border-radius: 24px; object-fit: cover;">
           </div>
-          <h2 style="font-size: 28px; font-weight: 800; color: #1c1c1e; letter-spacing: -0.5px;">UGYM</h2>
-          <p style="color: #636366; margin-top: 6px; font-size: 14px; font-weight: 500;">Management System v2.0</p>
+          <h2 class="gym-name-brand" style="font-size: 28px; font-weight: 800; color: #1c1c1e; letter-spacing: -0.5px;">Gym</h2>
+          <p id="systemSubtitle" style="color: #636366; margin-top: 6px; font-size: 14px; font-weight: 500;">Management System</p>
         </div>
         
         <div class="auth-form" style="display: flex; flex-direction: column; align-items: center; gap: 16px;">
@@ -3037,7 +3037,7 @@
       };
 
       document.getElementById('pageTitle').textContent = titles[view] || view;
-      document.getElementById('pageSubtitle').textContent = 'UGYM Management System';
+      document.getElementById('pageSubtitle').textContent = currentBranchName + ' Management System';
 
       stopScanner();
 
@@ -3070,7 +3070,7 @@
         <div class="view-header dashboard-header-flex">
           <div>
             <h2 class="view-title"><i class="fas fa-chart-line"></i> Dashboard Analytics</h2>
-            <p class="view-subtitle">Ringkasan performa operasional dan keuangan UGYM</p>
+            <p class="view-subtitle">Ringkasan performa operasional dan keuangan ${currentBranchName}</p>
           </div>
           <div style="display:flex; flex-wrap:wrap; gap:12px">
             <div class="filter-group" style="display:flex; align-items:center; gap:8px; background:white; padding:4px 12px; border-radius:10px; border:1px solid #e2e8f0">
@@ -3402,7 +3402,7 @@
       printTitle.style.marginBottom = '20px';
       printTitle.innerHTML = `
         <div style="text-align:center; margin-bottom:20px; border-bottom:2px solid #000; padding-bottom:10px">
-          <h1 style="margin:0">LAPORAN DASHBOARD UGYM</h1>
+          <h1 style="margin:0">LAPORAN DASHBOARD ${currentBranchName.toUpperCase()}</h1>
           <p style="margin:5px 0">Periode: ${period}</p>
           <p style="font-size:12px; color:#666">Dicetak pada: ${formatDateTime(new Date())}</p>
         </div>
@@ -3644,9 +3644,9 @@
                     <span>Harga Paket</span>
                     <span id="paymentPackagePrice">Rp 0</span>
                   </div>
-                  <div class="payment-row" id="regFeeRow" style="display:flex">
+                  <div class="payment-row" id="regFeeRow" style="display:none">
                     <span>Biaya Registrasi</span>
-                    <span>Rp 50.000</span>
+                    <span>Rp 0</span>
                   </div>
                   <div class="payment-row payment-total">
                     <span>Total</span>
@@ -3744,7 +3744,7 @@
       const totalEl = document.getElementById('paymentTotal');
 
       if (selectedPkg) {
-        const total = selectedPkg.price + 50000;
+        const total = selectedPkg.price;
         packagePriceEl.textContent = formatCurrency(selectedPkg.price);
         packagePriceEl.style.color = '#667eea';
         totalEl.textContent = formatCurrency(total);
@@ -3956,8 +3956,7 @@
         `Paket       : ${pkg.name}\n` +
         `Durasi      : ${pkg.duration}\n` +
         `Harga Paket : ${formatCurrency(pkg.price)}\n` +
-        `Biaya Reg   : Rp 50.000\n` +
-        `Total       : ${formatCurrency(totalAmount)}\n` +
+        `Total       : ${formatCurrency(pkg.price)}\n` +
         `Metode      : ${pay}\n\n` +
         `Lanjutkan registrasi member?`,
         function (ok) {
@@ -4266,7 +4265,7 @@
                       <div class="card-right">
                         <div>
                           <div class="header">
-                            <div class="gym-name">UGYM</div>
+                            <div class="gym-name">${currentBranchName}</div>
                             <div class="tagline">Power • Fitness • Health</div>
                           </div>
                           <div class="member-info">
@@ -5284,7 +5283,7 @@
           hideLoading();
           if (res.success) {
             let itemsText = data.items.map(it => `• ${it.name} x${it.qty}`).join('\n');
-            let text = `*STRUK PENJUALAN - UGYM*\n` +
+            let text = `*STRUK PENJUALAN - ${currentBranchName.toUpperCase()}*\n` +
               `--------------------------------\n` +
               `ID Trx: ${trxId}\n` +
               `Tanggal: ${new Date().toLocaleString('id-ID')}\n` +
@@ -5297,7 +5296,7 @@
               `*Total: ${formatCurrency(data.total)}*\n` +
               `Pembayaran: ${data.paymentMethod}\n\n` +
               `Download Struk PDF:\n${res.url}\n\n` +
-              `Terima kasih telah berbelanja di UGYM!`;
+              `Terima kasih telah berbelanja di ${currentBranchName}!`;
 
             const waNumber = data.whatsapp || '';
             if (waNumber) {
@@ -8787,24 +8786,15 @@
         if (role === 'Staff' || role === 'Kasir') {
           const staffViews = ['dashboard', 'members', 'transactions', 'checkin', 'pt', 'pos', 'approvals', 'expenses', 'birthdays', 'gallery'];
           if (!staffViews.includes(view)) visible = false;
-
-          // Dashboard card visibility for Kasir
-          if (view === 'dashboard') {
-            // Previously hidden cards are now shown for Kasir as requested
-            const cardTotal = document.getElementById('cardTotalMember');
-            const cardAktif = document.getElementById('cardMemberAktif');
-            if (cardTotal) cardTotal.style.display = 'flex';
-            if (cardAktif) cardAktif.style.display = 'flex';
-            
-            // New Gallery and Birthday cards are also visible
-            const cardGallery = document.getElementById('cardGallery');
-            const cardBirthday = document.getElementById('cardBirthday');
-            if (cardGallery) cardGallery.style.display = 'flex';
-            if (cardBirthday) cardBirthday.style.display = 'flex';
-          }
         } else if (role === 'Admin') {
-          // Hide pending approvals for Admin as requested
-          if (view === 'approvals') visible = false;
+          // Super Admin (All branches) sees everything
+          if (currentUser.branch === 'All' || !currentUser.branch) {
+            visible = true;
+          } else {
+            // Branch-specific Admin (limited views)
+            const branchAdminViews = ['dashboard', 'members', 'transactions', 'checkin', 'pt', 'pos', 'approvals', 'expenses', 'birthdays', 'gallery', 'catalogue', 'products'];
+            if (!branchAdminViews.includes(view)) visible = false;
+          }
         }
 
         if (visible) {
@@ -9616,7 +9606,7 @@
 
           if (res.success) {
             const summary = res.summary;
-            const text = `*LAPORAN HARIAN KASIR - UGYM*\n` +
+            const text = `*LAPORAN HARIAN KASIR - ${currentBranchName.toUpperCase()}*\n` +
               `--------------------------------\n` +
               `Tanggal: ${res.fileName.replace('Laporan_Kasir_', '').replace('.pdf', '').replace(/_/g, ' ')}\n` +
               `--------------------------------\n` +
@@ -9633,7 +9623,7 @@
               `--------------------------------\n` +
               `Detail Lengkap (PDF):\n` +
               `${res.url}\n\n` +
-              `_Laporan dikirim otomatis dari System UGYM_`;
+              `_Laporan dikirim otomatis dari System ${currentBranchName}_`;
 
             // Kirim ke nomor owner/manager
             shareToWhatsApp('082221923200', text);
@@ -10070,9 +10060,13 @@
 
   <script>
     let currentBranch = localStorage.getItem('current_branch') || 'All';
+    let currentBranchName = 'Gym';
+    let currentBranchAddress = '';
+    let currentBranchPhone = '';
 
     function initMultiGym() {
-      if (currentUser && currentUser.role === 'Admin') {
+      // Only Super Admin (branch === 'All' or no branch assigned) can switch branches
+      if (currentUser && (currentUser.branch === 'All' || !currentUser.branch) && currentUser.role === 'Admin') {
         document.getElementById('branchSwitcherContainer').classList.remove('hidden');
         google.script.run
           .withSuccessHandler(function(res) {
@@ -10090,9 +10084,9 @@
             }
           })
           .getBranches();
-      } else if (currentUser) {
-        // For Staff/Kasir, force their branch
-        currentBranch = currentUser.branch || 'All';
+      } else {
+        // For Staff or Branch-specific Admin, force their branch and hide switcher
+        currentBranch = currentUser ? (currentUser.branch || 'All') : 'All';
         document.getElementById('branchSwitcherContainer').classList.add('hidden');
       }
       loadAndApplyBranding();
@@ -10112,10 +10106,15 @@
         .withSuccessHandler(function(res) {
           if (res.success) {
             const s = res.settings;
+            currentBranchName = s.name || 'Gym';
+            currentBranchAddress = s.address || '';
+            currentBranchPhone = s.phone || '';
             if (s.name) {
               document.title = s.name + " Management";
-              document.querySelectorAll('h2').forEach(el => {
-                if (el.textContent === 'AMPEL GYM' || el.textContent === 'UGYM' || el.classList.contains('gym-name-brand')) el.textContent = s.name;
+              document.querySelectorAll('.gym-name-brand, .gym-name, h2, h1').forEach(el => {
+                if (['AMPEL GYM', 'UGYM', 'UGYM Management'].includes(el.textContent.trim()) || el.classList.contains('gym-name-brand')) {
+                  el.textContent = s.name;
+                }
               });
               const brandElements = [
                 { id: 'userNameBrand', text: s.name },
