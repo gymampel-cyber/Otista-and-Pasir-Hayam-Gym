@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Registrasi Member - AMPEL GYM</title>
+  <title>Registrasi Member - UGYM</title>
   <script>
     const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzKWdekXY27eWx5h4CI7HvLxnTboVPryp_gTpqTtCNM-G7yqLe4m0owvj7YwGgTm8bv/exec';
     const google = {
@@ -55,18 +55,24 @@
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <style>
     :root {
-      --primary: #6b46c1;
-      --primary-dark: #553c9a;
-      --accent: #ecc94b;
-      --dark: #1a202c;
-      --bg-gradient: linear-gradient(135deg, #111827 0%, #1f2937 100%);
-      --card-header-gradient: linear-gradient(135deg, #6b46c1, #805ad5);
+      --primary: #d4af37;
+      --primary-dark: #b5952f;
+      --primary-light: #fdf8e7;
+      --accent: #d4af37;
+      --dark: #000000;
+      --bg-gradient: linear-gradient(135deg, #f9f9f9 0%, #f0f0f0 100%);
+      --card-header-gradient: linear-gradient(135deg, #000000, #1a1a1a);
+      --glass: rgba(255, 255, 255, 0.9);
+      --border-color: #e5e5ea;
+      --text-main: #000000;
+      --text-secondary: #555555;
     }
-    * { margin:0; padding:0; box-sizing:border-box; font-family:'Segoe UI',sans-serif; }
+    * { margin:0; padding:0; box-sizing:border-box; font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; -webkit-font-smoothing: antialiased; }
     body { 
       background: var(--bg-gradient);
       min-height: 100vh;
       padding: 20px;
+      color: #1c1c1e;
     }
     .container { 
       max-width: 800px; 
@@ -153,7 +159,7 @@
       transition: 0.3s;
     }
     .step.active .step-circle {
-      background: linear-gradient(135deg, var(--primary), #805ad5);
+      background: linear-gradient(135deg, var(--primary), var(--primary-dark));
       border-color: var(--primary);
       color: white;
     }
@@ -312,7 +318,7 @@
       transform: none; 
     }
     .btn-primary { 
-      background: linear-gradient(135deg, var(--primary), #805ad5); 
+      background: var(--primary); 
       color: white; 
     }
     .btn-success { 
@@ -387,8 +393,8 @@
     }
     .package-card.selected { 
       border-color: var(--primary); 
-      background: linear-gradient(135deg, #f3e8ff, #ffffff);
-      box-shadow: 0 0 0 3px rgba(102,126,234,0.2);
+      background: var(--primary-light);
+      box-shadow: 0 0 0 3px rgba(212,175,55,0.2);
     }
     .package-name { 
       font-weight: 700; 
@@ -444,7 +450,7 @@
     
     /* Bank Info */
     .bank-info {
-      background: #f3e8ff;
+      background: var(--primary-light);
       border-left: 4px solid var(--primary);
       border-radius: 12px;
       padding: 20px;
@@ -555,7 +561,7 @@
     /* Footer */
     .footer {
       text-align: center;
-      color: rgba(255,255,255,0.8);
+      color: var(--text-secondary);
       font-size: 14px;
       padding: 20px;
     }
@@ -574,7 +580,7 @@
     }
     .pub-webcam-hdr {
       padding: 16px 20px;
-      background: linear-gradient(135deg, var(--primary), #805ad5);
+      background: linear-gradient(135deg, var(--primary), var(--primary-dark));
       color: white; display: flex; justify-content: space-between; align-items: center;
     }
     .pub-webcam-hdr h4 { font-size: 16px; display: flex; align-items: center; gap: 8px; }
@@ -599,11 +605,11 @@
     }
     .pub-webcam-snap {
       width: 60px; height: 60px; border-radius: 50%;
-      background: linear-gradient(135deg, var(--primary), #805ad5);
+      background: linear-gradient(135deg, var(--primary), var(--primary-dark));
       border: 4px solid white; color: white; cursor: pointer;
       font-size: 22px; display: flex; align-items: center; justify-content: center;
       transition: transform 0.15s, box-shadow 0.15s;
-      box-shadow: 0 4px 12px rgba(102,126,234,0.5);
+      box-shadow: 0 4px 12px rgba(212,175,55,0.5);
     }
     .pub-webcam-snap:hover { transform: scale(1.08); }
     .pub-webcam-snap:active { transform: scale(0.95); }
@@ -685,13 +691,57 @@
   </div>
 
   <div class="container">
-    <!-- Header -->
-    <div class="header">
-      <img id="gymLogoHeader" src="https://i.imgur.com/TPoUeRJ.jpeg" 
-           style="width:100px;height:100px;border-radius:50%;margin:0 auto 20px;display:block;border:4px solid rgba(255,255,255,0.3);object-fit:cover">
-      <h1>AMPEL GYM</h1>
-      <p>Daftar Membership Online — Cepat, Mudah, dan Aman</p>
+    <!-- Branch Selection Landing -->
+    <div id="landingView" style="display:none; text-align:center; padding:60px 20px; animation: slideUp 0.6s ease;">
+      <div style="background: white; width: 100px; height: 100px; border-radius: 30px; margin: 0 auto 24px; display: flex; align-items: center; justify-content: center; box-shadow: 0 20px 40px rgba(0,0,0,0.08); padding: 15px; border: 1px solid #e5e5ea;">
+        <img src="https://i.imgur.com/NO5dVfb.png" style="width: 100%; height: auto; object-fit: contain;">
+      </div>
+      <h1 style="font-size: 36px; font-weight: 800; color: #000; margin-bottom: 12px; letter-spacing: -1px;">Selamat Datang</h1>
+      <p style="color: #555; font-size: 18px; margin-bottom: 40px;">Pilih lokasi gym untuk memulai pendaftaran membership</p>
+      
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 24px; max-width: 800px; margin: 0 auto;">
+        <div onclick="selectBranch('OTISTA')" style="background: white; border-radius: 24px; padding: 40px; cursor: pointer; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); box-shadow: 0 10px 25px rgba(0,0,0,0.05); border: 1px solid #e5e5ea; display: flex; flex-direction: column; align-items: center; gap: 20px;" onmouseover="this.style.transform='translateY(-8px)'; this.style.borderColor='#d4af37'; this.style.boxShadow='0 20px 40px rgba(212,175,55,0.12)'" onmouseout="this.style.transform='translateY(0)'; this.style.borderColor='#e5e5ea'; this.style.boxShadow='0 10px 25px rgba(0,0,0,0.05)'">
+          <img src="https://i.imgur.com/Vc2mqzd.png" style="width: 120px; height: 120px; border-radius: 30px; object-fit: cover; box-shadow: 0 8px 16px rgba(0,0,0,0.1);">
+          <div style="text-align: center;">
+            <h3 style="font-size: 22px; font-weight: 800; color: #000;">Otista Gym</h3>
+            <p style="color: #555; font-size: 14px; margin-top: 4px;">Jl. Oto Iskandardinata II, Cianjur</p>
+          </div>
+          <button class="btn btn-primary" style="width: auto; padding: 12px 30px; border-radius: 15px;">Pilih Cabang <i class="fas fa-arrow-right"></i></button>
+        </div>
+        
+        <div onclick="selectBranch('PASIR_HAYAM')" style="background: white; border-radius: 24px; padding: 40px; cursor: pointer; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); box-shadow: 0 10px 25px rgba(0,0,0,0.05); border: 1px solid #e5e5ea; display: flex; flex-direction: column; align-items: center; gap: 20px;" onmouseover="this.style.transform='translateY(-8px)'; this.style.borderColor='#d4af37'; this.style.boxShadow='0 20px 40px rgba(212,175,55,0.12)'" onmouseout="this.style.transform='translateY(0)'; this.style.borderColor='#e5e5ea'; this.style.boxShadow='0 10px 25px rgba(0,0,0,0.05)'">
+          <img src="https://i.imgur.com/OnjRXcK.png" style="width: 120px; height: 120px; border-radius: 30px; object-fit: cover; box-shadow: 0 8px 16px rgba(0,0,0,0.1);">
+          <div style="text-align: center;">
+            <h3 style="font-size: 22px; font-weight: 800; color: #000;">Pasir Hayam Gym</h3>
+            <p style="color: #555; font-size: 14px; margin-top: 4px;">Jl. Raya Cibeber, Sirnagalih, Cianjur</p>
+          </div>
+          <button class="btn btn-primary" style="width: auto; padding: 12px 30px; border-radius: 15px;">Pilih Cabang <i class="fas fa-arrow-right"></i></button>
+        </div>
+      </div>
+
+      <!-- Public Registration Buttons -->
+      <div style="margin-top: 40px; padding-top: 28px; border-top: 1px solid #e5e5ea; max-width: 800px; margin-left: auto; margin-right: auto;">
+        <p style="color: #555; font-size: 15px; margin-bottom: 20px; font-weight: 600;">Sudah punya membership? Perpanjang di sini:</p>
+        <div style="display: flex; gap: 16px; justify-content: center; flex-wrap: wrap;">
+          <a href="PublicExtension.html?branch=OTISTA" style="display: flex; align-items: center; justify-content: center; gap: 8px; padding: 14px 28px; background: linear-gradient(135deg, #000, #1a1a1a); color: #d4af37; border-radius: 14px; text-decoration: none; font-weight: 600; font-size: 14px; transition: all 0.25s; border: 1px solid rgba(212,175,55,0.3);" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 8px 20px rgba(0,0,0,0.2)'" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='none'">
+            <i class="fas fa-sync-alt"></i> Perpanjang Otista
+          </a>
+          <a href="PublicExtension.html?branch=PASIR_HAYAM" style="display: flex; align-items: center; justify-content: center; gap: 8px; padding: 14px 28px; background: linear-gradient(135deg, #000, #1a1a1a); color: #d4af37; border-radius: 14px; text-decoration: none; font-weight: 600; font-size: 14px; transition: all 0.25s; border: 1px solid rgba(212,175,55,0.3);" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 8px 20px rgba(0,0,0,0.2)'" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='none'">
+            <i class="fas fa-sync-alt"></i> Perpanjang Pasir Hayam
+          </a>
+        </div>
+      </div>
     </div>
+
+    <!-- Header (Hidden on Landing) -->
+    <div class="header" id="mainHeader" style="display:none">
+      <img id="gymLogoHeader" src="https://i.imgur.com/TPoUeRJ.jpeg" 
+           style="width:100px;height:100px;border-radius:50%;margin:0 auto 20px;display:block;border:4px solid var(--primary);object-fit:cover;box-shadow: 0 10px 20px rgba(0,0,0,0.1);">
+      <h1 id="gymNameHeader" style="color: #000;">Gym Name</h1>
+      <p id="gymMottoHeader" style="color: #555;">Daftar Membership Online — Cepat, Mudah, dan Aman</p>
+    </div>
+
+    <div id="registrationContent" style="display:none">
 
     <!-- Steps Progress -->
     <div class="card">
@@ -849,15 +899,13 @@
 
             <!-- Bank Info -->
             <div class="bank-info">
-              <h4><i class="fas fa-university"></i> Transfer Pembayaran ke:</h4>
-              <div class="bank-detail">
-                <p><strong>Bank:</strong> BCA</p>
-                <p><strong>No. Rekening:</strong> <span class="bank-account">183-118-0001</span></p>
-                <p><strong>Atas Nama:</strong> MUHAMMAD R MASCATY</p>
-                <p style="margin-top:12px;color:#64748b;font-size:13px">
-                  <i class="fas fa-info-circle"></i> Upload bukti transfer setelah pembayaran
-                </p>
+              <h4><i class="fas fa-university"></i> Informasi Rekening</h4>
+              <div class="bank-detail" id="bankInfoContent">
+                <p>Memuat informasi bank...</p>
               </div>
+              <p style="margin-top:12px;color:#64748b;font-size:13px">
+                <i class="fas fa-info-circle"></i> Upload bukti transfer setelah pembayaran
+              </p>
             </div>
 
             <!-- Payment Summary -->
@@ -921,10 +969,23 @@
     </div>
 
     <!-- Footer -->
-    <div class="footer">
-      <i class="fas fa-phone"></i> 087795175243 | 
-      <i class="fas fa-envelope"></i> ampelgym@gmail.com
-      <p style="margin-top:8px">© AMPEL GYM · Pertanyaan? Hubungi admin kami</p>
+    <div class="footer" id="gymFooter">
+      <div style="margin-bottom: 8px;">
+        <strong id="footerBranchName" style="font-size: 16px; color: #000;">UGYM</strong>
+      </div>
+      <div style="display: flex; align-items: center; justify-content: center; gap: 16px; flex-wrap: wrap; font-size: 13px; color: #555;">
+        <span><i class="fas fa-phone" style="color: var(--primary); margin-right: 4px;"></i> <span id="footerPhone">-</span></span>
+        <span><i class="fas fa-envelope" style="color: var(--primary); margin-right: 4px;"></i> <span id="footerEmail">-</span></span>
+      </div>
+      <div id="footerAddress" style="font-size: 12px; color: #888; margin-top: 6px;"></div>
+      <p style="margin-top: 10px; font-size: 12px; color: #aaa;">© UGYM · Pertanyaan? Hubungi admin kami</p>
+    </div>
+
+    <!-- Developer Branding -->
+    <div class="developer-branding" style="text-align: center; padding: 24px 0; cursor: pointer; opacity: 0.85; transition: all 0.3s ease; display: flex; flex-direction: column; align-items: center;" onclick="window.open('https://wa.me/6285777723458', '_blank')" onmouseover="this.style.opacity='1'; this.style.transform='scale(1.05)'" onmouseout="this.style.opacity='0.85'; this.style.transform='scale(1)'">
+      <img src="https://i.imgur.com/NO5dVfb.png" alt="KIZIY Logo" style="width: 80px; height: auto; margin-bottom: 6px; object-fit: contain; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.1));">
+      <div style="font-weight: 800; color: #000; font-size: 16px; letter-spacing: 2px; text-transform: uppercase;">KIZIY</div>
+      <div style="font-weight: 500; font-size: 11px; color: #888; margin-top: 2px; letter-spacing: 1.5px;">key to easy</div>
     </div>
   </div>
 
@@ -1366,23 +1427,85 @@
         .submitRegistration(registrationData);
     }
 
-    // Initialize
-    window.onload = function() {
-      loadPackages();
-    };
-    function getDirectLink(url) {
-      if (!url) return '';
-      if (url.startsWith('http://')) url = url.replace('http://', 'https://');
-      if (!url.includes('.google.com')) return url;
-      
-      let fileId = '';
-      const patterns = [/\/d\/([a-zA-Z0-9_-]+)/, /id=([a-zA-Z0-9_-]+)/, /\/file\/d\/([a-zA-Z0-9_-]+)/, /open\?id=([a-zA-Z0-9_-]+)/];
-      for (let p of patterns) {
-        const m = url.match(p);
-        if (m && m[1]) { fileId = m[1]; break; }
+    // Script consolidated below
+      let currentBranch = null;
+      let branchSettings = null;
+
+      window.onload = function() {
+        const urlParams = new URLSearchParams(window.location.search);
+        const branchParam = urlParams.get('branch');
+        
+        if (branchParam) {
+          selectBranch(branchParam);
+        } else {
+          document.getElementById('landingView').style.display = 'block';
+        }
+      };
+
+      function selectBranch(id) {
+        currentBranch = id;
+        document.getElementById('landingView').style.display = 'none';
+        document.getElementById('registrationContent').style.display = 'block';
+        document.getElementById('mainHeader').style.display = 'block';
+        
+        // Auto-select gym location dropdown
+        const gymLoc = document.getElementById('gymLocation');
+        if (gymLoc) {
+          if (id === 'OTISTA') gymLoc.value = 'Otista';
+          else if (id === 'PASIR_HAYAM') gymLoc.value = 'Pasir Hayam';
+          // Hide branch selector if already selected via URL or Landing
+          gymLoc.parentElement.style.display = 'none';
+        }
+
+        showLoading();
+        google.script.run
+          .withSuccessHandler(function(res) {
+            hideLoading();
+            if (res.success) {
+              branchSettings = res.settings;
+              applyBranchBranding();
+              loadPackages();
+            } else {
+              alert('Gagal memuat pengaturan cabang: ' + res.message);
+            }
+          })
+          .getSettings(id);
       }
-      return fileId ? `https://drive.google.com/thumbnail?id=${fileId}&sz=w600` : url;
-    }
-  </script>
+
+      function applyBranchBranding() {
+        if (!branchSettings) return;
+        document.getElementById('gymLogoHeader').src = branchSettings.logo || 'https://i.imgur.com/TPoUeRJ.jpeg';
+        document.getElementById('gymNameHeader').textContent = branchSettings.name || 'Gym Name';
+        document.title = "Registrasi Member - " + branchSettings.name;
+        
+        // Footer
+        document.getElementById('footerBranchName').textContent = branchSettings.name || 'UGYM';
+        document.getElementById('footerPhone').textContent = branchSettings.phone || '-';
+        document.getElementById('footerEmail').textContent = branchSettings.email || '-';
+        document.getElementById('footerAddress').textContent = branchSettings.address || '';
+
+        const bankEl = document.getElementById('bankInfoContent');
+        if (bankEl) {
+          bankEl.innerHTML = `
+            <div style="font-size:18px;font-weight:800;color:var(--primary);margin:8px 0">${branchSettings.bankInfo || '-'}</div>
+            <p style="color:#64748b;font-size:13px;margin-top:8px">* Kirimkan bukti transfer sesuai total pembayaran di bawah ini</p>
+          `;
+        }
+      }
+
+      function getDirectLink(url) {
+        if (!url) return '';
+        if (url.startsWith('http://')) url = url.replace('http://', 'https://');
+        if (!url.includes('.google.com')) return url;
+        
+        let fileId = '';
+        const patterns = [/\/d\/([a-zA-Z0-9_-]+)/, /id=([a-zA-Z0-9_-]+)/, /\/file\/d\/([a-zA-Z0-9_-]+)/, /open\?id=([a-zA-Z0-9_-]+)/];
+        for (let p of patterns) {
+          const m = url.match(p);
+          if (m && m[1]) { fileId = m[1]; break; }
+        }
+        return fileId ? `https://drive.google.com/thumbnail?id=${fileId}&sz=w600` : url;
+      }
+    </script>
 </body>
 </html>
