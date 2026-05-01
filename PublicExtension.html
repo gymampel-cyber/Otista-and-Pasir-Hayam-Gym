@@ -8,47 +8,38 @@
     const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzKWdekXY27eWx5h4CI7HvLxnTboVPryp_gTpqTtCNM-G7yqLe4m0owvj7YwGgTm8bv/exec';
     const google = {
       script: {
-        run: new Proxy({}, {
-          get: function(target, prop) {
-            let successHandler = null;
-            let failureHandler = null;
-            function createChain(propName) {
-              if (propName === 'withSuccessHandler') {
-                return function(callback) {
-                  successHandler = callback;
-                  return new Proxy({}, { get: (t, p) => createChain(p) });
+        run: (function() {
+          function createProxy(handlers) {
+            return new Proxy({}, {
+              get: function(target, name) {
+                if (name === 'withSuccessHandler') {
+                  return function(cb) { return createProxy({ ...handlers, success: cb }); };
+                }
+                if (name === 'withFailureHandler') {
+                  return function(cb) { return createProxy({ ...handlers, failure: cb }); };
+                }
+                return function(...args) {
+                  fetch(SCRIPT_URL, {
+                    method: 'POST',
+                    body: JSON.stringify({ action: name, args: args }),
+                    headers: { 'Content-Type': 'text/plain;charset=utf-8' }
+                  })
+                  .then(response => response.json())
+                  .then(data => {
+                    if (data.success && handlers.success) handlers.success(data.result || data);
+                    else if (!data.success && handlers.failure) handlers.failure(new Error(data.message));
+                    else if (!data.success) console.error('Backend Error:', data.message);
+                  })
+                  .catch(err => {
+                    if (handlers.failure) handlers.failure(err);
+                    else console.error('Network Error:', err);
+                  });
                 };
               }
-              if (propName === 'withFailureHandler') {
-                return function(callback) {
-                  failureHandler = callback;
-                  return new Proxy({}, { get: (t, p) => createChain(p) });
-                };
-              }
-              return function(...args) {
-                fetch(SCRIPT_URL, {
-                  method: 'POST',
-                  body: JSON.stringify({ action: propName, args: args }),
-                  headers: { 'Content-Type': 'text/plain;charset=utf-8' }
-                })
-                .then(response => response.json())
-                .then(data => {
-                  if (!data.success) {
-                    if (failureHandler) failureHandler(new Error(data.message));
-                    else console.error('Backend Error:', data.message);
-                  } else {
-                    if (successHandler) successHandler(data.result);
-                  }
-                })
-                .catch(err => {
-                  if (failureHandler) failureHandler(err);
-                  else console.error('Network Error:', err);
-                });
-              };
-            }
-            return createChain(prop);
+            });
           }
-        })
+          return createProxy({ success: null, failure: null });
+        })()
       }
     };
   </script>
@@ -478,11 +469,13 @@
 
     // ================ NAVIGATION ================
     function goToRegistration(branch) {
-      var baseUrl = SCRIPT_URL;
+      var currentUrl = window.location.href;
       var url;
-      if (baseUrl.includes('script.google.com')) {
-        url = baseUrl + '?page=register&branch=' + branch;
+      if (currentUrl.includes('script.google.com')) {
+        // If we are currently in GAS, stay in GAS using page= routing
+        url = SCRIPT_URL + '?page=register&branch=' + branch;
       } else {
+        // If we are elsewhere (GitHub), stay elsewhere
         url = 'PublicRegistration.html?branch=' + branch;
       }
       try { window.top.location.href = url; } catch(e) { window.location.href = url; }
