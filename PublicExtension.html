@@ -1,0 +1,664 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Perpanjangan Member AMPEL GYM</title>
+  <script>
+    const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzKWdekXY27eWx5h4CI7HvLxnTboVPryp_gTpqTtCNM-G7yqLe4m0owvj7YwGgTm8bv/exec';
+    const google = {
+      script: {
+        run: new Proxy({}, {
+          get: function(target, prop) {
+            let successHandler = null;
+            let failureHandler = null;
+            function createChain(propName) {
+              if (propName === 'withSuccessHandler') {
+                return function(callback) {
+                  successHandler = callback;
+                  return new Proxy({}, { get: (t, p) => createChain(p) });
+                };
+              }
+              if (propName === 'withFailureHandler') {
+                return function(callback) {
+                  failureHandler = callback;
+                  return new Proxy({}, { get: (t, p) => createChain(p) });
+                };
+              }
+              return function(...args) {
+                fetch(SCRIPT_URL, {
+                  method: 'POST',
+                  body: JSON.stringify({ action: propName, args: args }),
+                  headers: { 'Content-Type': 'text/plain;charset=utf-8' }
+                })
+                .then(response => response.json())
+                .then(data => {
+                  if (!data.success) {
+                    if (failureHandler) failureHandler(new Error(data.message));
+                    else console.error('Backend Error:', data.message);
+                  } else {
+                    if (successHandler) successHandler(data.result);
+                  }
+                })
+                .catch(err => {
+                  if (failureHandler) failureHandler(err);
+                  else console.error('Network Error:', err);
+                });
+              };
+            }
+            return createChain(prop);
+          }
+        })
+      }
+    };
+  </script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', sans-serif; }
+    body { 
+      background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+    .extension-container {
+      max-width: 600px;
+      width: 100%;
+      background: white;
+      border-radius: 20px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+      overflow: hidden;
+      animation: slideUp 0.5s ease;
+    }
+    .header {
+      background: linear-gradient(135deg, #667eea, #764ba2);
+      color: white;
+      padding: 30px;
+      text-align: center;
+    }
+    .header h1 { font-size: 28px; margin-bottom: 8px; }
+    .header p { opacity: 0.9; font-size: 14px; }
+    .content { padding: 30px; }
+    .form-group { margin-bottom: 20px; }
+    .form-label { 
+      display: block; 
+      margin-bottom: 8px; 
+      font-weight: 600; 
+      font-size: 14px; 
+      color: #334155; 
+    }
+    .form-input { 
+      width: 100%; 
+      padding: 12px 16px; 
+      border: 2px solid #e2e8f0; 
+      border-radius: 10px; 
+      font-size: 15px; 
+      transition: 0.2s; 
+    }
+    .form-input:focus { 
+      outline: none; 
+      border-color: #667eea; 
+      box-shadow: 0 0 0 3px rgba(102,126,234,0.1); 
+    }
+    .form-input:read-only {
+      background: #f8fafc;
+      color: #475569;
+    }
+    .btn {
+      padding: 14px 24px;
+      border: none;
+      border-radius: 10px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      transition: 0.2s;
+      width: 100%;
+    }
+    .btn-primary { 
+      background: linear-gradient(135deg, #667eea, #764ba2); 
+      color: white; 
+    }
+    .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 10px 20px rgba(102,126,234,0.3); }
+    .btn-success { 
+      background: linear-gradient(135deg, #22c55e, #16a34a); 
+      color: white; 
+    }
+    .alert {
+      padding: 14px 16px;
+      border-radius: 10px;
+      margin-bottom: 20px;
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+    }
+    .alert-success { background: #f0fdf4; border: 1px solid #86efac; color: #166534; }
+    .alert-error { background: #fef2f2; border: 1px solid #fecaca; color: #991b1b; }
+    .alert-warning { background: #fffbeb; border: 1px solid #fde68a; color: #92400e; }
+    .alert-info { background: #eff6ff; border: 1px solid #bfdbfe; color: #1e40af; }
+    .member-info {
+      background: #f0f4ff;
+      border: 1px solid #c7d2fe;
+      border-radius: 16px;
+      padding: 20px;
+      margin-bottom: 24px;
+      display: flex;
+      gap: 20px;
+      align-items: center;
+    }
+    .member-photo {
+      width: 100px;
+      height: 100px;
+      border-radius: 12px;
+      object-fit: cover;
+      border: 3px solid white;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+      background: #f8fafc;
+    }
+    .member-details-grid {
+      flex: 1;
+    }
+    .info-row {
+      display: flex;
+      justify-content: space-between;
+      padding: 8px 0;
+      border-bottom: 1px dashed #cbd5e1;
+    }
+    .info-row:last-child { border-bottom: none; }
+    .info-label { color: #64748b; font-size: 13px; }
+    .info-value { font-weight: 600; color: #0f172a; }
+    .badge {
+      display: inline-block;
+      padding: 4px 12px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 600;
+    }
+    .badge-success { background: #f0fdf4; color: #166534; border: 1px solid #86efac; }
+    .badge-warning { background: #fffbeb; color: #92400e; border: 1px solid #fde68a; }
+    .badge-danger { background: #fef2f2; color: #991b1b; border: 1px solid #fecaca; }
+    .package-card {
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 12px;
+      padding: 16px;
+      margin-bottom: 12px;
+      cursor: pointer;
+      transition: 0.2s;
+    }
+    .package-card:hover { border-color: #667eea; background: #f1f5f9; }
+    .package-card.selected { 
+      border: 2px solid #667eea; 
+      background: #f0f4ff; 
+      box-shadow: 0 4px 12px rgba(102,126,234,0.2);
+    }
+    .package-name { font-weight: 700; font-size: 16px; color: #0f172a; }
+    .package-price { color: #667eea; font-weight: 700; font-size: 18px; }
+    .file-upload {
+      position: relative;
+      display: inline-block;
+      width: 100%;
+    }
+    .file-upload-label {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 16px;
+      background: #f8fafc;
+      border: 2px dashed #cbd5e1;
+      border-radius: 10px;
+      cursor: pointer;
+      transition: 0.2s;
+    }
+    .file-upload-label:hover { border-color: #667eea; background: #f1f5f9; }
+    .file-upload-input {
+      position: absolute;
+      width: 0.1px;
+      height: 0.1px;
+      opacity: 0;
+      overflow: hidden;
+      z-index: -1;
+    }
+    .file-name {
+      margin-top: 8px;
+      font-size: 13px;
+      color: #475569;
+    }
+    .bank-info {
+      background: #f1f5f9;
+      border-radius: 10px;
+      padding: 15px;
+      margin: 20px 0;
+      font-size: 14px;
+      border-left: 4px solid #667eea;
+    }
+    .total-section {
+      background: linear-gradient(135deg, #0f172a, #1e293b);
+      color: white;
+      border-radius: 16px;
+      padding: 20px;
+      margin: 20px 0;
+      text-align: center;
+    }
+    .total-amount {
+      font-size: 28px;
+      font-weight: 800;
+      color: #fbbf24;
+    }
+    .footer {
+      text-align: center;
+      padding: 20px;
+      background: #f8fafc;
+      border-top: 1px solid #e2e8f0;
+      font-size: 13px;
+      color: #64748b;
+    }
+    .loading-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(255,255,255,0.9);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 9999;
+    }
+    .spinner {
+      width: 40px;
+      height: 40px;
+      border: 4px solid #e2e8f0;
+      border-top: 4px solid #667eea;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+    }
+    @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    @keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+  </style>
+</head>
+<body>
+  <div id="loadingOverlay" class="loading-overlay" style="display:none">
+    <div style="text-align:center">
+      <div class="spinner" style="margin:0 auto 16px"></div>
+      <p style="color:#475569">Memproses permintaan...</p>
+    </div>
+  </div>
+
+  <div class="extension-container">
+    <div class="header">
+      <img src="https://i.imgur.com/PAB0dhW.png" style="width:80px;height:80px;border-radius:50%;margin-bottom:16px;border:3px solid rgba(255,255,255,0.3)">
+      <h1>🔄 Perpanjangan Member</h1>
+      <p>Form perpanjangan keanggotaan AMPEL GYM</p>
+    </div>
+
+    <div class="content">
+      <div id="alertMessage" class="alert" style="display:none"></div>
+
+      <div id="memberInfoSection" style="display:none">
+        <div class="member-info">
+          <img id="memberPhotoDisplay" class="member-photo" src="" onerror="this.src='https://via.placeholder.com/100?text=No+Photo'">
+          <div class="member-details-grid">
+            <h4 style="margin-bottom:12px;color:#0f172a"><i class="fas fa-user-circle" style="color:#667eea"></i> Informasi Member</h4>
+            <div class="info-row">
+              <span class="info-label">Member ID</span>
+              <span class="info-value" id="memberIdDisplay">-</span>
+            </div>
+            <div class="info-row">
+              <span class="info-label">Nama</span>
+              <span class="info-value" id="memberNameDisplay">-</span>
+            </div>
+            <div class="info-row">
+              <span class="info-label">Email</span>
+              <span class="info-value" id="memberEmailDisplay">-</span>
+            </div>
+            <div class="info-row">
+              <span class="info-label">Paket Saat Ini</span>
+              <span class="info-value" id="memberPackageDisplay">-</span>
+            </div>
+            <div class="info-row">
+              <span class="info-label">Masa Berlaku</span>
+              <span class="info-value" id="memberExpiryDisplay">-</span>
+            </div>
+            <div class="info-row">
+              <span class="info-label">Status</span>
+              <span class="info-value" id="memberStatusDisplay">-</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div id="searchSection">
+        <div class="form-group">
+          <label class="form-label"><i class="fas fa-id-card"></i> Member ID</label>
+          <input type="text" id="memberIdInput" class="form-input" placeholder="Masukkan Member ID Anda" 
+            onkeydown="if(event.key==='Enter') loadMemberInfo()">
+          <small style="color:#94a3b8">Contoh: M2301001</small>
+        </div>
+        <button class="btn btn-primary" onclick="loadMemberInfo()" id="loadMemberBtn">
+          <i class="fas fa-search"></i> Cari Data Member
+        </button>
+      </div>
+
+      <div id="extensionForm" style="display:none; margin-top:24px">
+        <div class="bank-info">
+          <i class="fas fa-university" style="color:#667eea;margin-right:8px"></i>
+          <strong>Transfer Pembayaran ke:</strong><br>
+      BCA 183-118-0001 a.n. MUHAMMAD R MASCATY<br>
+          <small style="color:#64748b">*Upload bukti transfer setelah pembayaran</small>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label"><i class="fas fa-tag"></i> Pilih Paket Perpanjangan <span style="color:#ef4444">*</span></label>
+          <div id="packageList"></div>
+        </div>
+
+        <div class="total-section" id="totalSection" style="display:none">
+          <div style="margin-bottom:8px">Total Pembayaran</div>
+          <div class="total-amount" id="totalAmount">Rp 0</div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label"><i class="fas fa-image"></i> Upload Bukti Pembayaran <span style="color:#ef4444">*</span></label>
+          <div class="file-upload">
+            <label for="paymentProof" class="file-upload-label" id="fileUploadLabel">
+              <i class="fas fa-cloud-upload-alt fa-2x" style="color:#667eea"></i>
+              <div>
+                <strong>Pilih file</strong><br>
+                <span style="font-size:12px;color:#64748b">Format: JPG, PNG (max 5MB)</span>
+              </div>
+            </label>
+            <input type="file" id="paymentProof" class="file-upload-input" accept=".jpg,.jpeg,.png" onchange="updateFileName(this)">
+          </div>
+          <div id="fileName" class="file-name"></div>
+        </div>
+
+        <button class="btn btn-success" onclick="submitExtensionRequest()" id="submitBtn">
+          <i class="fas fa-paper-plane"></i> Kirim Permintaan Perpanjangan
+        </button>
+
+        <div style="margin-top:16px;padding:12px;background:#f0f9ff;border-radius:8px;font-size:13px;color:#0369a1">
+          <i class="fas fa-info-circle"></i> Permintaan akan diproses oleh admin setelah verifikasi bukti pembayaran. Status perpanjangan akan dikirim via email.
+        </div>
+      </div>
+    </div>
+
+    <div class="footer">
+      <i class="fas fa-phone"></i> 08158905889 | <i class="fas fa-envelope"></i> ugymindonesia@gmail.com
+    </div>
+  </div>
+
+  <script>
+    var packages = [];
+    var selectedPackage = null;
+    var currentMember = null;
+    var selectedFile = null;
+
+    window.onload = function() {
+      loadPackages();
+      
+      // Check if memberId is provided in URL
+      const urlParams = new URLSearchParams(window.location.search);
+      const memberId = urlParams.get('id') || urlParams.get('memberId');
+      if (memberId) {
+        document.getElementById('memberIdInput').value = memberId;
+        loadMemberInfo();
+      }
+    };
+
+    function loadPackages() {
+      google.script.run
+        .withSuccessHandler(function(res) {
+          if (res && res.success) {
+            packages = res.packages.filter(p => p.type && p.type.toLowerCase().includes('regular'));
+          }
+        })
+        .getPackages();
+    }
+
+    function loadMemberInfo() {
+      const memberId = document.getElementById('memberIdInput').value.trim();
+      if (!memberId) {
+        showAlert('Masukkan Member ID', 'warning');
+        return;
+      }
+
+      const btn = document.getElementById('loadMemberBtn');
+      btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Mencari...';
+      btn.disabled = true;
+      showLoading();
+
+      google.script.run
+        .withSuccessHandler(function(res) {
+          hideLoading();
+          btn.innerHTML = '<i class="fas fa-search"></i> Cari Data Member';
+          btn.disabled = false;
+
+          if (res && res.success) {
+            currentMember = res.member;
+            displayMemberInfo();
+            document.getElementById('searchSection').style.display = 'none';
+            document.getElementById('memberInfoSection').style.display = 'block';
+            document.getElementById('extensionForm').style.display = 'block';
+            renderPackages();
+          } else {
+            showAlert('Member tidak ditemukan: ' + (res?.message || 'ID tidak valid'), 'error');
+          }
+        })
+        .withFailureHandler(function(err) {
+          hideLoading();
+          btn.innerHTML = '<i class="fas fa-search"></i> Cari Data Member';
+          btn.disabled = false;
+          showAlert('Error: ' + err.message, 'error');
+        })
+        .getMemberDetail(memberId);
+    }
+
+    function displayMemberInfo() {
+      if (!currentMember) return;
+
+      document.getElementById('memberIdDisplay').textContent = currentMember.id;
+      document.getElementById('memberNameDisplay').textContent = currentMember.name;
+      document.getElementById('memberEmailDisplay').textContent = currentMember.email || '-';
+      document.getElementById('memberPackageDisplay').textContent = currentMember.package || '-';
+      document.getElementById('memberExpiryDisplay').textContent = formatDate(currentMember.expiry);
+      
+      const statusEl = document.getElementById('memberStatusDisplay');
+      statusEl.textContent = currentMember.status;
+      statusEl.className = `badge ${currentMember.status === 'Aktif' ? 'badge-success' : 'badge-warning'}`;
+
+      // Update Photo
+      const photoEl = document.getElementById('memberPhotoDisplay');
+      if (currentMember.profilePic) {
+        photoEl.src = getDirectLink(currentMember.profilePic);
+        photoEl.style.display = 'block';
+      } else {
+        photoEl.src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 24 24" fill="none" stroke="%23cbd5e1" stroke-width="1.5"%3E%3Cpath d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/%3E%3Ccircle cx="12" cy="7" r="4"/%3E%3C/svg%3E';
+      }
+    }
+
+    function getDirectLink(url) {
+      if (!url) return '';
+      if (url.startsWith('http://')) url = url.replace('http://', 'https://');
+      if (!url.includes('.google.com')) return url;
+      
+      let fileId = '';
+      const patterns = [/\/d\/([a-zA-Z0-9_-]+)/, /id=([a-zA-Z0-9_-]+)/, /\/file\/d\/([a-zA-Z0-9_-]+)/, /open\?id=([a-zA-Z0-9_-]+)/];
+      for (let p of patterns) {
+        const m = url.match(p);
+        if (m && m[1]) { fileId = m[1]; break; }
+      }
+      return fileId ? `https://drive.google.com/thumbnail?id=${fileId}&sz=w600` : url;
+    }
+
+    function renderPackages() {
+      const container = document.getElementById('packageList');
+      if (!container) return;
+
+      let html = '';
+      packages.forEach(pkg => {
+        html += `
+          <div class="package-card" onclick="selectPackage('${pkg.id}')" id="pkg-${pkg.id}">
+            <div style="display:flex;justify-content:space-between;align-items:center">
+              <span class="package-name">${pkg.name}</span>
+              <span class="package-price">${formatCurrency(pkg.total)}</span>
+            </div>
+            <div style="display:flex;justify-content:space-between;margin-top:4px">
+              <span class="package-duration"><i class="far fa-clock"></i> ${pkg.duration}</span>
+              <span style="color:#94a3b8;font-size:13px">Diskon: ${formatCurrency(pkg.discount)}</span>
+            </div>
+          </div>`;
+      });
+      container.innerHTML = html;
+    }
+
+    function selectPackage(pkgId) {
+      // Remove selected class from all packages
+      packages.forEach(p => {
+        const el = document.getElementById(`pkg-${p.id}`);
+        if (el) el.classList.remove('selected');
+      });
+
+      // Add selected class to chosen package
+      const selectedEl = document.getElementById(`pkg-${pkgId}`);
+      if (selectedEl) selectedEl.classList.add('selected');
+
+      selectedPackage = packages.find(p => p.id === pkgId);
+      
+      if (selectedPackage) {
+        document.getElementById('totalAmount').textContent = formatCurrency(selectedPackage.total);
+        document.getElementById('totalSection').style.display = 'block';
+      }
+    }
+
+    function updateFileName(input) {
+      const fileNameDiv = document.getElementById('fileName');
+      if (input.files && input.files.length > 0) {
+        const file = input.files[0];
+        if (file.size > 5 * 1024 * 1024) {
+          showAlert('Ukuran file maksimal 5MB', 'warning');
+          input.value = '';
+          fileNameDiv.innerHTML = '';
+          return;
+        }
+        fileNameDiv.innerHTML = `<i class="fas fa-check-circle" style="color:#22c55e"></i> File: ${file.name}`;
+        selectedFile = file;
+      } else {
+        fileNameDiv.innerHTML = '';
+        selectedFile = null;
+      }
+    }
+
+function submitExtensionRequest() {
+  if (!selectedPackage) {
+    showAlert('Pilih paket perpanjangan', 'warning');
+    return;
+  }
+
+  if (!selectedFile) {
+    showAlert('Upload bukti pembayaran', 'warning');
+    return;
+  }
+
+  const btn = document.getElementById('submitBtn');
+  btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Mengirim...';
+  btn.disabled = true;
+  showLoading();
+
+  // Convert file to base64
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    const base64Data = e.target.result.split(',')[1];
+    
+    google.script.run
+      .withSuccessHandler(function(res) {
+        hideLoading();
+        btn.innerHTML = '<i class="fas fa-paper-plane"></i> Kirim Permintaan Perpanjangan';
+        btn.disabled = false;
+
+        if (res && res.success) {
+          showAlert(
+            `✅ PERMINTAAN PERPANJANGAN TERKIRIM!\n\n` +
+            `No. Request: ${res.requestId}\n` +
+            `Member     : ${currentMember.name}\n` +
+            `Paket      : ${selectedPackage.name}\n` +
+            `Total      : ${formatCurrency(res.totalAmount || selectedPackage.total)}\n\n` +
+            `Permintaan Anda sedang menunggu persetujuan admin.\n` +
+            `${res.emailSent ? '📧 Email konfirmasi telah dikirim ke ' + currentMember.email : ''}`,
+            'success'
+          );
+          
+          // Reset form
+          selectedPackage = null;
+          document.getElementById('totalSection').style.display = 'none';
+          document.getElementById('paymentProof').value = '';
+          document.getElementById('fileName').innerHTML = '';
+          
+          // Remove selected class
+          packages.forEach(p => {
+            const el = document.getElementById(`pkg-${p.id}`);
+            if (el) el.classList.remove('selected');
+          });
+        } else {
+          showAlert('❌ ' + (res?.message || 'Gagal mengirim permintaan'), 'error');
+        }
+      })
+      .withFailureHandler(function(err) {
+        hideLoading();
+        btn.innerHTML = '<i class="fas fa-paper-plane"></i> Kirim Permintaan Perpanjangan';
+        btn.disabled = false;
+        showAlert('Error: ' + err.message, 'error');
+      })
+      .submitExtensionRequest({
+        memberId: currentMember.id,
+        packageId: selectedPackage.id,
+        paymentProof: base64Data
+      });
+  };
+  reader.readAsDataURL(selectedFile);
+}
+
+    function showAlert(message, type = 'info') {
+      const alert = document.getElementById('alertMessage');
+      const icons = { 
+        success: 'check-circle', 
+        error: 'exclamation-circle', 
+        warning: 'exclamation-triangle', 
+        info: 'info-circle' 
+      };
+      alert.className = `alert alert-${type}`;
+      alert.innerHTML = `<i class="fas fa-${icons[type]}"></i><div style="white-space:pre-line">${message}</div>`;
+      alert.style.display = 'flex';
+      
+      if (type === 'success') {
+        setTimeout(() => { alert.style.display = 'none'; }, 10000);
+      }
+      
+      alert.scrollIntoView({ behavior: 'smooth' });
+    }
+
+    function showLoading() {
+      document.getElementById('loadingOverlay').style.display = 'flex';
+    }
+
+    function hideLoading() {
+      document.getElementById('loadingOverlay').style.display = 'none';
+    }
+
+    function formatCurrency(amount) {
+      return `Rp ${Number(amount || 0).toLocaleString('id-ID')}`;
+    }
+
+    function formatDate(date) {
+      if (!date) return '-';
+      const d = new Date(date);
+      return d.toLocaleDateString('id-ID', { day: '2-digit', month: '2-digit', year: 'numeric' });
+    }
+  </script>
+</body>
+</html>
