@@ -2376,7 +2376,7 @@
     <div class="sidebar" id="sidebar">
       <div class="sidebar-header">
         <div style="display:flex;align-items:center;gap:12px">
-          <img src="https://i.imgur.com/PAB0dhW.png" style="width:48px;height:48px;border-radius:50%;object-fit:cover">
+          <img class="gym-logo-brand" src="https://i.imgur.com/PAB0dhW.png" style="width:48px;height:48px;border-radius:50%;object-fit:cover">
           <div>
             <div id="userName" style="font-size:15px;font-weight:600">-</div>
             <span id="userRole"
@@ -2835,7 +2835,6 @@
     function initApp() {
       try {
         console.log('Initializing App...');
-        loadAndApplyBranding();
         renderLoginForm();
         console.log('Login form rendered.');
       } catch (e) {
@@ -2847,11 +2846,11 @@
     function renderLoginForm() {
       document.getElementById('authCard').innerHTML = `
         <div class="auth-header" style="text-align: center; margin-bottom: 32px;">
-          <div style="background: var(--primary); width: 80px; height: 80px; border-radius: 24px; margin: 0 auto 20px; display: flex; align-items: center; justify-content: center; box-shadow: 0 10px 20px rgba(88, 86, 214, 0.2);">
-            <img src="https://i.imgur.com/PAB0dhW.png" style="width: 100%; height: 100%; border-radius: 24px; object-fit: cover;">
+          <div style="background: white; width: 80px; height: 80px; border-radius: 24px; margin: 0 auto 20px; display: flex; align-items: center; justify-content: center; box-shadow: 0 10px 20px rgba(0,0,0,0.1); padding: 10px;">
+            <img src="https://i.imgur.com/NO5dVfb.png" style="width: 100%; height: auto; object-fit: contain;">
           </div>
-          <h2 class="gym-name-brand" style="font-size: 28px; font-weight: 800; color: #1c1c1e; letter-spacing: -0.5px;">Gym</h2>
-          <p id="systemSubtitle" style="color: #636366; margin-top: 6px; font-size: 14px; font-weight: 500;">Management System</p>
+          <h2 style="font-size: 28px; font-weight: 800; color: #1c1c1e; letter-spacing: 2px; text-transform: uppercase;">KIZIY</h2>
+          <p id="systemSubtitle" style="color: #636366; margin-top: 6px; font-size: 14px; font-weight: 500; letter-spacing: 1px;">Key to Easy • Management System</p>
         </div>
         
         <div class="auth-form" style="display: flex; flex-direction: column; align-items: center; gap: 16px;">
@@ -10111,8 +10110,9 @@
             currentBranchPhone = s.phone || '';
             if (s.name) {
               document.title = s.name + " Management";
+              // Update all elements with branding classes
               document.querySelectorAll('.gym-name-brand, .gym-name, h2, h1').forEach(el => {
-                if (['AMPEL GYM', 'UGYM', 'UGYM Management'].includes(el.textContent.trim()) || el.classList.contains('gym-name-brand')) {
+                if (['AMPEL GYM', 'UGYM', 'Gym', 'UGYM Management'].includes(el.textContent.trim()) || el.classList.contains('gym-name-brand')) {
                   el.textContent = s.name;
                 }
               });
@@ -10126,7 +10126,7 @@
               });
             }
             if (s.logo) {
-              document.querySelectorAll('img[src*="i.imgur.com/TPoUeRJ.jpeg"], img[src*="i.imgur.com/PAB0dhW.png"]').forEach(img => {
+              document.querySelectorAll('.gym-logo-brand').forEach(img => {
                 img.src = s.logo;
               });
             }
