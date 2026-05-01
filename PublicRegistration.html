@@ -1003,15 +1003,16 @@
 
     // ================ NAVIGATION ================
     function goToExtension(branch) {
-      // Build the extension URL using the same base as SCRIPT_URL
       var baseUrl = SCRIPT_URL;
-      // If served from Google Apps Script, use page= routing
+      var url;
       if (baseUrl.includes('script.google.com')) {
-        window.open(baseUrl + '?page=extension&branch=' + branch, '_blank');
+        // When inside Google Apps Script, use the deployed web app URL with page= routing
+        url = baseUrl + '?page=extension&branch=' + branch;
       } else {
-        // Fallback for local/GitHub hosting
-        window.open('PublicExtension.html?branch=' + branch, '_blank');
+        url = 'PublicExtension.html?branch=' + branch;
       }
+      // Try top-level navigation first (for GAS iframe), fallback to window
+      try { window.top.location.href = url; } catch(e) { window.location.href = url; }
     }
 
     // ================ UTILS ================
