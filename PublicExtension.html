@@ -53,6 +53,7 @@
     };
   </script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
     :root {
       --primary: #d4af37;
       --primary-dark: #b5952f;
@@ -477,11 +478,13 @@
     // ================ NAVIGATION ================
     function goToRegistration(branch) {
       var baseUrl = SCRIPT_URL;
+      var url;
       if (baseUrl.includes('script.google.com')) {
-        window.open(baseUrl + '?page=register&branch=' + branch, '_blank');
+        url = baseUrl + '?page=register&branch=' + branch;
       } else {
-        window.open('PublicRegistration.html?branch=' + branch, '_blank');
+        url = 'PublicRegistration.html?branch=' + branch;
       }
+      try { window.top.location.href = url; } catch(e) { window.location.href = url; }
     }
 
     window.onload = function() {
