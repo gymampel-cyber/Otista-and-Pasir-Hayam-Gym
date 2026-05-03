@@ -2498,6 +2498,13 @@
     var activePTSearchRequest = null;
     var productPhotoBase64 = null;
     var productWebcamStream = null;
+
+    // Multi-Gym & Branding
+    var currentBranch = localStorage.getItem('current_branch') || 'All';
+    var currentBranchName = 'Gym';
+    var currentBranchAddress = '';
+    var currentBranchPhone = '';
+
     var productCameraFacing = 'environment';
 
     // ================ CACHE SYSTEM ================
@@ -2868,12 +2875,15 @@
       try {
         console.log('Initializing App...');
         renderLoginForm();
+        loadAndApplyBranding(); // Load branding even before login
         console.log('Login form rendered.');
       } catch (e) {
         console.error('Init error:', e);
-        alert('Init Error: ' + e.message);
+        // Fallback render if branding fails
+        renderLoginForm();
       }
     }
+
 
     function renderLoginForm() {
       document.getElementById('authCard').innerHTML = `
@@ -10272,20 +10282,14 @@
   </div>
 
   <script>
-    let currentBranch = localStorage.getItem('current_branch') || 'All';
-    let currentBranchName = 'Gym';
-    let currentBranchAddress = '';
-    let currentBranchPhone = '';
-
+    // ================ MULTI-GYM & BRANDING LOGIC ================
     function initMultiGym() {
-      // Only Super Admin (branch === 'All' or no branch assigned) can switch branches
       if (currentUser && (currentUser.branch === 'All' || !currentUser.branch) && currentUser.role === 'Admin') {
         document.getElementById('branchSwitcherContainer').classList.remove('hidden');
         google.script.run
           .withSuccessHandler(function(res) {
             if (res.success) {
               const select = document.getElementById('branchSwitcher');
-              // Clear existing except default
               select.innerHTML = '<option value="All">Semua Cabang</option>';
               res.branches.forEach(b => {
                 const opt = document.createElement('option');
@@ -10298,7 +10302,6 @@
           })
           .getBranches();
       } else {
-        // For Staff or Branch-specific Admin, force their branch and hide switcher
         currentBranch = currentUser ? (currentUser.branch || 'All') : 'All';
         document.getElementById('branchSwitcherContainer').classList.add('hidden');
       }
@@ -10338,7 +10341,6 @@
       currentBranchPhone = s.phone || '';
       if (s.name) {
         document.title = s.name + " Management";
-        // Update all elements with branding classes
         document.querySelectorAll('.gym-name-brand, .gym-name, h2, h1').forEach(el => {
           if (['AMPEL GYM', 'UGYM', 'Gym', 'UGYM Management'].includes(el.textContent.trim()) || el.classList.contains('gym-name-brand')) {
             el.textContent = s.name;
@@ -10400,7 +10402,6 @@
         logo: document.getElementById('set_logo_preview').src
       };
 
-      // OPTIMISTIC UPDATE
       const cacheKey = 'branding_settings';
       const previousSettings = getFromCache(cacheKey);
       
@@ -10413,21 +10414,18 @@
           if (res.success) {
             showToast('Pengaturan branding berhasil disimpan!', 'success');
             saveToCache(cacheKey, settings);
-            loadAndApplyBranding(); // Refresh to ensure sync
+            loadAndApplyBranding();
           } else {
-            // ROLLBACK
             if (previousSettings) applyBrandingUI(previousSettings);
             showToast('Gagal menyimpan: ' + res.message, 'error');
           }
         })
         .withFailureHandler(function(err) {
-          // ROLLBACK
           if (previousSettings) applyBrandingUI(previousSettings);
           showToast('Error: ' + err.message, 'error');
         })
         .updateBranding(settings);
     }
-
   </script>
 </body>
 
