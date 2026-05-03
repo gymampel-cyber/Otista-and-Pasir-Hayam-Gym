@@ -8,22 +8,22 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script>
     const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzKWdekXY27eWx5h4CI7HvLxnTboVPryp_gTpqTtCNM-G7yqLe4m0owvj7YwGgTm8bv/exec';
-    
+
     // ================ IMPROVED PROXY FOR google.script.run ================
     if (typeof google === 'undefined' || !google.script || !google.script.run) {
       window.google = {
         script: {
-          run: (function() {
+          run: (function () {
             function createProxy(handlers) {
               return new Proxy({}, {
-                get: function(target, name) {
+                get: function (target, name) {
                   if (name === 'withSuccessHandler') {
-                    return function(cb) { return createProxy({ ...handlers, success: cb }); };
+                    return function (cb) { return createProxy({ ...handlers, success: cb }); };
                   }
                   if (name === 'withFailureHandler') {
-                    return function(cb) { return createProxy({ ...handlers, failure: cb }); };
+                    return function (cb) { return createProxy({ ...handlers, failure: cb }); };
                   }
-                  return function(...args) {
+                  return function (...args) {
                     fetch(SCRIPT_URL, {
                       method: 'POST',
                       body: JSON.stringify({ action: name, args: args }),
@@ -132,7 +132,10 @@
     /* Login Page Centering */
     .auth-layout {
       position: fixed;
-      top: 0; left: 0; right: 0; bottom: 0;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
       background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
       display: flex;
       align-items: center;
@@ -784,7 +787,8 @@
       width: 100%;
       border-collapse: collapse;
       background-color: transparent;
-      min-width: 800px; /* Ensure table doesn't squash columns */
+      min-width: 800px;
+      /* Ensure table doesn't squash columns */
     }
 
     .data-table th {
@@ -809,7 +813,8 @@
 
     .data-table td b {
       display: block;
-      min-width: 150px; /* Min width for names */
+      min-width: 150px;
+      /* Min width for names */
     }
 
     .data-table tr:hover td {
@@ -2351,10 +2356,19 @@
     <div style="display: flex; flex-direction: column; align-items: center; gap: 20px;">
       <div id="authCard" class="auth-card">Memuat Form Login...</div>
       <!-- Developer Branding -->
-      <div class="developer-branding" style="text-align: center; cursor: pointer; opacity: 0.9; transition: all 0.3s ease; display: flex; flex-direction: column; align-items: center;" onclick="window.open('https://wa.me/6285777723458', '_blank')" onmouseover="this.style.opacity='1'; this.style.transform='scale(1.05)'" onmouseout="this.style.opacity='0.9'; this.style.transform='scale(1)'">
-        <img src="https://i.imgur.com/uFGDJ3a.png" alt="KIZIY Logo" style="width: 80px; height: auto; margin-bottom: 6px; object-fit: contain; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.1));">
-        <div style="font-weight: 800; color: #1e293b; font-size: 16px; letter-spacing: 2px; text-align: center; text-transform: uppercase;">KIZIY</div>
-        <div style="font-family: 'Outfit', sans-serif; font-weight: 500; font-size: 11px; color: #64748b; margin-top: 2px; text-align: center; letter-spacing: 1px;">key to easy</div>
+      <div class="developer-branding"
+        style="text-align: center; cursor: pointer; opacity: 0.9; transition: all 0.3s ease; display: flex; flex-direction: column; align-items: center;"
+        onclick="window.open('https://wa.me/6285777723458', '_blank')"
+        onmouseover="this.style.opacity='1'; this.style.transform='scale(1.05)'"
+        onmouseout="this.style.opacity='0.9'; this.style.transform='scale(1)'">
+        <img src="https://i.imgur.com/uFGDJ3a.png" alt="KIZIY Logo"
+          style="width: 80px; height: auto; margin-bottom: 6px; object-fit: contain; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.1));">
+        <div
+          style="font-weight: 800; color: #1e293b; font-size: 16px; letter-spacing: 2px; text-align: center; text-transform: uppercase;">
+          KIZIY</div>
+        <div
+          style="font-family: 'Outfit', sans-serif; font-weight: 500; font-size: 11px; color: #64748b; margin-top: 2px; text-align: center; letter-spacing: 1px;">
+          key to easy</div>
       </div>
     </div>
   </div>
@@ -2376,7 +2390,8 @@
     <div class="sidebar" id="sidebar">
       <div class="sidebar-header">
         <div style="display:flex;align-items:center;gap:12px">
-          <img class="gym-logo-brand" src="https://i.imgur.com/PAB0dhW.png" style="width:48px;height:48px;border-radius:50%;object-fit:cover">
+          <img class="gym-logo-brand" src="https://i.imgur.com/PAB0dhW.png"
+            style="width:48px;height:48px;border-radius:50%;object-fit:cover">
           <div>
             <div id="userName" style="font-size:15px;font-weight:600">-</div>
             <span id="userRole"
@@ -2459,9 +2474,12 @@
           </div>
         </div>
         <div style="display:flex;gap:12px; align-items:center">
-          <div id="branchSwitcherContainer" class="hidden" style="display:flex; align-items:center; gap:8px; background:var(--bg-card); padding:4px 12px; border-radius:12px; border:1px solid var(--border-color)">
+          <div id="branchSwitcherContainer" class="hidden"
+            style="display:flex; align-items:center; gap:8px; background:var(--bg-card); padding:4px 12px; border-radius:12px; border:1px solid var(--border-color)">
             <i class="fas fa-store-alt" style="color:var(--primary-color)"></i>
-            <select id="branchSwitcher" class="form-input" style="border:none; padding:4px; width:auto; font-weight:600; background:transparent" onchange="switchBranch()">
+            <select id="branchSwitcher" class="form-input"
+              style="border:none; padding:4px; width:auto; font-weight:600; background:transparent"
+              onchange="switchBranch()">
               <option value="All">Semua Cabang</option>
             </select>
           </div>
@@ -2472,11 +2490,20 @@
         </div>
       </div>
       <div id="contentArea"></div>
-      
-      <div class="developer-branding" style="text-align: center; padding: 30px 0; margin-top: 40px; border-top: 1px solid var(--border-color); cursor: pointer; opacity: 0.8; transition: all 0.3s ease; display: flex; flex-direction: column; align-items: center;" onclick="window.open('https://wa.me/6285777723458', '_blank')" onmouseover="this.style.opacity='1'; this.style.transform='scale(1.05)'" onmouseout="this.style.opacity='0.8'; this.style.transform='scale(1)'">
-        <img src="https://i.imgur.com/NO5dVfb.png" alt="KIZIY Logo" style="width: 100px; height: auto; margin-bottom: 8px; object-fit: contain; filter: drop-shadow(0 4px 6px rgba(0,0,0,0.1));">
-        <div style="font-weight: 800; color: var(--text-main); font-size: 18px; letter-spacing: 3px; text-align: center; text-transform: uppercase;">KIZIY</div>
-        <div style="font-family: 'Outfit', sans-serif; font-weight: 500; font-size: 12px; color: var(--text-secondary); margin-top: 4px; text-align: center; letter-spacing: 1.5px;">key to easy</div>
+
+      <div class="developer-branding"
+        style="text-align: center; padding: 30px 0; margin-top: 40px; border-top: 1px solid var(--border-color); cursor: pointer; opacity: 0.8; transition: all 0.3s ease; display: flex; flex-direction: column; align-items: center;"
+        onclick="window.open('https://wa.me/6285777723458', '_blank')"
+        onmouseover="this.style.opacity='1'; this.style.transform='scale(1.05)'"
+        onmouseout="this.style.opacity='0.8'; this.style.transform='scale(1)'">
+        <img src="https://i.imgur.com/NO5dVfb.png" alt="KIZIY Logo"
+          style="width: 100px; height: auto; margin-bottom: 8px; object-fit: contain; filter: drop-shadow(0 4px 6px rgba(0,0,0,0.1));">
+        <div
+          style="font-weight: 800; color: var(--text-main); font-size: 18px; letter-spacing: 3px; text-align: center; text-transform: uppercase;">
+          KIZIY</div>
+        <div
+          style="font-family: 'Outfit', sans-serif; font-weight: 500; font-size: 12px; color: var(--text-secondary); margin-top: 4px; text-align: center; letter-spacing: 1.5px;">
+          key to easy</div>
       </div>
     </div>
   </div>
@@ -2508,30 +2535,64 @@
     var productCameraFacing = 'environment';
 
     // ================ CACHE SYSTEM ================
-    const APP_CACHE_KEY = 'ugym_cache_';
-    
+    const APP_CACHE_KEY = 'gym_cache_';
+    window.appData = {
+      members: [],
+      catalogue: [],
+      products: [],
+      branches: [],
+      stats: {},
+      settings: {},
+      lastFetch: null
+    };
+
     function saveToCache(key, data) {
       try {
-        const cacheData = {
-          timestamp: new Date().getTime(),
-          payload: data
-        };
+        const cacheData = { timestamp: new Date().getTime(), payload: data };
         localStorage.setItem(APP_CACHE_KEY + key, JSON.stringify(cacheData));
-      } catch (e) {
-        console.warn('Failed to save to cache:', e);
-      }
+        if (['members', 'catalogue', 'products', 'branches', 'settings', 'stats'].includes(key)) {
+          window.appData[key] = data;
+        }
+      } catch (e) { }
     }
 
     function getFromCache(key) {
       try {
+        if (window.appData[key] && (Array.isArray(window.appData[key]) ? window.appData[key].length > 0 : Object.keys(window.appData[key]).length > 0)) {
+          return window.appData[key];
+        }
         const cached = localStorage.getItem(APP_CACHE_KEY + key);
-        if (!cached) return null;
-        const parsed = JSON.parse(cached);
-        // Optional: Add TTL check here if needed
-        return parsed.payload;
-      } catch (e) {
+        if (cached) {
+          const parsed = JSON.parse(cached);
+          if (['members', 'catalogue', 'products', 'branches', 'settings', 'stats'].includes(key)) {
+            window.appData[key] = parsed.payload;
+          }
+          return parsed.payload;
+        }
         return null;
-      }
+      } catch (e) { return null; }
+    }
+
+    function fetchInitialAppData() {
+      if (!currentUser) return;
+      console.log('Fetching initial app data...');
+
+      google.script.run
+        .withSuccessHandler(function (res) {
+          if (res && res.success) {
+            const d = res.data;
+            if (d.members) saveToCache('members', d.members);
+            if (d.catalogue) saveToCache('catalogue', d.catalogue);
+            if (d.products) saveToCache('products', d.products);
+            if (d.branches) saveToCache('branches', d.branches);
+            if (d.settings) saveToCache('settings', d.settings);
+            if (d.stats) saveToCache('stats', d.stats);
+
+            window.appData.lastFetch = new Date().toISOString();
+            refreshPage();
+          }
+        })
+        .getInitialAppData(currentBranch);
     }
 
     function removeFromCache(key) {
@@ -2930,6 +2991,7 @@
 
             applyRolePermissions();
             initMultiGym();
+            fetchInitialAppData(); // Trigger full sync after login
             showView('dashboard');
             loadApprovalCount();
           } else {
@@ -3453,10 +3515,8 @@
       window.print();
       
       // Cleanup
-      setTimeout(() => {
-        printTitle.remove();
-        style.remove();
       }, 1000);
+    }
     */
 
     function renderTodayCheckins(list) {
@@ -3959,6 +4019,7 @@
 
                 resultEl.className = 'result-card success';
                 resultEl.style.display = 'block';
+                if (typeof fetchInitialAppData === 'function') fetchInitialAppData();
                 resultEl.innerHTML = `
                   <div style="display:flex;align-items:center;gap:16px;margin-bottom:16px">
                     <div style="background:#22c55e;color:white;width:56px;height:56px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:24px">
@@ -4670,9 +4731,10 @@
                 const checkinTime = new Date();
                 const daysLeft = r.newExpiry ? Math.ceil((new Date(r.newExpiry) - new Date()) / 86400000) : 0;
 
-                resultEl.className = 'result-card success';
-                resultEl.style.display = 'block';
-                resultEl.innerHTML = `
+                 resultEl.className = 'result-card success';
+                 resultEl.style.display = 'block';
+                 if (typeof fetchInitialAppData === 'function') fetchInitialAppData();
+                 resultEl.innerHTML = `
                   <div style="display:flex;align-items:center;gap:16px;margin-bottom:16px">
                     <div style="background:#22c55e;color:white;width:56px;height:56px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:24px">
                       <i class="fas fa-check"></i>
@@ -5228,9 +5290,9 @@
             hideLoading();
             if (res.success) {
               showToast('Transaksi Berhasil!', 'success');
-              
+
               // BACKGROUND REVALIDATION
-              fetchDashboardData(); 
+              fetchDashboardData();
 
               // Print receipt option
               showConfirm('Transaksi Berhasil! Kirim Struk via WhatsApp?', (waOk) => {
@@ -5246,11 +5308,11 @@
               posCart = previousCart;
               updateCartUI();
               if (previousStats) saveToCache(cacheKey, previousStats);
-              
+
               showToast('Gagal: ' + res.message, 'error');
             }
           })
-          .withFailureHandler(function(err) {
+          .withFailureHandler(function (err) {
             hideLoading();
             // ROLLBACK LOGIC
             posCart = previousCart;
@@ -5259,7 +5321,7 @@
             showToast('Error: ' + err.message, 'error');
           })
           .processPOSTransaction(payload);
-          
+
         // OPTIMISTIC UPDATE: Clear cart immediately to feel fast
         resetPOS();
       });
@@ -5862,7 +5924,7 @@
               showToast('❌ ' + res.message, 'error');
             }
           })
-          .withFailureHandler(function(err) {
+          .withFailureHandler(function (err) {
             // ROLLBACK: Show the row again on connection failure
             if (row) row.style.display = '';
             showToast('Error: ' + err.message, 'error');
@@ -5891,7 +5953,7 @@
               showToast('❌ ' + res.message, 'error');
             }
           })
-          .withFailureHandler(function(err) {
+          .withFailureHandler(function (err) {
             // ROLLBACK: Show the row again on connection failure
             if (row) row.style.display = '';
             showToast('Error: ' + err.message, 'error');
@@ -6017,7 +6079,7 @@
             loadPackageList(); // Re-fetch to ensure UI is correct
           }
         })
-        .withFailureHandler(function(err) {
+        .withFailureHandler(function (err) {
           showToast('Error: ' + err.message, 'error');
           loadPackageList();
         })
@@ -6168,7 +6230,7 @@
 
       // ROLLBACK PREPARATION
       const previousCache = __productsCache ? [...__productsCache] : null;
-      
+
       // OPTIMISTIC UPDATE: Map internal data format
       const optimisticProduct = {
         id: data['ID Produk'] || 'TEMP_' + Date.now(),
@@ -6598,7 +6660,7 @@
 
       const btn = document.getElementById('btnCheckin');
       const originalText = btn.innerHTML;
-      
+
       // OPTIMISTIC UPDATE: Change button state and show immediate feedback
       btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Memproses...';
       btn.disabled = true;
@@ -6629,7 +6691,7 @@
 
           if (res && res.success === true) {
             // BACKGROUND REVALIDATION: Update dashboard stats after successful check-in
-            fetchDashboardData(); 
+            fetchDashboardData();
 
             const checkinTime = res.checkinTime ? new Date(res.checkinTime) : new Date();
             const daysLeft = res.daysLeft || 0;
@@ -8116,11 +8178,11 @@
     }
 
     function fixPackageIds() {
-      showConfirm('Apakah Anda ingin merapikan ID Katalog Paket?\n\nID akan diperbarui berdasarkan tipe (M untuk Member, PT untuk Trainer, V untuk Visit) dan dipastikan unik.', function(ok) {
+      showConfirm('Apakah Anda ingin merapikan ID Katalog Paket?\n\nID akan diperbarui berdasarkan tipe (M untuk Member, PT untuk Trainer, V untuk Visit) dan dipastikan unik.', function (ok) {
         if (!ok) return;
         showLoading();
         google.script.run
-          .withSuccessHandler(function(res) {
+          .withSuccessHandler(function (res) {
             hideLoading();
             if (res.success) {
               showToast('✅ ' + res.message, 'success');
@@ -8696,7 +8758,7 @@
       const start = document.getElementById('exp_start_date')?.value || 'all';
       const end = document.getElementById('exp_end_date')?.value || 'all';
       const cacheKey = `expenses_list_${start}_${end}_${currentBranch}`;
-      
+
       const cached = getFromCache(cacheKey);
       if (cached) {
         console.log('Rendering expenses from cache');
@@ -8816,7 +8878,7 @@
       const optimisticExpenses = [payload, ...previousExpenses];
       saveToCache(cacheKey, optimisticExpenses);
       renderExpensesTable(optimisticExpenses);
-      
+
       // Reset form immediately
       document.getElementById('expenseForm').reset();
       document.getElementById('exp_date').valueAsDate = new Date();
@@ -10138,7 +10200,8 @@
         <div class="form-group" style="text-align:center">
           <label class="form-label">Logo Gym</label>
           <div style="margin-bottom:12px">
-            <img id="set_logo_preview" src="" style="max-height:80px; border-radius:8px; border:1px solid var(--border-color); padding:4px">
+            <img id="set_logo_preview" src=""
+              style="max-height:80px; border-radius:8px; border:1px solid var(--border-color); padding:4px">
           </div>
           <button class="btn btn-outline btn-sm" onclick="changeLogo()">
             <i class="fas fa-camera"></i> Ubah Logo
@@ -10162,7 +10225,8 @@
         </div>
         <div class="form-group">
           <label class="form-label">Informasi Rekening Bank</label>
-          <textarea id="set_bank" class="form-input" style="height:60px" placeholder="BCA 123456789 a.n. Nama"></textarea>
+          <textarea id="set_bank" class="form-input" style="height:60px"
+            placeholder="BCA 123456789 a.n. Nama"></textarea>
         </div>
         <button class="btn btn-primary btn-block" onclick="saveBrandingSettings()">
           <i class="fas fa-save"></i> Simpan Perubahan
@@ -10177,7 +10241,7 @@
       if (currentUser && (currentUser.branch === 'All' || !currentUser.branch) && currentUser.role === 'Admin') {
         document.getElementById('branchSwitcherContainer').classList.remove('hidden');
         google.script.run
-          .withSuccessHandler(function(res) {
+          .withSuccessHandler(function (res) {
             if (res.success) {
               const select = document.getElementById('branchSwitcher');
               select.innerHTML = '<option value="All">Semua Cabang</option>';
@@ -10215,7 +10279,7 @@
       }
 
       google.script.run
-        .withSuccessHandler(function(res) {
+        .withSuccessHandler(function (res) {
           if (res.success) {
             saveToCache(cacheKey, res.settings);
             applyBrandingUI(res.settings);
@@ -10232,7 +10296,7 @@
       if (s.name) {
         document.title = s.name + " Management";
         document.querySelectorAll('.gym-name-brand, .gym-name, h2, h1').forEach(el => {
-          if (['AMPEL GYM', 'UGYM', 'Gym', 'UGYM Management'].includes(el.textContent.trim()) || el.classList.contains('gym-name-brand')) {
+          if (['GYM', 'Gym Management'].includes(el.textContent.trim()) || el.classList.contains('gym-name-brand')) {
             el.textContent = s.name;
           }
         });
@@ -10256,7 +10320,7 @@
       document.getElementById('brandingModal').style.display = 'flex';
       showLoading();
       google.script.run
-        .withSuccessHandler(function(res) {
+        .withSuccessHandler(function (res) {
           hideLoading();
           if (res.success) {
             const s = res.settings;
@@ -10294,13 +10358,13 @@
 
       const cacheKey = 'branding_settings';
       const previousSettings = getFromCache(cacheKey);
-      
+
       applyBrandingUI(settings);
       closeBrandingModal();
       showToast('Menyimpan branding...', 'info');
 
       google.script.run
-        .withSuccessHandler(function(res) {
+        .withSuccessHandler(function (res) {
           if (res.success) {
             showToast('Pengaturan branding berhasil disimpan!', 'success');
             saveToCache(cacheKey, settings);
@@ -10310,7 +10374,7 @@
             showToast('Gagal menyimpan: ' + res.message, 'error');
           }
         })
-        .withFailureHandler(function(err) {
+        .withFailureHandler(function (err) {
           if (previousSettings) applyBrandingUI(previousSettings);
           showToast('Error: ' + err.message, 'error');
         })
