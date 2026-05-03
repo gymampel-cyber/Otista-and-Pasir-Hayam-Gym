@@ -10285,17 +10285,8 @@
         fetchInitialAppData();
       }
 
-      if (document.querySelector('.menu-item[data-view="dashboard"]')?.classList.contains('active')) {
-        loadDashboard(null, null, currentBranch);
-      } else if (document.querySelector('.menu-item[data-view="members"]')?.classList.contains('active')) {
-        loadMemberList();
-      } else if (document.querySelector('.menu-item[data-view="transactions"]')?.classList.contains('active')) {
-        loadTransactionList();
-      } else if (document.querySelector('.menu-item[data-view="expenses"]')?.classList.contains('active')) {
-        loadExpenseList();
-      } else if (document.querySelector('.menu-item[data-view="approvals"]')?.classList.contains('active')) {
-        loadApprovals();
-      }
+      // Automatically refresh the current active view (Gallery, Members, etc.)
+      refreshPage();
     }
 
     function loadAndApplyBranding() {
