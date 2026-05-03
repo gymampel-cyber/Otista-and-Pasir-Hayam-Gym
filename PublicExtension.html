@@ -234,12 +234,25 @@
       color: #475569;
     }
     .bank-info {
-      background: #f1f5f9;
-      border-radius: 10px;
-      padding: 15px;
+      background: #fdf8e7;
+      border-radius: 12px;
+      padding: 20px;
       margin: 20px 0;
       font-size: 14px;
-      border-left: 4px solid var(--primary);
+      border: 1px solid rgba(212,175,55,0.3);
+      text-align: center;
+    }
+    .bank-account {
+      font-size: 20px;
+      font-weight: 800;
+      color: var(--primary);
+      letter-spacing: 1px;
+      margin: 10px 0;
+      padding: 10px;
+      background: white;
+      border-radius: 8px;
+      display: inline-block;
+      border: 1px dashed var(--primary);
     }
     .total-section {
       background: linear-gradient(135deg, #000000, #1a1a1a);
@@ -341,7 +354,7 @@
 
     <div id="extensionContent" style="display:none">
       <div class="header">
-        <img id="gymLogoHeader" src="https://i.imgur.com/PAB0dhW.png" style="width:80px;height:80px;border-radius:50%;margin-bottom:16px;border:3px solid white;box-shadow: 0 10px 20px rgba(0,0,0,0.1);object-fit:cover">
+        <img id="gymLogoHeader" src="https://i.imgur.com/TPoUeRJ.jpeg" style="width:80px;height:80px;border-radius:50%;margin-bottom:16px;border:3px solid white;box-shadow: 0 10px 20px rgba(0,0,0,0.1);object-fit:cover">
         <h1 id="gymNameHeader">Perpanjangan Member</h1>
         <p id="gymMottoHeader">Form perpanjangan keanggotaan online</p>
       </div>
@@ -351,7 +364,7 @@
 
       <div id="memberInfoSection" style="display:none">
         <div class="member-info">
-          <img id="memberPhotoDisplay" class="member-photo" src="" onerror="this.src='https://via.placeholder.com/100?text=No+Photo'">
+          <img id="memberPhotoDisplay" class="member-photo" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='100' height='100' viewBox='0 0 24 24' fill='none' stroke='%23cbd5e1' stroke-width='1.5'%3E%3Cpath d='M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2'/%3E%3Ccircle cx='12' cy='7' r='4'/%3E%3C/svg%3E">
           <div class="member-details-grid">
             <h4 style="margin-bottom:12px;color:#000"><i class="fas fa-user-circle" style="color:var(--primary)"></i> Informasi Member</h4>
             <div class="info-row">
@@ -395,11 +408,12 @@
       </div>
 
       <div id="extensionForm" style="display:none; margin-top:24px">
-        <div class="bank-info">
-          <i class="fas fa-university" style="color:var(--primary);margin-right:8px"></i>
-          <strong>Transfer Pembayaran ke:</strong><br>
-      BCA 183-118-0001 a.n. MUHAMMAD R MASCATY<br>
-          <small style="color:#64748b">*Upload bukti transfer setelah pembayaran</small>
+        <div class="bank-info" id="bankInfoContent" style="display:none">
+          <div style="font-weight: 600; color: #334155; margin-bottom: 5px;">Silakan transfer ke rekening berikut:</div>
+          <div class="bank-account" id="bankAccountNumber" style="margin: 15px 0;">Memuat informasi bank...</div>
+          <p style="color:#64748b;font-size:12px;margin-top:8px">
+            <i class="fas fa-info-circle"></i> Upload bukti transfer setelah pembayaran sesuai total.
+          </p>
         </div>
 
         <div class="form-group">
@@ -466,15 +480,34 @@
     var currentBranch = null;
     var branchSettings = null;
 
+    // ================ CACHE SYSTEM ================
+    function saveToCache(key, data) {
+      try {
+        const cacheObj = {
+          data: data,
+          timestamp: Date.now()
+        };
+        localStorage.setItem('gym_pub_' + key, JSON.stringify(cacheObj));
+      } catch (e) { console.error('Cache save error', e); }
+    }
+
+    function getFromCache(key, maxAge = 3600000) { // Default 1 jam
+      try {
+        const cached = localStorage.getItem('gym_pub_' + key);
+        if (!cached) return null;
+        const cacheObj = JSON.parse(cached);
+        if (Date.now() - cacheObj.timestamp > maxAge) return null;
+        return cacheObj.data;
+      } catch (e) { return null; }
+    }
+
     // ================ NAVIGATION ================
     function goToRegistration(branch) {
       var currentUrl = window.location.href;
       var url;
       if (currentUrl.includes('script.google.com')) {
-        // If we are currently in GAS, stay in GAS using page= routing
         url = SCRIPT_URL + '?page=register&branch=' + branch;
       } else {
-        // If we are elsewhere (GitHub), stay elsewhere
         url = 'PublicRegistration.html?branch=' + branch;
       }
       try { window.top.location.href = url; } catch(e) { window.location.href = url; }
@@ -497,20 +530,29 @@
       document.getElementById('landingView').style.display = 'none';
       document.getElementById('extensionContent').style.display = 'block';
       
-      showLoading();
+      // SWR for Branch Settings
+      const cacheKey = 'branch_settings_' + id;
+      const cached = getFromCache(cacheKey);
+      if (cached) {
+        branchSettings = cached;
+        applyBranchBranding();
+        loadPackages();
+      } else {
+        showLoading();
+      }
+
       google.script.run
         .withSuccessHandler(function(res) {
           hideLoading();
           if (res.success) {
             branchSettings = res.settings;
+            saveToCache(cacheKey, res.settings);
             applyBranchBranding();
             loadPackages();
-            if (memberId) {
+            if (memberId && !currentMember) {
               document.getElementById('memberIdInput').value = memberId;
               loadMemberInfo();
             }
-          } else {
-            alert('Gagal memuat pengaturan cabang: ' + res.message);
           }
         })
         .getSettings(id);
@@ -518,7 +560,7 @@
 
     function applyBranchBranding() {
       if (!branchSettings) return;
-      document.getElementById('gymLogoHeader').src = branchSettings.logo || 'https://i.imgur.com/PAB0dhW.png';
+      document.getElementById('gymLogoHeader').src = branchSettings.logo || 'https://i.imgur.com/TPoUeRJ.jpeg';
       document.getElementById('gymNameHeader').textContent = branchSettings.name || 'Perpanjangan Member';
       document.getElementById('gymMottoHeader').textContent = "Pusat Perpanjangan Member Online - " + (branchSettings.name || 'Gym');
       document.title = "Perpanjangan Member - " + branchSettings.name;
@@ -531,27 +573,39 @@
         document.getElementById('copyrightName').textContent = branchSettings.name || 'Gym';
       }
 
-      const bankEl = document.getElementById('extensionForm').querySelector('.bank-info');
-      if (bankEl) {
-        bankEl.innerHTML = `
-          <i class="fas fa-university" style="color:var(--primary);margin-right:8px"></i>
-          <strong>Transfer Pembayaran ke:</strong><br>
-          <div style="font-size:18px;font-weight:800;color:var(--primary);margin:8px 0">${branchSettings.bankInfo || '-'}</div>
-          <small style="color:#64748b">* Upload bukti transfer setelah pembayaran</small>
-        `;
+      const bankEl = document.getElementById('bankInfoContent');
+      const bankNumEl = document.getElementById('bankAccountNumber');
+      if (bankEl && bankNumEl) {
+        bankNumEl.textContent = branchSettings.bank || '-';
+        bankEl.style.display = 'block';
       }
     }
 
     function loadPackages() {
+      const cacheKey = 'packages_list';
+      const cached = getFromCache(cacheKey);
+      if (cached) {
+        packages = cached.filter(p => {
+          const type = p.type ? p.type.toLowerCase() : '';
+          return type.includes('regular') || type.includes('member');
+        });
+        renderPackages();
+      }
+
       google.script.run
         .withSuccessHandler(function(res) {
           if (res && res.success) {
-            packages = res.packages.filter(p => p.type && p.type.toLowerCase().includes('regular'));
+            saveToCache(cacheKey, res.packages);
+            packages = res.packages.filter(p => {
+              const type = p.type ? p.type.toLowerCase() : '';
+              return type.includes('regular') || type.includes('member');
+            });
             renderPackages();
           }
         })
         .getPackages();
     }
+
 
     function loadMemberInfo() {
       const memberId = document.getElementById('memberIdInput').value.trim();
