@@ -3566,7 +3566,7 @@
           hideLoading();
           showToast('Gagal memuat galeri: ' + err.message, 'error');
         })
-        .getAllMembers();
+        .getAllMembers(currentBranch);
     }
 
     function renderGallery(members) {
@@ -4188,7 +4188,8 @@
               packageId: pkg.id,
               paymentMethod: pay,
               notes: notes,
-              memberPhoto: adminMemberPhotoBase64 || null
+              memberPhoto: adminMemberPhotoBase64 || null,
+              gym: currentBranch
             }, currentUser?.name || 'Admin');
         }
       );
@@ -4854,7 +4855,8 @@
             .processTransaction({
               memberId: selectedMember.memberId,
               packageId: pkgEl.value,
-              paymentMethod: payEl.value
+              paymentMethod: payEl.value,
+              gym: currentBranch
             }, currentUser?.name || 'Admin');
         }
       );
@@ -8340,7 +8342,7 @@
           const el = document.getElementById('adminDataView');
           if (el) el.innerHTML = '<p class="text-muted">Error: ' + err.message + '</p>';
         })
-        .getAllMembers();
+        .getAllMembers(currentBranch);
     }
 
     function loadTransactionList() {
@@ -8399,7 +8401,7 @@
           const el = document.getElementById('adminDataView');
           if (el) el.innerHTML = '<p class="text-muted">Error: ' + err.message + '</p>';
         })
-        .getTransactionHistory();
+        .getTransactionHistory(currentBranch);
     }
 
     function triggerShowSysInfo() {
@@ -8784,7 +8786,7 @@
         .withFailureHandler(function (err) {
           if (!cached) showToast('Error: ' + err.message, 'error');
         })
-        .getExpenses(start === 'all' ? '' : start, end === 'all' ? '' : end);
+        .getExpenses(start === 'all' ? '' : start, end === 'all' ? '' : end, currentBranch);
     }
 
 
@@ -8884,6 +8886,7 @@
       document.getElementById('exp_date').valueAsDate = new Date();
       showToast('Sedang menyimpan...', 'info');
 
+      payload.gym = currentBranch;
       google.script.run
         .withSuccessHandler(function (res) {
           if (res && res.success) {
