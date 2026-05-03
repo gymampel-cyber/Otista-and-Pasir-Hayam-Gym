@@ -7923,7 +7923,7 @@
         .withFailureHandler(function (err) {
           document.getElementById('approvalsContainer').innerHTML = '<p class="text-muted">Error: ' + err.message + '</p>';
         })
-        .getPendingApprovals();
+        .getPendingApprovals(currentBranch);
     }
 
     function renderApprovals(res) {
