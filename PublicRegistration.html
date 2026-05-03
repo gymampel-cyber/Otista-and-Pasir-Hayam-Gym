@@ -816,8 +816,8 @@
               </label>
               <select id="gymLocation" class="form-input">
                 <option value="" disabled selected>Pilih Lokasi...</option>
-                <option value="Otista">Otista Gym</option>
-                <option value="Pasir Hayam">Pasir Hayam Gym</option>
+                <option value="OTISTA">Otista Gym</option>
+                <option value="PASIR_HAYAM">Pasir Hayam Gym</option>
               </select>
             </div>
             <div class="form-group">
@@ -1494,8 +1494,7 @@
         // Auto-select gym location dropdown
         const gymLoc = document.getElementById('gymLocation');
         if (gymLoc) {
-          if (id === 'OTISTA') gymLoc.value = 'Otista';
-          else if (id === 'PASIR_HAYAM') gymLoc.value = 'Pasir Hayam';
+          gymLoc.value = id;
           // Hide branch selector if already selected via URL or Landing
           gymLoc.parentElement.style.display = 'none';
         }
