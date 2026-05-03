@@ -7915,7 +7915,7 @@
           badge.style.display = count > 0 ? 'inline-block' : 'none';
         })
         .withFailureHandler(function () { })
-        .getPendingApprovalCount();
+        .getPendingApprovalCount(currentBranch);
     }
 
     function loadApprovals() {
