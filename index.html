@@ -2546,10 +2546,19 @@
       lastFetch: null
     };
 
+    function getBranchKey(key) {
+      const branchSpecific = ['members', 'stats', 'catalogue', 'products', 'transactions', 'expenses', 'approvals', 'branding_settings', 'packages_list', 'today_checkins', 'initial_data'];
+      if (branchSpecific.includes(key)) {
+        return (currentBranch || 'All') + '_' + key;
+      }
+      return key;
+    }
+
     function saveToCache(key, data) {
       try {
+        const bKey = getBranchKey(key);
         const cacheData = { timestamp: new Date().getTime(), payload: data };
-        localStorage.setItem(APP_CACHE_KEY + key, JSON.stringify(cacheData));
+        localStorage.setItem(APP_CACHE_KEY + bKey, JSON.stringify(cacheData));
         if (['members', 'catalogue', 'products', 'branches', 'settings', 'stats'].includes(key)) {
           window.appData[key] = data;
         }
@@ -2561,7 +2570,8 @@
         if (window.appData[key] && (Array.isArray(window.appData[key]) ? window.appData[key].length > 0 : Object.keys(window.appData[key]).length > 0)) {
           return window.appData[key];
         }
-        const cached = localStorage.getItem(APP_CACHE_KEY + key);
+        const bKey = getBranchKey(key);
+        const cached = localStorage.getItem(APP_CACHE_KEY + bKey);
         if (cached) {
           const parsed = JSON.parse(cached);
           if (['members', 'catalogue', 'products', 'branches', 'settings', 'stats'].includes(key)) {
