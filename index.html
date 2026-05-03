@@ -2500,6 +2500,38 @@
     var productWebcamStream = null;
     var productCameraFacing = 'environment';
 
+    // ================ CACHE SYSTEM ================
+    const APP_CACHE_KEY = 'ugym_cache_';
+    
+    function saveToCache(key, data) {
+      try {
+        const cacheData = {
+          timestamp: new Date().getTime(),
+          payload: data
+        };
+        localStorage.setItem(APP_CACHE_KEY + key, JSON.stringify(cacheData));
+      } catch (e) {
+        console.warn('Failed to save to cache:', e);
+      }
+    }
+
+    function getFromCache(key) {
+      try {
+        const cached = localStorage.getItem(APP_CACHE_KEY + key);
+        if (!cached) return null;
+        const parsed = JSON.parse(cached);
+        // Optional: Add TTL check here if needed
+        return parsed.payload;
+      } catch (e) {
+        return null;
+      }
+    }
+
+    function removeFromCache(key) {
+      localStorage.removeItem(APP_CACHE_KEY + key);
+    }
+
+
     // ================ UTILS ================
     function showLoading() { document.getElementById('loadingOverlay').style.display = 'flex'; }
     function hideLoading() { document.getElementById('loadingOverlay').style.display = 'none'; }
@@ -3284,95 +3316,111 @@
     }
 
     function fetchDashboardData(start, end) {
+      const cacheKey = `dashboard_stats_${start || 'all'}_${end || 'all'}_${currentBranch}`;
+      const cached = getFromCache(cacheKey);
+
+      if (cached) {
+        console.log('Rendering dashboard from cache:', cacheKey);
+        renderDashboardUI(cached);
+      }
+
       google.script.run
         .withSuccessHandler(function (res) {
-          console.log('Dashboard data received:', res);
+          console.log('Dashboard data received from background:', res);
 
           if (res && res.success) {
             const s = res.stats;
-
-            // Period Info
-            const periodEl = document.getElementById('dashboardPeriod');
-            const periodVal = document.getElementById('periodValue');
-            const titleEl = document.getElementById('checkinTableTitle');
-            if (periodEl && periodVal) {
-              if (s.isFiltered) {
-                periodEl.style.display = 'flex';
-                periodVal.textContent = s.period;
-                if (titleEl) titleEl.innerHTML = `<i class="fas fa-history" style="color:#64748b"></i> Aktivitas Check-In (${s.period})`;
-              } else {
-                periodEl.style.display = 'none';
-                if (titleEl) titleEl.innerHTML = `<i class="fas fa-history" style="color:#64748b"></i> Aktivitas Check-In Terbaru`;
-              }
-            }
-
-            // Fitness Stats
-            if (document.getElementById('statTotal')) document.getElementById('statTotal').textContent = s.total || 0;
-            if (document.getElementById('statAktif')) document.getElementById('statAktif').textContent = s.active || 0;
-            if (document.getElementById('statGallery')) document.getElementById('statGallery').textContent = s.galleryCount || 0;
-            if (document.getElementById('statBirthday')) document.getElementById('statBirthday').textContent = s.birthdayCount || 0;
-            if (document.getElementById('statExpiring')) document.getElementById('statExpiring').textContent = s.expiring || 0;
-            if (document.getElementById('statExpired')) document.getElementById('statExpired').textContent = s.expired || 0;
-            if (document.getElementById('statCheckin')) document.getElementById('statCheckin').textContent = s.checkins || 0;
-            if (document.getElementById('statPending')) document.getElementById('statPending').textContent = s.pendingApprovals || 0;
-            if (document.getElementById('statFitnessRevenue')) document.getElementById('statFitnessRevenue').textContent = formatCurrency(s.revenue || 0);
-
-            // POS Stats
-            if (document.getElementById('statPOSRevenue')) document.getElementById('statPOSRevenue').textContent = formatCurrency(s.posRevenue || 0);
-            if (document.getElementById('statPOSToday')) document.getElementById('statPOSToday').textContent = s.posCount || 0;
-            if (document.getElementById('statExpenses')) document.getElementById('statExpenses').textContent = formatCurrency(s.expenses || 0);
-
-            if (document.getElementById('statFitnessNetProfit')) document.getElementById('statFitnessNetProfit').textContent = formatCurrency(s.fitnessNetProfit || 0);
-            if (document.getElementById('statPOSNetProfit')) document.getElementById('statPOSNetProfit').textContent = formatCurrency(s.posNetProfit || 0);
-            if (document.getElementById('statNetProfit')) document.getElementById('statNetProfit').textContent = formatCurrency(s.netProfit || 0);
-
-            // Hide financial stats for Staff & Kasir
-            if (currentUser && (currentUser.role === 'Staff' || currentUser.role === 'Kasir')) {
-              const financialStats = ['statFitnessRevenue', 'statPOSRevenue', 'statExpenses', 'statNetProfit', 'statFitnessNetProfit', 'statPOSNetProfit'];
-              financialStats.forEach(id => {
-                const el = document.getElementById(id);
-                if (el) el.textContent = '***';
-              });
-            }
-
-            // Low Stock Widget
-            const lsEl = document.getElementById('lowStockWidget');
-            if (lsEl) {
-              if (s.lowStock && s.lowStock.length > 0) {
-                lsEl.innerHTML = `
-                  <div style="display:flex; flex-direction:column; gap:8px">
-                    ${s.lowStock.map(item => {
-                  const isOutOfStock = item.stock <= 0;
-                  return `
-                        <div style="display:flex; justify-content:space-between; align-items:center; padding:10px; background:${isOutOfStock ? '#fef2f2' : '#fffbeb'}; border-radius:10px; border-left:4px solid ${isOutOfStock ? '#ef4444' : '#f59e0b'}">
-                          <div style="display:flex; flex-direction:column">
-                            <span style="font-size:13px; font-weight:700; color:${isOutOfStock ? '#991b1b' : '#92400e'}">${escapeHtml(item.name)}</span>
-                            <span style="font-size:11px; color:#64748b">ID: ${item.id}</span>
-                          </div>
-                          <span class="badge ${isOutOfStock ? 'badge-danger' : 'badge-warning'}" style="font-size:11px">
-                            ${isOutOfStock ? 'HABIS' : 'Sisa: ' + item.stock} ${item.unit}
-                          </span>
-                        </div>
-                      `;
-                }).join('')}
-                  </div>
-                `;
-              } else {
-                lsEl.innerHTML = '<div style="text-align:center;padding:20px;color:#10b981;background:#f0fdf4;border-radius:10px"><i class="fas fa-check-circle"></i> Stok aman & tersedia</div>';
-              }
-            }
-
-            renderTodayCheckins(s.todayCheckinList || []);
+            saveToCache(cacheKey, s);
+            renderDashboardUI(s);
           } else {
             console.error('Dashboard data error:', res?.message);
-            showToast('Gagal memuat data dashboard', 'error');
+            if (!cached) showToast('Gagal memuat data dashboard', 'error');
           }
         })
         .withFailureHandler(function (err) {
           console.error('Dashboard fetch error:', err);
-          showToast('Gagal memuat data: ' + err.message, 'error');
+          if (!cached) showToast('Gagal memuat data: ' + err.message, 'error');
         })
         .getDashboardStats(start, end);
+    }
+
+    function renderDashboardUI(s) {
+      if (!s) return;
+
+      // Period Info
+      const periodEl = document.getElementById('dashboardPeriod');
+      const periodVal = document.getElementById('periodValue');
+      const titleEl = document.getElementById('checkinTableTitle');
+      if (periodEl && periodVal) {
+        if (s.isFiltered) {
+          periodEl.style.display = 'flex';
+          periodVal.textContent = s.period;
+          if (titleEl) titleEl.innerHTML = `<i class="fas fa-history" style="color:#64748b"></i> Aktivitas Check-In (${s.period})`;
+        } else {
+          periodEl.style.display = 'none';
+          if (titleEl) titleEl.innerHTML = `<i class="fas fa-history" style="color:#64748b"></i> Aktivitas Check-In Terbaru`;
+        }
+      }
+
+      // Fitness Stats
+      if (document.getElementById('statTotal')) document.getElementById('statTotal').textContent = s.total || 0;
+      if (document.getElementById('statAktif')) document.getElementById('statAktif').textContent = s.active || 0;
+      if (document.getElementById('statGallery')) document.getElementById('statGallery').textContent = s.galleryCount || 0;
+      if (document.getElementById('statBirthday')) document.getElementById('statBirthday').textContent = s.birthdayCount || 0;
+      if (document.getElementById('statExpiring')) document.getElementById('statExpiring').textContent = s.expiring || 0;
+      if (document.getElementById('statExpired')) document.getElementById('statExpired').textContent = s.expired || 0;
+      if (document.getElementById('statCheckin')) document.getElementById('statCheckin').textContent = s.checkins || 0;
+      if (document.getElementById('statPending')) document.getElementById('statPending').textContent = s.pendingApprovals || 0;
+      if (document.getElementById('statFitnessRevenue')) document.getElementById('statFitnessRevenue').textContent = formatCurrency(s.revenue || 0);
+
+      // POS Stats
+      if (document.getElementById('statPOSRevenue')) document.getElementById('statPOSRevenue').textContent = formatCurrency(s.posRevenue || 0);
+      if (document.getElementById('statPOSToday')) document.getElementById('statPOSToday').textContent = s.posCount || 0;
+      if (document.getElementById('statExpenses')) document.getElementById('statExpenses').textContent = formatCurrency(s.expenses || 0);
+
+      if (document.getElementById('statFitnessNetProfit')) document.getElementById('statFitnessNetProfit').textContent = formatCurrency(s.fitnessNetProfit || 0);
+      if (document.getElementById('statPOSNetProfit')) document.getElementById('statPOSNetProfit').textContent = formatCurrency(s.posNetProfit || 0);
+      if (document.getElementById('statNetProfit')) document.getElementById('statNetProfit').textContent = formatCurrency(s.netProfit || 0);
+
+      // Hide financial stats for Staff & Kasir
+      if (currentUser && (currentUser.role === 'Staff' || currentUser.role === 'Kasir')) {
+        const financialStats = ['statFitnessRevenue', 'statPOSRevenue', 'statExpenses', 'statNetProfit', 'statFitnessNetProfit', 'statPOSNetProfit'];
+        financialStats.forEach(id => {
+          const el = document.getElementById(id);
+          if (el) el.textContent = '***';
+        });
+      }
+
+      // Low Stock Widget
+      const lsEl = document.getElementById('lowStockWidget');
+      if (lsEl) {
+        if (s.lowStock && s.lowStock.length > 0) {
+          lsEl.innerHTML = `
+            <div style="display:flex; flex-direction:column; gap:8px">
+              ${s.lowStock.map(item => {
+            const isOutOfStock = item.stock <= 0;
+            return `
+                  <div style="display:flex; justify-content:space-between; align-items:center; padding:10px; background:${isOutOfStock ? '#fef2f2' : '#fffbeb'}; border-radius:10px; border-left:4px solid ${isOutOfStock ? '#ef4444' : '#f59e0b'}">
+                    <div style="display:flex; flex-direction:column">
+                      <span style="font-size:13px; font-weight:700; color:${isOutOfStock ? '#991b1b' : '#92400e'}">${escapeHtml(item.name)}</span>
+                      <span style="font-size:11px; color:#64748b">ID: ${item.id}</span>
+                    </div>
+                    <span class="badge ${isOutOfStock ? 'badge-danger' : 'badge-warning'}" style="font-size:11px">
+                      ${isOutOfStock ? 'HABIS' : 'Sisa: ' + item.stock} ${item.unit}
+                    </span>
+                  </div>
+                `;
+          }).join('')}
+            </div>
+          `;
+        } else {
+          lsEl.innerHTML = '<div style="text-align:center;padding:20px;color:#10b981;background:#f0fdf4;border-radius:10px"><i class="fas fa-check-circle"></i> Stok aman & tersedia</div>';
+        }
+      }
+
+      renderTodayCheckins(s.todayCheckinList || []);
+    }
+
     }
 
     // printDashboard removed
@@ -5016,15 +5064,34 @@
     }
 
     function loadPOSProducts(force = false) {
-      if (!force && posProducts && posProducts.length > 0) {
+      const cacheKey = `pos_products_${currentBranch}`;
+      if (!force) {
+        const cached = getFromCache(cacheKey);
+        if (cached && cached.length > 0) {
+          posProducts = cached;
+          const cats = ['All'];
+          posProducts.forEach(p => {
+            if (p.category && !cats.includes(p.category)) cats.push(p.category);
+          });
+          posCategories = cats;
+          renderPOSCategories();
+          renderPOSProducts();
+          console.log('POS products loaded from cache');
+        }
+      }
+
+      if (!force && posProducts && posProducts.length > 0 && !getFromCache(cacheKey)) {
+        // Fallback for in-memory only but no cache
         renderPOSCategories();
         renderPOSProducts();
         return;
       }
+
       google.script.run
         .withSuccessHandler(function (res) {
           if (res && res.success) {
             posProducts = res.products;
+            saveToCache(cacheKey, posProducts);
 
             // Extract categories
             const cats = ['All'];
@@ -5041,6 +5108,7 @@
         })
         .getProducts();
     }
+
 
     function renderPOSCategories() {
       const el = document.getElementById('posCategories');
@@ -5242,11 +5310,19 @@
           notes: ''
         };
 
+        // ROLLBACK PREPARATION
+        const previousCart = [...posCart];
+        const cacheKey = `dashboard_stats_all_all_${currentBranch}`;
+        const previousStats = getFromCache(cacheKey);
+
         google.script.run
           .withSuccessHandler(function (res) {
             hideLoading();
             if (res.success) {
               showToast('Transaksi Berhasil!', 'success');
+              
+              // BACKGROUND REVALIDATION
+              fetchDashboardData(); 
 
               // Print receipt option
               showConfirm('Transaksi Berhasil! Kirim Struk via WhatsApp?', (waOk) => {
@@ -5258,12 +5334,29 @@
               });
 
             } else {
+              // ROLLBACK LOGIC
+              posCart = previousCart;
+              updateCartUI();
+              if (previousStats) saveToCache(cacheKey, previousStats);
+              
               showToast('Gagal: ' + res.message, 'error');
             }
           })
+          .withFailureHandler(function(err) {
+            hideLoading();
+            // ROLLBACK LOGIC
+            posCart = previousCart;
+            updateCartUI();
+            if (previousStats) saveToCache(cacheKey, previousStats);
+            showToast('Error: ' + err.message, 'error');
+          })
           .processPOSTransaction(payload);
+          
+        // OPTIMISTIC UPDATE: Clear cart immediately to feel fast
+        resetPOS();
       });
     }
+
     function resetPOS() {
       posCart = [];
       posSelectedMember = null;
@@ -5415,7 +5508,7 @@
                   </thead>
                   <tbody>
                     ${list.map(p => `
-                      <tr>
+                      <tr id="pkg_row_${p['ID Paket']}">
                         <td><code>${p['ID Paket']}</code></td>
                         <td><b>${escapeHtml(p['Nama Paket'])}</b></td>
                         <td><span class="badge badge-info">${p['Tipe Paket']}</span></td>
@@ -5505,7 +5598,7 @@
             </thead>
             <tbody>
               ${list.map(p => `
-                <tr>
+                <tr id="prod_row_${p.id}">
                   <td><code>${p.id}</code></td>
                   <td><small>${p.barcode || '-'}</small></td>
                   <td><b>${escapeHtml(p.name)}</b></td>
@@ -5844,16 +5937,27 @@
     function confirmDeletePackage(id, name) {
       showConfirm(`Apakah Anda yakin ingin menghapus paket "${name}"?\n\nTindakan ini tidak dapat dibatalkan.`, function (ok) {
         if (!ok) return;
-        showLoading();
+
+        // OPTIMISTIC UPDATE: Hide the row immediately
+        const row = document.getElementById('pkg_row_' + id);
+        if (row) row.style.display = 'none';
+
         google.script.run
           .withSuccessHandler(function (res) {
-            hideLoading();
             if (res.success) {
               showToast('✅ ' + res.message, 'success');
               loadPackageList();
+              fetchDashboardData(); // Background revalidation
             } else {
+              // ROLLBACK: Show the row again on failure
+              if (row) row.style.display = '';
               showToast('❌ ' + res.message, 'error');
             }
+          })
+          .withFailureHandler(function(err) {
+            // ROLLBACK: Show the row again on connection failure
+            if (row) row.style.display = '';
+            showToast('Error: ' + err.message, 'error');
           })
           .deletePackage(id);
       });
@@ -5862,16 +5966,27 @@
     function confirmDeleteProduct(id, name) {
       showConfirm(`Apakah Anda yakin ingin menghapus produk "${name}"?\n\nTindakan ini tidak dapat dibatalkan.`, function (ok) {
         if (!ok) return;
-        showLoading();
+
+        // OPTIMISTIC UPDATE: Hide the row immediately
+        const row = document.getElementById('prod_row_' + id);
+        if (row) row.style.display = 'none';
+
         google.script.run
           .withSuccessHandler(function (res) {
-            hideLoading();
             if (res.success) {
               showToast('✅ ' + res.message, 'success');
               loadProductList(true);
+              fetchDashboardData(); // Background revalidation
             } else {
+              // ROLLBACK: Show the row again on failure
+              if (row) row.style.display = '';
               showToast('❌ ' + res.message, 'error');
             }
+          })
+          .withFailureHandler(function(err) {
+            // ROLLBACK: Show the row again on connection failure
+            if (row) row.style.display = '';
+            showToast('Error: ' + err.message, 'error');
           })
           .deleteProduct(id);
       });
@@ -5979,18 +6094,28 @@
 
       if (!data['Nama Paket']) { showToast('Nama paket wajib diisi', 'warning'); return; }
 
-      showLoading();
+      // Close modal immediately
+      closePackageModal();
+      showToast('Menyimpan paket...', 'info');
+
       google.script.run
         .withSuccessHandler(function (res) {
-          hideLoading();
           if (res.success) {
             showToast('✅ Paket disimpan', 'success');
-            closePackageModal();
             loadPackageList();
+            fetchDashboardData();
+          } else {
+            showToast('❌ Gagal: ' + res.message, 'error');
+            loadPackageList(); // Re-fetch to ensure UI is correct
           }
+        })
+        .withFailureHandler(function(err) {
+          showToast('Error: ' + err.message, 'error');
+          loadPackageList();
         })
         .savePackage(data);
     }
+
 
     let productModalScanner = null;
     function openProductModal(id) {
@@ -6133,24 +6258,62 @@
 
       if (!data['Nama Produk']) { showToast('Nama produk wajib diisi', 'warning'); return; }
 
-      showLoading();
+      // ROLLBACK PREPARATION
+      const previousCache = __productsCache ? [...__productsCache] : null;
+      
+      // OPTIMISTIC UPDATE: Map internal data format
+      const optimisticProduct = {
+        id: data['ID Produk'] || 'TEMP_' + Date.now(),
+        name: data['Nama Produk'],
+        barcode: data['Barcode'],
+        category: data['Kategori'],
+        buyPrice: data['Harga Beli'],
+        price: data['Harga Jual'],
+        stock: data['Stok'],
+        unit: data['Satuan'],
+        photoUrl: data['Foto URL'],
+        status: data['Status']
+      };
+
+      if (!__productsCache) __productsCache = [];
+      const index = __productsCache.findIndex(p => p.id === optimisticProduct.id);
+      if (index >= 0) {
+        __productsCache[index] = optimisticProduct;
+      } else {
+        __productsCache.unshift(optimisticProduct);
+      }
+
+      // Render immediately and close modal
+      _renderProductTable(__productsCache);
+      closeProductModal();
+      showToast('Menyimpan produk...', 'info');
+
       google.script.run
         .withSuccessHandler(function (res) {
-          hideLoading();
           if (res.success) {
             showToast('✅ Produk disimpan', 'success');
-            closeProductModal();
-            loadProductList(true); // Force reload to get updated data
+            loadProductList(true); // Re-sync with server for real IDs/URLs
+            fetchDashboardData();
           } else {
-            showToast('❌ ' + res.message, 'error');
+            // ROLLBACK
+            if (previousCache) {
+              __productsCache = previousCache;
+              _renderProductTable(__productsCache);
+            }
+            showToast('❌ Gagal: ' + res.message, 'error');
           }
         })
         .withFailureHandler(function (err) {
-          hideLoading();
+          // ROLLBACK
+          if (previousCache) {
+            __productsCache = previousCache;
+            _renderProductTable(__productsCache);
+          }
           showToast('Error: ' + err.message, 'error');
         })
         .saveProduct(data);
     }
+
 
     // ================ PRODUCT PHOTO UTILS ================
     function openProductWebcam() {
@@ -6527,9 +6690,15 @@
 
       const btn = document.getElementById('btnCheckin');
       const originalText = btn.innerHTML;
+      
+      // OPTIMISTIC UPDATE: Change button state and show immediate feedback
       btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Memproses...';
       btn.disabled = true;
       showLoading();
+
+      // ROLLBACK PREPARATION: Store current dashboard state from cache
+      const cacheKey = `dashboard_stats_all_all_${currentBranch}`;
+      const previousStats = getFromCache(cacheKey);
 
       const timeoutId = setTimeout(() => {
         hideLoading();
@@ -6551,6 +6720,9 @@
           if (!el) return;
 
           if (res && res.success === true) {
+            // BACKGROUND REVALIDATION: Update dashboard stats after successful check-in
+            fetchDashboardData(); 
+
             const checkinTime = res.checkinTime ? new Date(res.checkinTime) : new Date();
             const daysLeft = res.daysLeft || 0;
             const memberName = res.memberName || mid;
@@ -6598,16 +6770,11 @@
                     </div>
                     <div>
                       <span style="color:#64748b">Sisa Hari</span><br>
-                      <b style="color:${daysLeft <= 7 ? '#f59e0b' : '#22c55e'};font-size:18px">${daysLeft} hari</b>
+                      <b style="color:${daysLeft <= 3 ? '#ef4444' : '#166534'}">${daysLeft} Hari</b>
                     </div>
                   </div>
                   ${ptHtml}
                 </div>
-                
-                ${warningHtml}
-                
-                <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:16px;flex-wrap:wrap">
-                  <button class="btn btn-success btn-sm" onclick="printMemberCard('${res.memberId || mid}')">
                     <i class="fas fa-id-card"></i> Cetak Kartu
                   </button>
                 </div>
@@ -8621,29 +8788,38 @@
     }
 
     function refreshExpenses() {
-      const start = document.getElementById('exp_start_date')?.value || '';
-      const end = document.getElementById('exp_end_date')?.value || '';
-
-      document.getElementById('expensesTableContainer').innerHTML = `
-        <div style="text-align:center; padding:40px; color:#94a3b8">
-          <i class="fas fa-spinner fa-spin fa-2x"></i><br>
-          <p style="margin-top:12px">Memuat data pengeluaran...</p>
-        </div>
-      `;
+      const start = document.getElementById('exp_start_date')?.value || 'all';
+      const end = document.getElementById('exp_end_date')?.value || 'all';
+      const cacheKey = `expenses_list_${start}_${end}_${currentBranch}`;
+      
+      const cached = getFromCache(cacheKey);
+      if (cached) {
+        console.log('Rendering expenses from cache');
+        renderExpensesTable(cached);
+      } else {
+        document.getElementById('expensesTableContainer').innerHTML = `
+          <div style="text-align:center; padding:40px; color:#94a3b8">
+            <i class="fas fa-spinner fa-spin fa-2x"></i><br>
+            <p style="margin-top:12px">Memuat data pengeluaran...</p>
+          </div>
+        `;
+      }
 
       google.script.run
         .withSuccessHandler(function (res) {
           if (res && res.success) {
+            saveToCache(cacheKey, res.expenses || []);
             renderExpensesTable(res.expenses || []);
           } else {
-            showToast('Gagal memuat data: ' + (res.message || 'Error Unknown'), 'error');
+            if (!cached) showToast('Gagal memuat data: ' + (res.message || 'Error Unknown'), 'error');
           }
         })
         .withFailureHandler(function (err) {
-          showToast('Error: ' + err.message, 'error');
+          if (!cached) showToast('Error: ' + err.message, 'error');
         })
-        .getExpenses(start, end);
+        .getExpenses(start === 'all' ? '' : start, end === 'all' ? '' : end);
     }
+
 
     function resetExpensesFilter() {
       if (document.getElementById('exp_start_date')) document.getElementById('exp_start_date').value = '';
@@ -8711,12 +8887,13 @@
 
     function submitExpenseForm() {
       const payload = {
+        id: 'TEMP_' + Date.now(), // Temporary ID for optimistic UI
         date: document.getElementById('exp_date').value,
         category: document.getElementById('exp_category').value,
         description: document.getElementById('exp_description').value,
         amount: Number(document.getElementById('exp_amount').value),
         paymentMethod: document.getElementById('exp_payment').value,
-        User: currentUser?.fullName || currentUser?.name || 'Admin'
+        user: currentUser?.fullName || currentUser?.name || 'Admin'
       };
 
       if (!payload.category || !payload.amount || !payload.description) {
@@ -8724,50 +8901,87 @@
         return;
       }
 
-      showLoading();
+      // ROLLBACK PREPARATION
+      const start = document.getElementById('exp_start_date')?.value || 'all';
+      const end = document.getElementById('exp_end_date')?.value || 'all';
+      const cacheKey = `expenses_list_${start}_${end}_${currentBranch}`;
+      const previousExpenses = getFromCache(cacheKey) || [];
+
+      // OPTIMISTIC UPDATE: Add to local state and re-render
+      const optimisticExpenses = [payload, ...previousExpenses];
+      saveToCache(cacheKey, optimisticExpenses);
+      renderExpensesTable(optimisticExpenses);
+      
+      // Reset form immediately
+      document.getElementById('expenseForm').reset();
+      document.getElementById('exp_date').valueAsDate = new Date();
+      showToast('Sedang menyimpan...', 'info');
+
       google.script.run
         .withSuccessHandler(function (res) {
-          hideLoading();
           if (res && res.success) {
             showToast('✅ Pengeluaran berhasil dicatat', 'success');
-            document.getElementById('expenseForm').reset();
-            document.getElementById('exp_date').valueAsDate = new Date();
+            // SMART REVALIDATION: Re-fetch to get real ID and server-side state
             refreshExpenses();
+            fetchDashboardData(); // Update dashboard stats
           } else {
+            // ROLLBACK
+            saveToCache(cacheKey, previousExpenses);
+            renderExpensesTable(previousExpenses);
             showToast('❌ Gagal: ' + (res.message || 'Error'), 'error');
           }
         })
         .withFailureHandler(function (err) {
-          hideLoading();
-          showToast('Error: ' + err.message, 'error');
+          // ROLLBACK
+          saveToCache(cacheKey, previousExpenses);
+          renderExpensesTable(previousExpenses);
+          showToast('Error koneksi: ' + err.message, 'error');
         })
         .saveExpense(payload);
     }
+
 
     function deleteExpenseRecord(id) {
       showConfirmModal(
         'Hapus Pengeluaran',
         'Apakah Anda yakin ingin menghapus catatan pengeluaran ini?\nTindakan ini tidak dapat dibatalkan.',
         function () {
-          showLoading();
+          // ROLLBACK PREPARATION
+          const start = document.getElementById('exp_start_date')?.value || 'all';
+          const end = document.getElementById('exp_end_date')?.value || 'all';
+          const cacheKey = `expenses_list_${start}_${end}_${currentBranch}`;
+          const previousExpenses = getFromCache(cacheKey) || [];
+
+          // OPTIMISTIC DELETE
+          const optimisticExpenses = previousExpenses.filter(ex => ex.id !== id);
+          saveToCache(cacheKey, optimisticExpenses);
+          renderExpensesTable(optimisticExpenses);
+          showToast('Menghapus...', 'info');
+
           google.script.run
             .withSuccessHandler(function (res) {
-              hideLoading();
               if (res && res.success) {
                 showToast('✅ Pengeluaran dihapus', 'success');
                 refreshExpenses();
+                fetchDashboardData();
               } else {
+                // ROLLBACK
+                saveToCache(cacheKey, previousExpenses);
+                renderExpensesTable(previousExpenses);
                 showToast('❌ Gagal: ' + (res.message || 'Error'), 'error');
               }
             })
             .withFailureHandler(function (err) {
-              hideLoading();
-              showToast('Error: ' + err.message, 'error');
+              // ROLLBACK
+              saveToCache(cacheKey, previousExpenses);
+              renderExpensesTable(previousExpenses);
+              showToast('Error koneksi: ' + err.message, 'error');
             })
             .deleteExpense(id);
         }
       );
     }
+
 
     function applyRolePermissions() {
       if (!currentUser) return;
@@ -10101,38 +10315,49 @@
     }
 
     function loadAndApplyBranding() {
+      const cacheKey = 'branding_settings';
+      const cached = getFromCache(cacheKey);
+      if (cached) {
+        applyBrandingUI(cached);
+      }
+
       google.script.run
         .withSuccessHandler(function(res) {
           if (res.success) {
-            const s = res.settings;
-            currentBranchName = s.name || 'Gym';
-            currentBranchAddress = s.address || '';
-            currentBranchPhone = s.phone || '';
-            if (s.name) {
-              document.title = s.name + " Management";
-              // Update all elements with branding classes
-              document.querySelectorAll('.gym-name-brand, .gym-name, h2, h1').forEach(el => {
-                if (['AMPEL GYM', 'UGYM', 'Gym', 'UGYM Management'].includes(el.textContent.trim()) || el.classList.contains('gym-name-brand')) {
-                  el.textContent = s.name;
-                }
-              });
-              const brandElements = [
-                { id: 'userNameBrand', text: s.name },
-                { id: 'pageSubtitle', text: s.name + " Management System" }
-              ];
-              brandElements.forEach(item => {
-                const el = document.getElementById(item.id);
-                if (el) el.textContent = item.text;
-              });
-            }
-            if (s.logo) {
-              document.querySelectorAll('.gym-logo-brand').forEach(img => {
-                img.src = s.logo;
-              });
-            }
+            saveToCache(cacheKey, res.settings);
+            applyBrandingUI(res.settings);
           }
         })
         .getSettings(currentBranch);
+    }
+
+    function applyBrandingUI(s) {
+      if (!s) return;
+      currentBranchName = s.name || 'Gym';
+      currentBranchAddress = s.address || '';
+      currentBranchPhone = s.phone || '';
+      if (s.name) {
+        document.title = s.name + " Management";
+        // Update all elements with branding classes
+        document.querySelectorAll('.gym-name-brand, .gym-name, h2, h1').forEach(el => {
+          if (['AMPEL GYM', 'UGYM', 'Gym', 'UGYM Management'].includes(el.textContent.trim()) || el.classList.contains('gym-name-brand')) {
+            el.textContent = s.name;
+          }
+        });
+        const brandElements = [
+          { id: 'userNameBrand', text: s.name },
+          { id: 'pageSubtitle', text: s.name + " Management System" }
+        ];
+        brandElements.forEach(item => {
+          const el = document.getElementById(item.id);
+          if (el) el.textContent = item.text;
+        });
+      }
+      if (s.logo) {
+        document.querySelectorAll('.gym-logo-brand').forEach(img => {
+          img.src = s.logo;
+        });
+      }
     }
 
     function openBrandingModal() {
@@ -10175,25 +10400,34 @@
         logo: document.getElementById('set_logo_preview').src
       };
 
-      const btn = document.querySelector('#brandingModal .btn-primary');
-      const origText = btn.innerHTML;
-      btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Menyimpan...';
-      btn.disabled = true;
+      // OPTIMISTIC UPDATE
+      const cacheKey = 'branding_settings';
+      const previousSettings = getFromCache(cacheKey);
+      
+      applyBrandingUI(settings);
+      closeBrandingModal();
+      showToast('Menyimpan branding...', 'info');
 
       google.script.run
         .withSuccessHandler(function(res) {
-          btn.innerHTML = origText;
-          btn.disabled = false;
           if (res.success) {
             showToast('Pengaturan branding berhasil disimpan!', 'success');
-            closeBrandingModal();
-            loadAndApplyBranding(); // Refresh UI
+            saveToCache(cacheKey, settings);
+            loadAndApplyBranding(); // Refresh to ensure sync
           } else {
+            // ROLLBACK
+            if (previousSettings) applyBrandingUI(previousSettings);
             showToast('Gagal menyimpan: ' + res.message, 'error');
           }
         })
+        .withFailureHandler(function(err) {
+          // ROLLBACK
+          if (previousSettings) applyBrandingUI(previousSettings);
+          showToast('Error: ' + err.message, 'error');
+        })
         .updateBranding(settings);
     }
+
   </script>
 </body>
 
