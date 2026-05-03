@@ -2703,106 +2703,6 @@
       return text;
     }
 
-    // printReceipt removed
-    /*
-          <div style="text-align:center;margin-bottom:10px">
-            <h2 style="margin:0">UGYM</h2>
-            <p style="margin:2px 0;font-size:12px">Jl. Imogiri Tim., Nglebeng, Tamanan, Kec. Banguntapan, Kabupaten Bantul, Daerah Istimewa Yogyakarta 55198</p>
-            <p style="margin:2px 0;font-size:12px">HP: 08158905889</p>
-            <p style="margin:5px 0">Receipt Registrasi Member</p>
-          </div>
-          <hr>
-          <table style="width:100%;font-size:14px">
-            <tr><td>Waktu</td><td>: ${now}</td></tr>
-            <tr><td>Member ID</td><td>: <b>${data.memberId}</b></td></tr>
-            <tr><td>Nama</td><td>: ${data.name}</td></tr>
-            <tr><td>Paket</td><td>: ${data.package}</td></tr>
-            <tr><td>Berlaku s/d</td><td>: ${formatDate(data.expiry)}</td></tr>
-            <tr><td>No. Trx</td><td>: ${data.receipt}</td></tr>
-          </table>
-          <hr>
-          <table style="width:100%;font-size:14px">
-            <tr><td>Harga Paket</td><td style="text-align:right">${formatCurrency(data.price)}</td></tr>
-            <tr><td>Biaya Reg</td><td style="text-align:right">${formatCurrency(data.regFee)}</td></tr>
-            <tr style="font-weight:bold"><td>TOTAL</td><td style="text-align:right">${formatCurrency(data.total)}</td></tr>
-            <tr><td>Metode</td><td style="text-align:right">${data.payment}</td></tr>
-          </table>
-          <hr>
-          <div style="text-align:center;margin-top:15px">
-            <p style="font-size:12px">Scan QR Code untuk Check-In</p>
-            <img src="${data.qr}" style="width:120px;height:120px">
-          </div>
-        `;
-      } else if (type === 'extension') {
-        content = `
-          <div style="text-align:center;margin-bottom:10px">
-            <h2 style="margin:0">UGYM</h2>
-            <p style="margin:2px 0;font-size:12px">Jl. Imogiri Tim., Nglebeng, Tamanan, Kec. Banguntapan, Kabupaten Bantul, Daerah Istimewa Yogyakarta 55198</p>
-            <p style="margin:2px 0;font-size:12px">HP: 08158905889</p>
-            <p style="margin:5px 0">Receipt Perpanjangan</p>
-          </div>
-          <hr>
-          <table style="width:100%;font-size:14px">
-            <tr><td>Waktu</td><td>: ${now}</td></tr>
-            <tr><td>Member ID</td><td>: <b>${data.memberId}</b></td></tr>
-            <tr><td>Nama</td><td>: ${data.name}</td></tr>
-            <tr><td>Paket</td><td>: ${data.package}</td></tr>
-            <tr><td>Berlaku s/d</td><td>: ${formatDate(data.expiry)}</td></tr>
-            <tr><td>No. Trx</td><td>: ${data.receipt}</td></tr>
-          </table>
-          <hr>
-          <table style="width:100%;font-size:14px">
-            <tr style="font-weight:bold"><td>TOTAL</td><td style="text-align:right">${formatCurrency(data.total)}</td></tr>
-            <tr><td>Metode</td><td style="text-align:right">${data.payment}</td></tr>
-          </table>
-        `;
-      } else if (type === 'pt') {
-        content = `
-          <div style="text-align:center;margin-bottom:10px">
-            <h2 style="margin:0">UGYM</h2>
-            <p style="margin:2px 0;font-size:12px">Jl. Imogiri Tim., Nglebeng, Tamanan, Kec. Banguntapan, Kabupaten Bantul, Daerah Istimewa Yogyakarta 55198</p>
-            <p style="margin:2px 0;font-size:12px">HP: 08158905889</p>
-            <p style="margin:5px 0">Receipt Registrasi PT</p>
-          </div>
-          <hr>
-          <table style="width:100%;font-size:14px">
-            <tr><td>Waktu</td><td>: ${now}</td></tr>
-            <tr><td>Member</td><td>: <b>${data.name}</b></td></tr>
-            <tr><td>Trainer</td><td>: ${data.trainer}</td></tr>
-            <tr><td>Sesi</td><td>: ${data.sessions} sesi</td></tr>
-            <tr><td>Berlaku s/d</td><td>: ${formatDate(data.expiry)}</td></tr>
-            <tr><td>No. Trx</td><td>: ${data.receipt}</td></tr>
-          </table>
-          <hr>
-          <table style="width:100%;font-size:14px">
-            <tr style="font-weight:bold"><td>TOTAL</td><td style="text-align:right">${formatCurrency(data.total)}</td></tr>
-            <tr><td>Metode</td><td style="text-align:right">${data.payment}</td></tr>
-          </table>
-        `;
-      }
-      
-      const printWindow = window.open('', '_blank');
-      printWindow.document.write(`
-        <html>
-          <head>
-            <title>Receipt</title>
-            <style>
-              body { font-family: monospace; padding: 20px; width: 300px; margin: auto; }
-              hr { border: none; border-top: 1px dashed #000; margin: 10px 0; }
-              table { width: 100%; border-collapse: collapse; }
-            </style>
-          </head>
-          <body onload="window.print();window.close();">
-            ${content}
-            <div style="text-align:center;margin-top:20px;font-size:10px">
-              <p>Terima Kasih</p>
-              <p>UGYM MANAGEMENT</p>
-            </div>
-          
-</body>
-        </html>
-      `);
-    */
 
     function showToast(msg, type = 'info', duration = 3500) {
       const icons = {
@@ -3429,8 +3329,6 @@
       }
 
       renderTodayCheckins(s.todayCheckinList || []);
-    }
-
     }
 
     // printDashboard removed
@@ -6785,10 +6683,7 @@
                   </div>
                   ${ptHtml}
                 </div>
-                    <i class="fas fa-id-card"></i> Cetak Kartu
-                  </button>
-                </div>
-                
+
                 <div style="margin-top:12px;text-align:right;color:#64748b;font-size:12px">
                   <i class="far fa-clock"></i> Check-in: ${formatTime(checkinTime)}
                 </div>
@@ -9805,12 +9700,7 @@
             <div style="font-size:11px; color:#64748b; font-weight:600; text-transform:uppercase; letter-spacing:0.05em; margin-bottom:4px">Catatan Verifikasi Kasir</div>
             <div style="font-size:13px; color:#1e293b">${report.details.transactions[0]?.cashier || currentUser?.name || 'Kasir'} - ${new Date().toLocaleTimeString('id-ID')}</div>
           </div>
-        </div>
-          
-          <div style="margin-top:20px; font-size:11px; color:#64748b; font-style:italic">
-            * Laporan ini dihasilkan otomatis oleh sistem pada ${new Date().toLocaleString('id-ID')}.
           </div>
-        </div>
       `;
 
       content.innerHTML = html;
