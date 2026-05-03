@@ -3313,7 +3313,7 @@
           console.error('Dashboard fetch error:', err);
           if (!cached) showToast('Gagal memuat data: ' + err.message, 'error');
         })
-        .getDashboardStats(start, end);
+        .getDashboardStats(start, end, currentBranch);
     }
 
     function renderDashboardUI(s) {
@@ -6557,7 +6557,7 @@
             el.innerHTML = '<p class="text-muted" style="padding:20px;text-align:center">Gagal memuat data: ' + err.message + '</p>';
           }
         })
-        .getTodayCheckins();
+        .getTodayCheckins(currentBranch);
     }
 
     function previewMemberCheckin(scannedId) {
@@ -9145,7 +9145,7 @@
             if (timeEl) timeEl.textContent = 'LIVE: ' + new Date().toLocaleTimeString('id-ID');
           }
         })
-        .getDashboardStats();
+        .getDashboardStats(null, null, currentBranch);
     }
 
     function updateDashboardCounters(stats) {
@@ -10269,8 +10269,22 @@
       currentBranch = document.getElementById('branchSwitcher').value;
       localStorage.setItem('current_branch', currentBranch);
       loadAndApplyBranding();
-      if (document.querySelector('.menu-item[data-view="dashboard"]').classList.contains('active')) {
+      
+      // Refresh all core data for the new branch
+      if (typeof fetchInitialAppData === 'function') {
+        fetchInitialAppData();
+      }
+
+      if (document.querySelector('.menu-item[data-view="dashboard"]')?.classList.contains('active')) {
         loadDashboard(null, null, currentBranch);
+      } else if (document.querySelector('.menu-item[data-view="members"]')?.classList.contains('active')) {
+        loadMemberList();
+      } else if (document.querySelector('.menu-item[data-view="transactions"]')?.classList.contains('active')) {
+        loadTransactionList();
+      } else if (document.querySelector('.menu-item[data-view="expenses"]')?.classList.contains('active')) {
+        loadExpenseList();
+      } else if (document.querySelector('.menu-item[data-view="approvals"]')?.classList.contains('active')) {
+        loadApprovals();
       }
     }
 
