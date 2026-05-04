@@ -5329,7 +5329,7 @@
               showToast('Transaksi Berhasil!', 'success');
 
               // BACKGROUND REVALIDATION
-              fetchDashboardData(true); // Force refresh cache
+              fetchDashboardData(null, null, true); // Force refresh cache
               CACHE.clearStats(); // Clear all stats cache
 
               // Print receipt option
@@ -8934,7 +8934,7 @@
             showToast('✅ Pengeluaran berhasil dicatat', 'success');
             // SMART REVALIDATION: Re-fetch to get real ID and server-side state
             refreshExpenses();
-            fetchDashboardData(true); // Update dashboard stats
+            fetchDashboardData(null, null, true); // Update dashboard stats
             CACHE.clearStats();
           } else {
             // ROLLBACK
@@ -9186,6 +9186,9 @@
             const timeEl = document.getElementById('lastSyncTime');
             if (timeEl) timeEl.textContent = 'LIVE: ' + new Date().toLocaleTimeString('id-ID');
           }
+        })
+        .withFailureHandler(function(err) {
+          console.warn('Realtime sync failed (background):', err.message);
         })
         .getDashboardStats(null, null, currentBranch);
     }
@@ -9836,6 +9839,8 @@
       const originalText = btn.innerHTML;
       btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Menyiapkan...';
       btn.disabled = true;
+
+      const isAdmin = currentUser.role === 'Admin' || currentUser.role === 'Super Admin';
 
       google.script.run
         .withSuccessHandler(function (res) {
