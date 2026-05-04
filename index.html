@@ -2546,6 +2546,31 @@
       lastFetch: null
     };
 
+    const CACHE = {
+      clearStats: function() {
+        console.log('Clearing stats cache...');
+        window.appData.stats = {};
+        // Clear all localStorage keys matching dashboard_stats
+        for (let i = 0; i < localStorage.length; i++) {
+          const key = localStorage.key(i);
+          if (key && key.startsWith(APP_CACHE_KEY) && key.includes('dashboard_stats')) {
+            localStorage.removeItem(key);
+            i--; // Adjust index after removal
+          }
+        }
+      },
+      clearAll: function() {
+        window.appData = { members:[], catalogue:[], products:[], branches:[], stats:{}, settings:{}, lastFetch: null };
+        for (let i = 0; i < localStorage.length; i++) {
+          const key = localStorage.key(i);
+          if (key && key.startsWith(APP_CACHE_KEY)) {
+            localStorage.removeItem(key);
+            i--;
+          }
+        }
+      }
+    };
+
     function getBranchKey(key) {
       const branchSpecific = ['members', 'stats', 'catalogue', 'products', 'transactions', 'expenses', 'approvals', 'branding_settings', 'packages_list', 'today_checkins', 'initial_data'];
       if (branchSpecific.includes(key)) {
@@ -3297,9 +3322,9 @@
       refreshDashboard();
     }
 
-    function fetchDashboardData(start, end) {
+    function fetchDashboardData(start, end, force = false) {
       const cacheKey = `dashboard_stats_${start || 'all'}_${end || 'all'}_${currentBranch}`;
-      const cached = getFromCache(cacheKey);
+      const cached = force ? null : getFromCache(cacheKey);
 
       if (cached) {
         console.log('Rendering dashboard from cache:', cacheKey);
@@ -5304,7 +5329,8 @@
               showToast('Transaksi Berhasil!', 'success');
 
               // BACKGROUND REVALIDATION
-              fetchDashboardData();
+              fetchDashboardData(true); // Force refresh cache
+              CACHE.clearStats(); // Clear all stats cache
 
               // Print receipt option
               showConfirm('Transaksi Berhasil! Kirim Struk via WhatsApp?', (waOk) => {
@@ -5867,6 +5893,7 @@
           if (res.success) {
             showToast('✅ Berhasil diupdate', 'success');
             loadProductList();
+            fetchDashboardData(null, null, true); // Force refresh cache
           } else {
             showToast('❌ ' + res.message, 'error');
           }
@@ -5909,6 +5936,7 @@
             loadProductList();
             if (currentView === 'expenses') refreshExpenses();
             if (currentView === 'dashboard') refreshDashboard();
+            fetchDashboardData(null, null, true); // Force refresh cache after restock
           } else {
             showToast('❌ ' + res.message, 'error');
           }
@@ -5929,7 +5957,7 @@
             if (res.success) {
               showToast('✅ ' + res.message, 'success');
               loadPackageList();
-              fetchDashboardData(); // Background revalidation
+              fetchDashboardData(null, null, true); // Force refresh cache after package deletion
             } else {
               // ROLLBACK: Show the row again on failure
               if (row) row.style.display = '';
@@ -5958,7 +5986,7 @@
             if (res.success) {
               showToast('✅ ' + res.message, 'success');
               loadProductList(true);
-              fetchDashboardData(); // Background revalidation
+              fetchDashboardData(null, null, true); // Force refresh cache after product deletion
             } else {
               // ROLLBACK: Show the row again on failure
               if (row) row.style.display = '';
@@ -6001,6 +6029,7 @@
             showToast('✅ ' + res.message, 'success');
             closeAdjustModal();
             loadProductList();
+            fetchDashboardData(null, null, true); // Force refresh after stock adjustment
           } else {
             showToast('❌ ' + res.message, 'error');
           }
@@ -6085,7 +6114,7 @@
           if (res.success) {
             showToast('✅ Paket disimpan', 'success');
             loadPackageList();
-            fetchDashboardData();
+            fetchDashboardData(null, null, true); // Force refresh cache
           } else {
             showToast('❌ Gagal: ' + res.message, 'error');
             loadPackageList(); // Re-fetch to ensure UI is correct
@@ -6275,7 +6304,7 @@
           if (res.success) {
             showToast('✅ Produk disimpan', 'success');
             loadProductList(true); // Re-sync with server for real IDs/URLs
-            fetchDashboardData();
+            fetchDashboardData(null, null, true); // Force refresh cache
           } else {
             // ROLLBACK
             if (previousCache) {
@@ -8029,6 +8058,7 @@
                 showToast('✅ Berhasil di-approve!', 'success');
                 loadApprovals();
                 loadApprovalCount();
+                fetchDashboardData(null, null, true); // Force refresh after approval
               } else {
                 showToast('❌ ' + (res?.message || 'Gagal approve'), 'error');
               }
@@ -8210,7 +8240,7 @@
     function triggerSetupLeveling() {
       showConfirmModal(
         'Setup Leveling User',
-        'Sistem akan membuat 3 akun default: Super Admin, Admin, dan Staff.\nLanjutkan?',
+        'Sistem akan membuat akun default: Super Admin, Admin, dan 6 Kasir Cabang.\nLanjutkan?',
         function () {
           showLoading();
           google.script.run
@@ -8220,9 +8250,10 @@
                 showToast('✅ ' + res.message, 'success');
                 showAlert('Informasi Login',
                   'Akun berhasil dibuat:\n\n' +
-                  '1. Super Admin: superadmin / superadmin123\n' +
+                  '1. Super Admin: superadmin / admin123\n' +
                   '2. Admin: admin / admin123\n' +
-                  '3. Staff: staff / staff123\n\n' +
+                  '3. Kasir Otista: kasir_otista (1-3) / otista123\n' +
+                  '4. Kasir Pasir Hayam: kasir_pasirhayam (1-3) / pasirhayam123\n\n' +
                   'Silakan simpan informasi ini.',
                   'success'
                 );
@@ -8903,7 +8934,8 @@
             showToast('✅ Pengeluaran berhasil dicatat', 'success');
             // SMART REVALIDATION: Re-fetch to get real ID and server-side state
             refreshExpenses();
-            fetchDashboardData(); // Update dashboard stats
+            fetchDashboardData(true); // Update dashboard stats
+            CACHE.clearStats();
           } else {
             // ROLLBACK
             saveToCache(cacheKey, previousExpenses);
@@ -9562,34 +9594,52 @@
     }
 
     // ================ DAILY REPORT MODAL ================
-    function showDailyReportModal() {
+    function showDailyReportModal(dateStr, staffName) {
       const modal = document.getElementById('dailyReportModal');
       const content = document.getElementById('dailyReportContent');
       modal.style.display = 'flex';
       content.innerHTML = '<div style="text-align:center;padding:40px"><i class="fas fa-spinner fa-spin fa-2x"></i><p style="margin-top:10px">Menyiapkan laporan harian...</p></div>';
 
+      // Auto-filter for staff
+      const isAdmin = currentUser.role === 'Admin' || currentUser.role === 'Super Admin';
+      const filterStaff = isAdmin ? (staffName || 'All') : currentUser.name;
+
       google.script.run
         .withSuccessHandler(function (res) {
           if (res.success) {
-            renderDailyReport(res.report);
+            renderDailyReport(res.report, filterStaff);
           } else {
             content.innerHTML = '<div class="alert alert-error">Gagal memuat laporan: ' + res.message + '</div>';
           }
         })
-        .getDailyCashierReport(); // Default today
+        .getDailyCashierReport(dateStr || null, filterStaff, currentBranch);
     }
 
     function closeDailyReportModal() {
       document.getElementById('dailyReportModal').style.display = 'none';
     }
 
-    function renderDailyReport(report) {
+    function renderDailyReport(report, currentFilterStaff) {
       const content = document.getElementById('dailyReportContent');
+      const isAdmin = currentUser.role === 'Admin' || currentUser.role === 'Super Admin';
 
       let html = `
-        <div style="margin-bottom:20px; border-bottom:1px solid #e2e8f0; padding-bottom:10px">
-          <h4 style="color:#6b46c1; margin-bottom:5px">Laporan Kasir - ${report.dateFormatted}</h4>
-          <p style="font-size:12px; color:#64748b">Ringkasan aktivitas keuangan per hari ini</p>
+        <div style="margin-bottom:20px; border-bottom:1px solid #e2e8f0; padding-bottom:15px; display:flex; justify-content:space-between; align-items:flex-start">
+          <div>
+            <h4 style="color:#6b46c1; margin-bottom:5px">Laporan Kasir - ${report.dateFormatted}</h4>
+            <p style="font-size:12px; color:#64748b">
+              Staff: <b>${report.staff}</b> | Cabang: <b>${report.branch}</b>
+            </p>
+          </div>
+          ${isAdmin ? `
+            <div style="display:flex; gap:8px">
+              <select id="reportStaffFilter" class="form-input" style="font-size:12px; padding:4px 8px; width:150px" onchange="showDailyReportModal(null, this.value)">
+                <option value="All" ${currentFilterStaff === 'All' ? 'selected' : ''}>-- Semua Staff --</option>
+                <option value="${currentUser.name}" ${currentFilterStaff === currentUser.name ? 'selected' : ''}>${currentUser.name} (Saya)</option>
+                <!-- Opsi staff lain akan dimuat dinamis jika perlu, sementara manual atau biarkan All -->
+              </select>
+            </div>
+          ` : ''}
         </div>
 
         <div class="stats-grid" style="grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap:12px; margin-bottom:24px">
@@ -9826,7 +9876,7 @@
           btn.disabled = false;
           showToast('Error: ' + err.message, 'error');
         })
-        .generateDailyReportPDF();
+        .generateDailyReportPDF(null, isAdmin ? (document.getElementById('reportStaffFilter')?.value || 'All') : currentUser.name, currentBranch);
     }
 
     // ================ POS & STOCK HISTORY ================
