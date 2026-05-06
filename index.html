@@ -5757,6 +5757,9 @@
               <button class="btn btn-sm btn-outline" onclick="loadProductList(true)" title="Perbarui Data">
                 <i class="fas fa-sync-alt"></i> Refresh
               </button>
+              <button class="btn btn-sm btn-outline" onclick="viewStockHistory()" title="Lihat Riwayat Pergerakan Stok">
+                <i class="fas fa-history"></i> Riwayat Stok
+              </button>
               <button class="btn btn-sm btn-success" onclick="openProductModal()">
                 <i class="fas fa-plus"></i> Tambah Produk
               </button>
@@ -5788,6 +5791,61 @@
         })
         .withFailureHandler(function () { hideLoading(); })
         .getFullProducts();
+    }
+    
+    function viewStockHistory(start = '', end = '') {
+      showLoading();
+      google.script.run
+        .withSuccessHandler(function (res) {
+          hideLoading();
+          if (res.success) {
+            _renderStockHistoryModal(res.logs);
+            if (!start && !end) {
+              const startEl = document.getElementById('stock_filter_start');
+              const endEl = document.getElementById('stock_filter_end');
+              if (startEl) startEl.value = '';
+              if (endEl) endEl.value = '';
+            }
+          } else {
+            showToast('Gagal memuat riwayat: ' + res.message, 'error');
+          }
+        })
+        .withFailureHandler(function(err) { hideLoading(); showToast('Error: ' + err, 'error'); })
+        .getStockLogs(start, end, currentBranch);
+    }
+
+    function applyStockFilter() {
+      const start = document.getElementById('stock_filter_start').value;
+      const end = document.getElementById('stock_filter_end').value;
+      viewStockHistory(start, end);
+    }
+
+    function _renderStockHistoryModal(logs) {
+      const modal = document.getElementById('stockHistoryModal');
+      const listEl = document.getElementById('stockHistoryList');
+      if (!modal || !listEl) return;
+
+      if (!logs || logs.length === 0) {
+        listEl.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:20px;color:#94a3b8">Belum ada riwayat pergerakan stok</td></tr>';
+      } else {
+        listEl.innerHTML = logs.map(l => `
+          <tr>
+            <td><small>${formatDateTime(l.Timestamp)}</small></td>
+            <td><b>${escapeHtml(l['Nama Produk'])}</b><br><small class="text-muted">${l['ID Produk']}</small></td>
+            <td><span class="badge badge-${l.Tipe === 'MASUK' ? 'success' : (l.Tipe === 'KELUAR' ? 'danger' : 'warning')}">${l.Tipe}</span></td>
+            <td style="text-align:right"><b>${l.Jumlah > 0 ? '+' + l.Jumlah : l.Jumlah}</b></td>
+            <td style="text-align:right"><b>${l['Stok Akhir']}</b></td>
+            <td><small>${escapeHtml(l.Keterangan)}</small></td>
+            <td><small>${l.User}</small></td>
+          </tr>
+        `).join('');
+      }
+
+      modal.style.display = 'flex';
+    }
+
+    function closeStockHistoryModal() {
+      document.getElementById('stockHistoryModal').style.display = 'none';
     }
 
     function _renderProductTable(list) {
@@ -9637,6 +9695,51 @@
       <div class="modal-footer">
         <button class="btn btn-outline" onclick="closeRestockModal()">Batal</button>
         <button class="btn btn-primary" onclick="submitRestock()">Proses Restock</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="stockHistoryModal" class="modal-overlay" style="display:none">
+    <div class="modal-container" style="max-width:900px">
+      <div class="modal-header" style="display:flex; justify-content:space-between; align-items:center">
+        <h3 style="margin:0"><i class="fas fa-history"></i> Riwayat Pergerakan Stok</h3>
+        <button class="btn btn-sm btn-outline" onclick="closeStockHistoryModal()"><i class="fas fa-times"></i></button>
+      </div>
+      <div class="modal-body">
+        <div style="background:#f8fafc; padding:15px; border-radius:10px; margin-bottom:15px; display:flex; gap:10px; align-items:flex-end; flex-wrap:wrap">
+          <div class="form-group" style="margin:0">
+            <label class="form-label" style="font-size:11px">Tanggal Awal</label>
+            <input type="date" id="stock_filter_start" class="form-input" style="padding:5px 10px; width:150px">
+          </div>
+          <div class="form-group" style="margin:0">
+            <label class="form-label" style="font-size:11px">Tanggal Akhir</label>
+            <input type="date" id="stock_filter_end" class="form-input" style="padding:5px 10px; width:150px">
+          </div>
+          <button class="btn btn-primary" onclick="applyStockFilter()" style="padding:8px 15px">
+            <i class="fas fa-filter"></i> Filter
+          </button>
+          <button class="btn btn-outline" onclick="viewStockHistory()" style="padding:8px 15px">
+            <i class="fas fa-undo"></i> Reset
+          </button>
+        </div>
+        <div style="max-height:500px; overflow-y:auto">
+          <table class="data-table">
+            <thead style="position:sticky; top:0; background:white; z-index:1">
+              <tr>
+                <th>Waktu</th>
+                <th>Produk</th>
+                <th>Tipe</th>
+                <th style="text-align:right">Jumlah</th>
+                <th style="text-align:right">Stok Akhir</th>
+                <th>Keterangan</th>
+                <th>User</th>
+              </tr>
+            </thead>
+            <tbody id="stockHistoryList">
+              <!-- Content loaded via JS -->
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   </div>
