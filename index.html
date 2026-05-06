@@ -7126,7 +7126,7 @@
           }
           showToast('Error: ' + err.message, 'error');
         })
-        .processCheckIn({ memberId: mid }, currentUser?.name || 'Admin');
+        .processCheckIn({ memberId: mid, gym: currentBranch }, currentUser?.name || 'Admin');
     }
 
     function doCheckinWithPT(forcedMid) {
@@ -7316,7 +7316,8 @@
         })
         .processCheckInWithPT({
           memberId: mid,
-          usePT: usePT
+          usePT: usePT,
+          gym: currentBranch
         }, currentUser?.name || 'Admin');
     }
 
@@ -7472,7 +7473,7 @@
           btn.disabled = false;
           showToast('Error: ' + err.message, 'error');
         })
-        .processVisitCheckIn({ visitorName: name, visitorPhone: phone, visitType: document.getElementById('visit_type').value, paymentMethod: 'Cash' });
+        .processVisitCheckIn({ visitorName: name, visitorPhone: phone, visitType: document.getElementById('visit_type').value, paymentMethod: 'Cash', gym: currentBranch });
     }
 
     // ================ QR SCANNER ================
@@ -9278,7 +9279,7 @@
             visible = true;
           } else {
             // Branch-specific Admin (limited views)
-            const branchAdminViews = ['dashboard', 'members', 'transactions', 'checkin', 'pt', 'pos', 'approvals', 'expenses', 'birthdays', 'gallery', 'catalogue', 'products'];
+            const branchAdminViews = ['dashboard', 'members', 'transactions', 'checkin', 'pt', 'pos', 'approvals', 'expenses', 'birthdays', 'gallery', 'catalogue', 'products', 'admin'];
             if (!branchAdminViews.includes(view)) visible = false;
           }
         }
