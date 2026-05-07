@@ -8899,7 +8899,7 @@
                           <td><code>${u.username}</code></td>
                           <td><span class="badge badge-${u.role === 'Super Admin' ? 'danger' : (u.role === 'Admin' ? 'primary' : 'secondary')}">${u.role}</span></td>
                           <td><small>${u.email || '-'}<br>${u.phone || '-'}</small></td>
-                          <td><small>${u.lastLogin ? format.date(new Date(u.lastLogin), true) : '-'}</small></td>
+                          <td><small>${u.lastLogin ? formatDateTime(u.lastLogin) : '-'}</small></td>
                           <td>
                             ${u.username !== 'superadmin' ? `
                               <button class="btn btn-sm btn-danger" onclick="confirmDeleteUser('${u.id}', '${u.username}')">
