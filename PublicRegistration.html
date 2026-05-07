@@ -697,36 +697,15 @@
       <h1 style="font-size: 36px; font-weight: 800; color: #000; margin-bottom: 12px; letter-spacing: -1px;">Selamat Datang</h1>
       <p style="color: #555; font-size: 18px; margin-bottom: 40px;">Pilih lokasi gym untuk memulai pendaftaran membership</p>
       
-      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 24px; max-width: 800px; margin: 0 auto;">
-        <div onclick="selectBranch('OTISTA')" style="background: white; border-radius: 24px; padding: 40px; cursor: pointer; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); box-shadow: 0 10px 25px rgba(0,0,0,0.05); border: 1px solid #e5e5ea; display: flex; flex-direction: column; align-items: center; gap: 20px;" onmouseover="this.style.transform='translateY(-8px)'; this.style.borderColor='#d4af37'; this.style.boxShadow='0 20px 40px rgba(212,175,55,0.12)'" onmouseout="this.style.transform='translateY(0)'; this.style.borderColor='#e5e5ea'; this.style.boxShadow='0 10px 25px rgba(0,0,0,0.05)'">
-          <img src="https://i.imgur.com/Vc2mqzd.png" style="width: 120px; height: 120px; border-radius: 30px; object-fit: cover; box-shadow: 0 8px 16px rgba(0,0,0,0.1);">
-          <div style="text-align: center;">
-            <h3 style="font-size: 22px; font-weight: 800; color: #000;">Otista Gym</h3>
-            <p style="color: #555; font-size: 14px; margin-top: 4px;">Jl. Oto Iskandardinata II, Cianjur</p>
-          </div>
-          <button class="btn btn-primary" style="width: auto; padding: 12px 30px; border-radius: 15px;">Pilih Cabang <i class="fas fa-arrow-right"></i></button>
-        </div>
-        
-        <div onclick="selectBranch('PASIR_HAYAM')" style="background: white; border-radius: 24px; padding: 40px; cursor: pointer; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); box-shadow: 0 10px 25px rgba(0,0,0,0.05); border: 1px solid #e5e5ea; display: flex; flex-direction: column; align-items: center; gap: 20px;" onmouseover="this.style.transform='translateY(-8px)'; this.style.borderColor='#d4af37'; this.style.boxShadow='0 20px 40px rgba(212,175,55,0.12)'" onmouseout="this.style.transform='translateY(0)'; this.style.borderColor='#e5e5ea'; this.style.boxShadow='0 10px 25px rgba(0,0,0,0.05)'">
-          <img src="https://i.imgur.com/OnjRXcK.png" style="width: 120px; height: 120px; border-radius: 30px; object-fit: cover; box-shadow: 0 8px 16px rgba(0,0,0,0.1);">
-          <div style="text-align: center;">
-            <h3 style="font-size: 22px; font-weight: 800; color: #000;">Pasir Hayam Gym</h3>
-            <p style="color: #555; font-size: 14px; margin-top: 4px;">Jl. Raya Cibeber, Sirnagalih, Cianjur</p>
-          </div>
-          <button class="btn btn-primary" style="width: auto; padding: 12px 30px; border-radius: 15px;">Pilih Cabang <i class="fas fa-arrow-right"></i></button>
-        </div>
+      <div id="branchCardsContainer" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 24px; max-width: 800px; margin: 0 auto;">
+        <!-- Branches will be loaded here dynamically -->
       </div>
 
       <!-- Public Extension Buttons -->
-      <div style="margin-top: 40px; padding-top: 28px; border-top: 1px solid #e5e5ea; max-width: 800px; margin-left: auto; margin-right: auto;">
+      <div id="extensionLinksContainer" style="margin-top: 40px; padding-top: 28px; border-top: 1px solid #e5e5ea; max-width: 800px; margin-left: auto; margin-right: auto;">
         <p style="color: #555; font-size: 15px; margin-bottom: 20px; font-weight: 600;">Sudah punya membership? Perpanjang di sini:</p>
-        <div style="display: flex; gap: 16px; justify-content: center; flex-wrap: wrap;">
-          <a id="extLinkOtista" href="#" onclick="goToExtension('OTISTA'); return false;" style="display: flex; align-items: center; justify-content: center; gap: 8px; padding: 14px 28px; background: linear-gradient(135deg, #000, #1a1a1a); color: #d4af37; border-radius: 14px; text-decoration: none; font-weight: 600; font-size: 14px; transition: all 0.25s; border: 1px solid rgba(212,175,55,0.3);" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 8px 20px rgba(0,0,0,0.2)'" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='none'">
-            <i class="fas fa-sync-alt"></i> Perpanjang Otista
-          </a>
-          <a id="extLinkPasirHayam" href="#" onclick="goToExtension('PASIR_HAYAM'); return false;" style="display: flex; align-items: center; justify-content: center; gap: 8px; padding: 14px 28px; background: linear-gradient(135deg, #000, #1a1a1a); color: #d4af37; border-radius: 14px; text-decoration: none; font-weight: 600; font-size: 14px; transition: all 0.25s; border: 1px solid rgba(212,175,55,0.3);" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 8px 20px rgba(0,0,0,0.2)'" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='none'">
-            <i class="fas fa-sync-alt"></i> Perpanjang Pasir Hayam
-          </a>
+        <div id="extensionLinks" style="display: flex; gap: 16px; justify-content: center; flex-wrap: wrap;">
+          <!-- Extension links will be loaded here dynamically -->
         </div>
       </div>
     </div>
@@ -815,9 +794,7 @@
                 Pilih Lokasi Gym <span style="color:#ef4444">*</span>
               </label>
               <select id="gymLocation" class="form-input">
-                <option value="" disabled selected>Pilih Lokasi...</option>
-                <option value="OTISTA">Otista Gym</option>
-                <option value="PASIR_HAYAM">Pasir Hayam Gym</option>
+                <option value="" disabled selected>Memuat lokasi...</option>
               </select>
             </div>
             <div class="form-group">
@@ -1473,8 +1450,62 @@
         .submitRegistration(registrationData);
     }
 
+    function loadBranches() {
+      google.script.run
+        .withSuccessHandler(function(res) {
+          if (res.success && res.branches) {
+            renderBranchesUI(res.branches);
+          }
+        })
+        .getBranches();
+    }
+
+    function renderBranchesUI(branches) {
+      const container = document.getElementById('branchCardsContainer');
+      const dropdown = document.getElementById('gymLocation');
+      const extLinks = document.getElementById('extensionLinks');
+      
+      if (container) {
+        let html = '';
+        branches.forEach(b => {
+          html += `
+            <div onclick="selectBranch('${b.id}')" style="background: white; border-radius: 24px; padding: 40px; cursor: pointer; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); box-shadow: 0 10px 25px rgba(0,0,0,0.05); border: 1px solid #e5e5ea; display: flex; flex-direction: column; align-items: center; gap: 20px;" onmouseover="this.style.transform='translateY(-8px)'; this.style.borderColor='#d4af37'; this.style.boxShadow='0 20px 40px rgba(212,175,55,0.12)'" onmouseout="this.style.transform='translateY(0)'; this.style.borderColor='#e5e5ea'; this.style.boxShadow='0 10px 25px rgba(0,0,0,0.05)'">
+              <img src="${b.logo || 'https://i.imgur.com/TPoUeRJ.jpeg'}" style="width: 120px; height: 120px; border-radius: 30px; object-fit: cover; box-shadow: 0 8px 16px rgba(0,0,0,0.1);">
+              <div style="text-align: center;">
+                <h3 style="font-size: 22px; font-weight: 800; color: #000;">${b.name}</h3>
+                <p style="color: #555; font-size: 14px; margin-top: 4px;">${b.address || ''}</p>
+              </div>
+              <button class="btn btn-primary" style="width: auto; padding: 12px 30px; border-radius: 15px;">Pilih Cabang <i class="fas fa-arrow-right"></i></button>
+            </div>
+          `;
+        });
+        container.innerHTML = html;
+      }
+
+      if (dropdown) {
+        let html = '<option value="" disabled selected>Pilih Lokasi...</option>';
+        branches.forEach(b => {
+          html += `<option value="${b.id}">${b.name}</option>`;
+        });
+        dropdown.innerHTML = html;
+      }
+
+      if (extLinks) {
+        let html = '';
+        branches.forEach(b => {
+          html += `
+            <a href="#" onclick="goToExtension('${b.id}'); return false;" style="display: flex; align-items: center; justify-content: center; gap: 8px; padding: 14px 28px; background: linear-gradient(135deg, #000, #1a1a1a); color: #d4af37; border-radius: 14px; text-decoration: none; font-weight: 600; font-size: 14px; transition: all 0.25s; border: 1px solid rgba(212,175,55,0.3);" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 8px 20px rgba(0,0,0,0.2)'" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='none'">
+              <i class="fas fa-sync-alt"></i> Perpanjang ${b.name}
+            </a>
+          `;
+        });
+        extLinks.innerHTML = html;
+      }
+    }
+
     // Script consolidated below
       window.onload = function() {
+        loadBranches();
         const urlParams = new URLSearchParams(window.location.search);
         const branchParam = urlParams.get('branch');
         
