@@ -8856,8 +8856,8 @@
     }
 
     function loadUserList() {
-      if (currentUser.role !== 'Super Admin') {
-        showToast('Akses ditolak. Hanya Super Admin.', 'error');
+      if (currentUser.role !== 'Super Admin' && currentUser.role !== 'Admin') {
+        showToast('Akses ditolak. Hanya Super Admin atau Admin.', 'error');
         return;
       }
 
@@ -8878,7 +8878,7 @@
               <div class="table-container">
                 <div style="padding:16px;background:#f8fafc;border-bottom:1px solid #e2e8f0; display:flex; justify-content:space-between; align-items:center">
                   <h4 style="font-weight:600">Daftar Pengguna Sistem (${list.length})</h4>
-                  <small style="color:#64748b">Hanya Super Admin yang dapat melihat & mengelola akun.</small>
+                  <small style="color:#64748b">Hanya Super Admin dan Admin yang dapat melihat & mengelola akun.</small>
                 </div>
                 <div style="overflow-x:auto">
                   <table class="data-table">
