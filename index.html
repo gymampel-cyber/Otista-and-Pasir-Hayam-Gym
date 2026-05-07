@@ -9415,8 +9415,13 @@
         let visible = true;
 
         if (role === 'Staff' || role === 'Kasir') {
-          const staffViews = ['dashboard', 'members', 'transactions', 'checkin', 'pt', 'pos', 'approvals', 'expenses', 'birthdays', 'gallery'];
+          // Hilangkan 'gallery' dari akses Staff/Kasir
+          const staffViews = ['dashboard', 'members', 'transactions', 'checkin', 'pt', 'pos', 'approvals', 'expenses', 'birthdays'];
           if (!staffViews.includes(view)) visible = false;
+          
+          // Sembunyikan kartu dashboard
+          const galCard = document.getElementById('cardGallery');
+          if (galCard) galCard.style.display = 'none';
         } else if (role === 'Admin') {
           // Super Admin (All branches) sees everything
           if (currentUser.branch === 'All' || !currentUser.branch) {
