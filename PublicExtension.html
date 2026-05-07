@@ -316,38 +316,15 @@
       <h2 style="font-size: 28px; font-weight: 800; color: #000; margin-bottom: 10px; letter-spacing: -0.5px;">Selamat Datang</h2>
       <p style="color: #555; font-size: 15px; margin-bottom: 30px;">Pilih lokasi gym untuk perpanjangan membership</p>
       
-      <div style="display: flex; flex-direction: column; gap: 16px; width: 100%;">
-        <!-- Otista Branch -->
-        <div onclick="selectBranch('OTISTA')" style="background: white; border-radius: 20px; padding: 24px; cursor: pointer; transition: all 0.3s ease; border: 1px solid #e5e5ea; display: flex; align-items: center; gap: 16px; text-align: left;" onmouseover="this.style.transform='translateY(-4px)'; this.style.borderColor='#d4af37'; this.style.boxShadow='0 12px 24px rgba(212,175,55,0.12)'" onmouseout="this.style.transform='translateY(0)'; this.style.borderColor='#e5e5ea'; this.style.boxShadow='none'">
-          <img src="https://i.imgur.com/Vc2mqzd.png" style="width: 60px; height: 60px; border-radius: 15px; object-fit: cover;">
-          <div style="flex: 1;">
-            <h3 style="font-size: 18px; font-weight: 800; color: #000;">Otista Gym</h3>
-            <p style="color: #555; font-size: 13px;">Jl. Oto Iskandardinata II, Cianjur</p>
-          </div>
-          <i class="fas fa-chevron-right" style="color: #d4af37;"></i>
-        </div>
-        
-        <!-- Pasir Hayam Branch -->
-        <div onclick="selectBranch('PASIR_HAYAM')" style="background: white; border-radius: 20px; padding: 24px; cursor: pointer; transition: all 0.3s ease; border: 1px solid #e5e5ea; display: flex; align-items: center; gap: 16px; text-align: left;" onmouseover="this.style.transform='translateY(-4px)'; this.style.borderColor='#d4af37'; this.style.boxShadow='0 12px 24px rgba(212,175,55,0.12)'" onmouseout="this.style.transform='translateY(0)'; this.style.borderColor='#e5e5ea'; this.style.boxShadow='none'">
-          <img src="https://i.imgur.com/OnjRXcK.png" style="width: 60px; height: 60px; border-radius: 15px; object-fit: cover;">
-          <div style="flex: 1;">
-            <h3 style="font-size: 18px; font-weight: 800; color: #000;">Pasir Hayam Gym</h3>
-            <p style="color: #555; font-size: 13px;">Jl. Raya Cibeber, Sirnagalih, Cianjur</p>
-          </div>
-          <i class="fas fa-chevron-right" style="color: #d4af37;"></i>
-        </div>
+      <div id="branchCardsContainer" style="display: flex; flex-direction: column; gap: 16px; width: 100%;">
+        <!-- Branches will be loaded here dynamically -->
       </div>
 
       <!-- Public Registration Buttons -->
-      <div style="margin-top: 32px; padding-top: 24px; border-top: 1px solid #e5e5ea; width: 100%;">
+      <div id="registrationLinksContainer" style="margin-top: 32px; padding-top: 24px; border-top: 1px solid #e5e5ea; width: 100%;">
         <p style="color: #555; font-size: 14px; margin-bottom: 16px; font-weight: 600;">Belum punya membership? Daftar sekarang:</p>
-        <div style="display: flex; gap: 12px; width: 100%;">
-          <a href="#" onclick="goToRegistration('OTISTA'); return false;" style="flex: 1; display: flex; align-items: center; justify-content: center; gap: 8px; padding: 14px; background: linear-gradient(135deg, #000, #1a1a1a); color: #d4af37; border-radius: 14px; text-decoration: none; font-weight: 600; font-size: 14px; transition: all 0.25s; border: 1px solid rgba(212,175,55,0.3);" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 8px 20px rgba(0,0,0,0.2)'" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='none'">
-            <i class="fas fa-user-plus"></i> Daftar Otista
-          </a>
-          <a href="#" onclick="goToRegistration('PASIR_HAYAM'); return false;" style="flex: 1; display: flex; align-items: center; justify-content: center; gap: 8px; padding: 14px; background: linear-gradient(135deg, #000, #1a1a1a); color: #d4af37; border-radius: 14px; text-decoration: none; font-weight: 600; font-size: 14px; transition: all 0.25s; border: 1px solid rgba(212,175,55,0.3);" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 8px 20px rgba(0,0,0,0.2)'" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='none'">
-            <i class="fas fa-user-plus"></i> Daftar Pasir Hayam
-          </a>
+        <div id="registrationLinks" style="display: flex; gap: 12px; width: 100%;">
+          <!-- Registration links will be loaded here dynamically -->
         </div>
       </div>
     </div>
@@ -513,7 +490,52 @@
       try { window.top.location.href = url; } catch(e) { window.location.href = url; }
     }
 
+    function loadBranches() {
+      google.script.run
+        .withSuccessHandler(function(res) {
+          if (res.success && res.branches) {
+            renderBranchesUI(res.branches);
+          }
+        })
+        .getBranches();
+    }
+
+    function renderBranchesUI(branches) {
+      const container = document.getElementById('branchCardsContainer');
+      const regLinks = document.getElementById('registrationLinks');
+      
+      if (container) {
+        let html = '';
+        branches.forEach(b => {
+          html += `
+            <div onclick="selectBranch('${b.id}')" style="background: white; border-radius: 20px; padding: 24px; cursor: pointer; transition: all 0.3s ease; border: 1px solid #e5e5ea; display: flex; align-items: center; gap: 16px; text-align: left;" onmouseover="this.style.transform='translateY(-4px)'; this.style.borderColor='#d4af37'; this.style.boxShadow='0 12px 24px rgba(212,175,55,0.12)'" onmouseout="this.style.transform='translateY(0)'; this.style.borderColor='#e5e5ea'; this.style.boxShadow='none'">
+              <img src="${b.logo || 'https://i.imgur.com/TPoUeRJ.jpeg'}" style="width: 60px; height: 60px; border-radius: 15px; object-fit: cover;">
+              <div style="flex: 1;">
+                <h3 style="font-size: 18px; font-weight: 800; color: #000;">${b.name}</h3>
+                <p style="color: #555; font-size: 13px;">${b.address || ''}</p>
+              </div>
+              <i class="fas fa-chevron-right" style="color: #d4af37;"></i>
+            </div>
+          `;
+        });
+        container.innerHTML = html;
+      }
+
+      if (regLinks) {
+        let html = '';
+        branches.forEach(b => {
+          html += `
+            <a href="#" onclick="goToRegistration('${b.id}'); return false;" style="flex: 1; display: flex; align-items: center; justify-content: center; gap: 8px; padding: 14px; background: linear-gradient(135deg, #000, #1a1a1a); color: #d4af37; border-radius: 14px; text-decoration: none; font-weight: 600; font-size: 14px; transition: all 0.25s; border: 1px solid rgba(212,175,55,0.3);" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 8px 20px rgba(0,0,0,0.2)'" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='none'">
+              <i class="fas fa-user-plus"></i> Daftar ${b.name}
+            </a>
+          `;
+        });
+        regLinks.innerHTML = html;
+      }
+    }
+
     window.onload = function() {
+      loadBranches();
       const urlParams = new URLSearchParams(window.location.search);
       const branchParam = urlParams.get('branch');
       const memberId = urlParams.get('id') || urlParams.get('memberId');
