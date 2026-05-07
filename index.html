@@ -2423,6 +2423,52 @@
   </div>
 
   <div id="toastContainer" class="toast-container"></div>
+  <!-- Edit User Modal -->
+  <div id="editUserModal" class="modal-overlay" style="display:none;z-index:9999">
+    <div class="modal-box" style="max-width:400px">
+      <div class="modal-header">
+        <h4><i class="fas fa-user-edit"></i> Edit Akun User</h4>
+        <button class="close-btn" onclick="closeEditUserModal()">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div id="editUserAlert" class="alert" style="display:none"></div>
+        <input type="hidden" id="eu_userId">
+        <div class="form-group">
+          <label class="form-label">Nama Lengkap *</label>
+          <input id="eu_name" class="form-input">
+        </div>
+        <div class="form-group">
+          <label class="form-label">No. Telepon *</label>
+          <input id="eu_phone" class="form-input">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Username</label>
+          <input id="eu_username" class="form-input" readonly style="background:#f1f5f9">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Email</label>
+          <input id="eu_email" type="email" class="form-input">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Role *</label>
+          <select id="eu_role" class="form-input">
+            <option value="Staff">Staff</option>
+            <option value="Admin">Admin</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Password Baru (kosongkan jika tidak ganti)</label>
+          <input id="eu_password" type="password" class="form-input" placeholder="Minimal 6 karakter">
+        </div>
+      </div>
+      <div class="modal-footer" style="display:flex; gap:10px">
+        <button class="btn btn-secondary" style="flex:1" onclick="closeEditUserModal()">Batal</button>
+        <button id="btnSaveUserEdit" class="btn btn-primary" style="flex:2" onclick="saveUserEdit()">
+          <i class="fas fa-save"></i> Simpan Perubahan
+        </button>
+      </div>
+    </div>
+  </div>
 
   <!-- Confirm Modal -->
   <div id="confirmModal" class="modal-overlay" style="display:none">
@@ -8893,22 +8939,45 @@
                       </tr>
                     </thead>
                     <tbody>
-                      ${list.map(u => `
-                        <tr>
-                          <td><b>${escapeHtml(u.name)}</b></td>
-                          <td><code>${u.username}</code></td>
-                          <td><span class="badge badge-${u.role === 'Super Admin' ? 'danger' : (u.role === 'Admin' ? 'primary' : 'secondary')}">${u.role}</span></td>
-                          <td><small>${u.email || '-'}<br>${u.phone || '-'}</small></td>
-                          <td><small>${u.lastLogin ? formatDateTime(u.lastLogin) : '-'}</small></td>
-                          <td>
-                            ${u.username !== 'superadmin' ? `
-                              <button class="btn btn-sm btn-danger" onclick="confirmDeleteUser('${u.id}', '${u.username}')">
-                                <i class="fas fa-trash"></i>
-                              </button>
-                            ` : '-'}
-                          </td>
-                        </tr>
-                      `).join('')}
+                      ${list.map(u => {
+                        const isSuperAdminActor = currentUser.role === 'Super Admin';
+                        const isAdminActor = currentUser.role === 'Admin';
+                        
+                        let actionBtns = '';
+                        
+                        // Edit button
+                        if (isSuperAdminActor || (isAdminActor && (u.role === 'Admin' || u.role === 'Staff' || u.role === 'Kasir'))) {
+                          actionBtns += `
+                            <button class="btn btn-sm btn-primary" onclick="openEditUserModal('${u.id}')" title="Edit User">
+                              <i class="fas fa-edit"></i>
+                            </button>
+                          `;
+                        }
+                        
+                        // Delete button (Super Admin only)
+                        if (isSuperAdminActor && u.username !== 'superadmin') {
+                          actionBtns += `
+                            <button class="btn btn-sm btn-danger" onclick="confirmDeleteUser('${u.id}', '${u.username}')" title="Hapus User">
+                              <i class="fas fa-trash"></i>
+                            </button>
+                          `;
+                        }
+
+                        return `
+                          <tr>
+                            <td><b>${escapeHtml(u.name)}</b></td>
+                            <td><code>${u.username}</code></td>
+                            <td><span class="badge badge-${u.role === 'Super Admin' ? 'danger' : (u.role === 'Admin' ? 'primary' : 'secondary')}">${u.role}</span></td>
+                            <td><small>${u.email || '-'}<br>${u.phone || '-'}</small></td>
+                            <td><small>${u.lastLogin ? formatDateTime(u.lastLogin) : '-'}</small></td>
+                            <td>
+                              <div style="display:flex; gap:5px">
+                                ${actionBtns || '-'}
+                              </div>
+                            </td>
+                          </tr>
+                        `;
+                      }).join('')}
                     </tbody>
                   </table>
                 </div>
@@ -8919,6 +8988,80 @@
           }
         })
         .getAllUsers();
+    }
+
+    function openEditUserModal(userId) {
+      showLoading();
+      google.script.run
+        .withSuccessHandler(function (res) {
+          hideLoading();
+          if (res.success) {
+            const users = res.users;
+            const u = users.find(x => x.id == userId);
+            if (!u) {
+              showToast('User tidak ditemukan', 'error');
+              return;
+            }
+
+            document.getElementById('eu_userId').value = u.id;
+            document.getElementById('eu_name').value = u.name;
+            document.getElementById('eu_phone').value = u.phone || '';
+            document.getElementById('eu_username').value = u.username;
+            document.getElementById('eu_email').value = u.email || '';
+            document.getElementById('eu_role').value = u.role;
+            document.getElementById('eu_password').value = ''; // Reset password field
+            
+            document.getElementById('editUserAlert').style.display = 'none';
+            document.getElementById('editUserModal').style.display = 'flex';
+          }
+        })
+        .getAllUsers();
+    }
+
+    function closeEditUserModal() {
+      document.getElementById('editUserModal').style.display = 'none';
+    }
+
+    function saveUserEdit() {
+      const id = document.getElementById('eu_userId').value;
+      const name = document.getElementById('eu_name').value.trim();
+      const phone = document.getElementById('eu_phone').value.trim();
+      const email = document.getElementById('eu_email').value.trim();
+      const role = document.getElementById('eu_role').value;
+      const password = document.getElementById('eu_password').value.trim();
+
+      if (!name || name.length < 3) {
+        showAlert('editUserAlert', 'Nama minimal 3 karakter', 'warning');
+        return;
+      }
+
+      const btn = document.getElementById('btnSaveUserEdit');
+      const originalText = btn.innerHTML;
+      btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Menyimpan...';
+      btn.disabled = true;
+      showLoading();
+
+      google.script.run
+        .withSuccessHandler(function (res) {
+          hideLoading();
+          btn.innerHTML = originalText;
+          btn.disabled = false;
+
+          if (res.success) {
+            showToast('✅ ' + res.message, 'success');
+            closeEditUserModal();
+            loadUserList();
+          } else {
+            showAlert('editUserAlert', '❌ ' + res.message, 'error');
+          }
+        })
+        .updateUserAccount(id, {
+          fullName: name,
+          phone: phone,
+          email: email,
+          role: role,
+          password: password
+        }, currentUser.name);
     }
 
     function confirmDeleteUser(id, username) {
