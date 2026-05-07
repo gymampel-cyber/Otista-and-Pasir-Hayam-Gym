@@ -8,12 +8,12 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script>
     const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzKWdekXY27eWx5h4CI7HvLxnTboVPryp_gTpqTtCNM-G7yqLe4m0owvj7YwGgTm8bv/exec';
-    
+
     // Actions that should be executed locally first and then queued for sync
     const WRITE_ACTIONS = [
       'registerMember', 'updateMemberPhoto', 'processCheckIn', 'processCheckInWithPT',
-      'processPOSTransaction', 'saveExpense', 'saveProduct', 'deleteProduct', 
-      'adjustStock', 'approveRegistration', 'approveExtension', 'rejectApproval', 
+      'processPOSTransaction', 'saveExpense', 'saveProduct', 'deleteProduct',
+      'adjustStock', 'approveRegistration', 'approveExtension', 'rejectApproval',
       'registerPTSession', 'submitRegistration', 'submitExtensionRequest'
     ];
 
@@ -129,7 +129,7 @@
     function performOptimisticUpdate(action, args) {
       try {
         if (!window.appData) return;
-        
+
         if (action === 'processCheckIn' || action === 'processCheckInWithPT') {
           appData.stats.checkins = (appData.stats.checkins || 0) + 1;
         } else if (action === 'registerMember') {
@@ -151,7 +151,7 @@
             });
           }
         }
-        
+
         saveAppData();
         if (typeof refreshPage === 'function') refreshPage();
         else if (typeof renderCurrentView === 'function') renderCurrentView();
@@ -203,7 +203,7 @@
     function updateSyncIndicator() {
       const indicator = document.getElementById('liveIndicator');
       if (!indicator) return;
-      
+
       if (!navigator.onLine) {
         indicator.className = 'status-badge offline';
         indicator.innerHTML = '<i class="fas fa-plane"></i> Offline';
@@ -314,15 +314,46 @@
       font-weight: 600;
       transition: all 0.3s;
     }
-    .status-badge.online { background: #dcfce7; color: #16a34a; }
-    .status-badge.offline { background: #fee2e2; color: #dc2626; }
-    .status-badge.syncing { background: #fef9c3; color: #ca8a04; }
-    .status-badge.pending { background: #dbeafe; color: #2563eb; }
 
-    body.dark-mode .status-badge.online { background: rgba(22, 163, 74, 0.2); color: #4ade80; }
-    body.dark-mode .status-badge.offline { background: rgba(220, 38, 38, 0.2); color: #f87171; }
-    body.dark-mode .status-badge.syncing { background: rgba(202, 138, 4, 0.2); color: #facc15; }
-    body.dark-mode .status-badge.pending { background: rgba(37, 99, 235, 0.2); color: #60a5fa; }
+    .status-badge.online {
+      background: #dcfce7;
+      color: #16a34a;
+    }
+
+    .status-badge.offline {
+      background: #fee2e2;
+      color: #dc2626;
+    }
+
+    .status-badge.syncing {
+      background: #fef9c3;
+      color: #ca8a04;
+    }
+
+    .status-badge.pending {
+      background: #dbeafe;
+      color: #2563eb;
+    }
+
+    body.dark-mode .status-badge.online {
+      background: rgba(22, 163, 74, 0.2);
+      color: #4ade80;
+    }
+
+    body.dark-mode .status-badge.offline {
+      background: rgba(220, 38, 38, 0.2);
+      color: #f87171;
+    }
+
+    body.dark-mode .status-badge.syncing {
+      background: rgba(202, 138, 4, 0.2);
+      color: #facc15;
+    }
+
+    body.dark-mode .status-badge.pending {
+      background: rgba(37, 99, 235, 0.2);
+      color: #60a5fa;
+    }
 
     /* Login Page Centering */
     .auth-layout {
@@ -2708,7 +2739,8 @@
           <div>
             <div style="display:flex; align-items:center; gap:8px">
               <h1 id="pageTitle" style="font-size:18px;color:var(--text-main);font-weight:700;margin:0">Dashboard</h1>
-              <div id="liveIndicator" class="status-badge online" style="margin-left:8px" title="Status Koneksi & Sinkronisasi">
+              <div id="liveIndicator" class="status-badge online" style="margin-left:8px"
+                title="Status Koneksi & Sinkronisasi">
                 <i class="fas fa-check-circle"></i> Online
               </div>
             </div>
@@ -2789,7 +2821,7 @@
     };
 
     const CACHE = {
-      clearStats: function() {
+      clearStats: function () {
         console.log('Clearing stats cache...');
         window.appData.stats = {};
         // Clear all localStorage keys matching dashboard_stats
@@ -2801,8 +2833,8 @@
           }
         }
       },
-      clearAll: function() {
-        window.appData = { members:[], catalogue:[], products:[], branches:[], stats:{}, settings:{}, lastFetch: null };
+      clearAll: function () {
+        window.appData = { members: [], catalogue: [], products: [], branches: [], stats: {}, settings: {}, lastFetch: null };
         for (let i = 0; i < localStorage.length; i++) {
           const key = localStorage.key(i);
           if (key && key.startsWith(APP_CACHE_KEY)) {
@@ -2859,14 +2891,10 @@
 
     function fetchInitialAppData() {
       if (!currentUser) return;
-      isSyncing = true;
-      updateSyncIndicator();
       console.log('Fetching initial app data...');
 
       google.script.run
         .withSuccessHandler(function (res) {
-          isSyncing = false;
-          updateSyncIndicator();
           if (res && res.success) {
             const d = res.data;
             if (d.members) saveToCache('members', d.members);
@@ -2879,11 +2907,6 @@
             window.appData.lastFetch = new Date().toISOString();
             refreshPage();
           }
-        })
-        .withFailureHandler(function(err) {
-          isSyncing = false;
-          updateSyncIndicator();
-          console.error('Fetch error:', err);
         })
         .getInitialAppData(currentBranch);
     }
@@ -3195,12 +3218,12 @@
       document.getElementById('authCard').innerHTML = `
         <div class="auth-header">
           <h2 style="font-size:22px;font-weight:700">Cek Status Member</h2>
-          <p style="opacity:0.85;margin-top:4px;font-size:13px">Masukkan ID Member Anda</p>
+          <p style="opacity:0.85;margin-top:4px;font-size:13px">Masukkan ID atau No. HP Anda</p>
         </div>
         <div class="auth-form">
           <div class="form-group">
-            <label class="form-label"><i class="fas fa-id-card"></i> Member ID</label>
-            <input id="checkMid" class="form-input" placeholder="Contoh: M2301001" 
+            <label class="form-label"><i class="fas fa-search"></i> ID atau No. HP Member</label>
+            <input id="checkMid" class="form-input" placeholder="Contoh: M2301001 atau 08123xxx" 
                    onkeypress="if(event.key==='Enter') doPublicCheckMember()">
           </div>
           <div id="publicCheckResult"></div>
@@ -3215,8 +3238,8 @@
     }
 
     function doPublicCheckMember() {
-      const mid = document.getElementById('checkMid').value.trim().toUpperCase();
-      if (!mid) { showToast('Masukkan Member ID', 'warning'); return; }
+      const mid = document.getElementById('checkMid').value.trim();
+      if (!mid) { showToast('Masukkan ID atau No. HP Member', 'warning'); return; }
 
       const btn = document.getElementById('btnCheckMember');
       btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Mengecek...';
@@ -4624,9 +4647,9 @@
                 <div id="trxResult" class="result-card" style="display:none;"></div>
                 <div class="form-row">
                   <div class="form-group">
-                    <label class="form-label">Member ID / Nama *</label>
+                    <label class="form-label">Member ID / Nama / No. HP *</label>
                     <div style="display:flex;gap:8px">
-                      <input id="trx_memberId" class="form-input" placeholder="Cari ID atau nama..." oninput="searchMemberForTrx(this.value)">
+                      <input id="trx_memberId" class="form-input" placeholder="Cari ID, Nama, atau No. HP..." oninput="searchMemberForTrx(this.value)">
                       <button class="btn btn-outline" onclick="searchMemberForTrx(document.getElementById('trx_memberId').value)">
                         <i class="fas fa-search"></i>
                       </button>
@@ -5025,10 +5048,10 @@
                 const checkinTime = new Date();
                 const daysLeft = r.newExpiry ? Math.ceil((new Date(r.newExpiry) - new Date()) / 86400000) : 0;
 
-                 resultEl.className = 'result-card success';
-                 resultEl.style.display = 'block';
-                 if (typeof fetchInitialAppData === 'function') fetchInitialAppData();
-                 resultEl.innerHTML = `
+                resultEl.className = 'result-card success';
+                resultEl.style.display = 'block';
+                if (typeof fetchInitialAppData === 'function') fetchInitialAppData();
+                resultEl.innerHTML = `
                   <div style="display:flex;align-items:center;gap:16px;margin-bottom:16px">
                     <div style="background:#22c55e;color:white;width:56px;height:56px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:24px">
                       <i class="fas fa-check"></i>
@@ -5848,7 +5871,7 @@
         .withFailureHandler(function () { hideLoading(); })
         .getFullProducts(currentBranch);
     }
-    
+
     function viewStockHistory(start = '', end = '') {
       showLoading();
       google.script.run
@@ -5866,7 +5889,7 @@
             showToast('Gagal memuat riwayat: ' + res.message, 'error');
           }
         })
-        .withFailureHandler(function(err) { hideLoading(); showToast('Error: ' + err, 'error'); })
+        .withFailureHandler(function (err) { hideLoading(); showToast('Error: ' + err, 'error'); })
         .getStockLogs(start, end, currentBranch);
     }
 
@@ -8953,30 +8976,30 @@
                     </thead>
                     <tbody>
                       ${list.map(u => {
-                        const isSuperAdminActor = currentUser.role === 'Super Admin';
-                        const isAdminActor = currentUser.role === 'Admin';
-                        
-                        let actionBtns = '';
-                        
-                        // Edit button
-                        if (isSuperAdminActor || (isAdminActor && (u.role === 'Admin' || u.role === 'Staff' || u.role === 'Kasir'))) {
-                          actionBtns += `
+              const isSuperAdminActor = currentUser.role === 'Super Admin';
+              const isAdminActor = currentUser.role === 'Admin';
+
+              let actionBtns = '';
+
+              // Edit button
+              if (isSuperAdminActor || (isAdminActor && (u.role === 'Admin' || u.role === 'Staff' || u.role === 'Kasir'))) {
+                actionBtns += `
                             <button class="btn btn-sm btn-primary" onclick="openEditUserModal('${u.id}')" title="Edit User">
                               <i class="fas fa-edit"></i>
                             </button>
                           `;
-                        }
-                        
-                        // Delete button (Super Admin only)
-                        if (isSuperAdminActor && u.username !== 'superadmin') {
-                          actionBtns += `
+              }
+
+              // Delete button (Super Admin only)
+              if (isSuperAdminActor && u.username !== 'superadmin') {
+                actionBtns += `
                             <button class="btn btn-sm btn-danger" onclick="confirmDeleteUser('${u.id}', '${u.username}')" title="Hapus User">
                               <i class="fas fa-trash"></i>
                             </button>
                           `;
-                        }
+              }
 
-                        return `
+              return `
                           <tr>
                             <td><b>${escapeHtml(u.name)}</b></td>
                             <td><code>${u.username}</code></td>
@@ -8990,7 +9013,7 @@
                             </td>
                           </tr>
                         `;
-                      }).join('')}
+            }).join('')}
                     </tbody>
                   </table>
                 </div>
@@ -9023,7 +9046,7 @@
             document.getElementById('eu_email').value = u.email || '';
             document.getElementById('eu_role').value = u.role;
             document.getElementById('eu_password').value = ''; // Reset password field
-            
+
             document.getElementById('editUserAlert').style.display = 'none';
             document.getElementById('editUserModal').style.display = 'flex';
           }
@@ -9430,7 +9453,7 @@
           // Hilangkan 'gallery' dari akses Staff/Kasir
           const staffViews = ['dashboard', 'members', 'transactions', 'checkin', 'pt', 'pos', 'approvals', 'expenses', 'birthdays'];
           if (!staffViews.includes(view)) visible = false;
-          
+
           // Sembunyikan kartu dashboard
           const galCard = document.getElementById('cardGallery');
           if (galCard) galCard.style.display = 'none';
@@ -9599,22 +9622,18 @@
 
     function syncRealtimeData() {
       if (!currentUser || currentView !== 'dashboard') return;
-      isSyncing = true;
-      updateSyncIndicator();
+      const indicator = document.getElementById('liveIndicator');
+      if (indicator) indicator.style.display = 'block';
 
       google.script.run
         .withSuccessHandler(function (res) {
-          isSyncing = false;
-          updateSyncIndicator();
           if (res.success) {
             updateDashboardCounters(res.stats);
             const timeEl = document.getElementById('lastSyncTime');
             if (timeEl) timeEl.textContent = 'LIVE: ' + new Date().toLocaleTimeString('id-ID');
           }
         })
-        .withFailureHandler(function(err) {
-          isSyncing = false;
-          updateSyncIndicator();
+        .withFailureHandler(function (err) {
           console.warn('Realtime sync failed (background):', err.message);
         })
         .getDashboardStats(null, null, currentBranch);
@@ -9872,7 +9891,8 @@
         <button class="btn btn-sm btn-outline" onclick="closeStockHistoryModal()"><i class="fas fa-times"></i></button>
       </div>
       <div class="modal-body">
-        <div style="background:#f8fafc; padding:15px; border-radius:10px; margin-bottom:15px; display:flex; gap:10px; align-items:flex-end; flex-wrap:wrap">
+        <div
+          style="background:#f8fafc; padding:15px; border-radius:10px; margin-bottom:15px; display:flex; gap:10px; align-items:flex-end; flex-wrap:wrap">
           <div class="form-group" style="margin:0">
             <label class="form-label" style="font-size:11px">Tanggal Awal</label>
             <input type="date" id="stock_filter_start" class="form-input" style="padding:5px 10px; width:150px">
@@ -10806,7 +10826,7 @@
       currentBranch = document.getElementById('branchSwitcher').value;
       localStorage.setItem('current_branch', currentBranch);
       loadAndApplyBranding();
-      
+
       // Refresh all core data for the new branch
       if (typeof fetchInitialAppData === 'function') {
         fetchInitialAppData();
