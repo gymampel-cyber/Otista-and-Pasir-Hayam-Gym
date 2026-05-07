@@ -1300,7 +1300,7 @@
               '<p style="color:#ef4444;text-align:center;padding:30px">Gagal memuat paket: ' + err.message + '</p>';
           }
         })
-        .getPackages();
+        .getPackages(false, currentBranch);
     }
 
     function renderPackagesUI(res) {
