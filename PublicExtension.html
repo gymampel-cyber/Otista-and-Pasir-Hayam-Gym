@@ -374,10 +374,10 @@
 
       <div id="searchSection">
         <div class="form-group">
-          <label class="form-label"><i class="fas fa-id-card"></i> Member ID</label>
-          <input type="text" id="memberIdInput" class="form-input" placeholder="Masukkan Member ID Anda" 
+          <label class="form-label"><i class="fas fa-search"></i> ID atau No. HP Member</label>
+          <input type="text" id="memberIdInput" class="form-input" placeholder="Masukkan ID atau No. HP Terdaftar" 
             onkeydown="if(event.key==='Enter') loadMemberInfo()">
-          <small style="color:#94a3b8">Contoh: M2301001</small>
+          <small style="color:#94a3b8">Contoh: M2301001 atau 081234567xxx</small>
         </div>
         <button class="btn btn-primary" onclick="loadMemberInfo()" id="loadMemberBtn">
           <i class="fas fa-search"></i> Cari Data Member
@@ -632,7 +632,7 @@
     function loadMemberInfo() {
       const memberId = document.getElementById('memberIdInput').value.trim();
       if (!memberId) {
-        showAlert('Masukkan Member ID', 'warning');
+        showAlert('Masukkan ID atau No. HP Member', 'warning');
         return;
       }
 
