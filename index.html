@@ -2859,10 +2859,14 @@
 
     function fetchInitialAppData() {
       if (!currentUser) return;
+      isSyncing = true;
+      updateSyncIndicator();
       console.log('Fetching initial app data...');
 
       google.script.run
         .withSuccessHandler(function (res) {
+          isSyncing = false;
+          updateSyncIndicator();
           if (res && res.success) {
             const d = res.data;
             if (d.members) saveToCache('members', d.members);
@@ -2875,6 +2879,11 @@
             window.appData.lastFetch = new Date().toISOString();
             refreshPage();
           }
+        })
+        .withFailureHandler(function(err) {
+          isSyncing = false;
+          updateSyncIndicator();
+          console.error('Fetch error:', err);
         })
         .getInitialAppData(currentBranch);
     }
@@ -5791,7 +5800,7 @@
             `;
           }
         })
-        .getFullCatalogue();
+        .getFullCatalogue(currentBranch);
     }
 
     function showProductCatalog() {
@@ -5837,7 +5846,7 @@
           }
         })
         .withFailureHandler(function () { hideLoading(); })
-        .getFullProducts();
+        .getFullProducts(currentBranch);
     }
     
     function viewStockHistory(start = '', end = '') {
@@ -6168,7 +6177,7 @@
             }
           }
         })
-        .getFullProducts();
+        .getFullProducts(currentBranch);
     }
 
     function openQuickUpdateModal(p) {
@@ -6228,7 +6237,8 @@
         addedQty: parseInt(document.getElementById('restock_qty').value),
         totalCost: parseInt(document.getElementById('restock_cost').value),
         paymentMethod: document.getElementById('restock_payment').value,
-        user: currentUser ? currentUser.name : 'System'
+        user: currentUser ? currentUser.name : 'System',
+        gym: currentBranch
       };
 
       if (payload.addedQty <= 0) { showToast('Jumlah harus lebih dari 0', 'warning'); return; }
@@ -6408,7 +6418,8 @@
         'Harga': document.getElementById('pkg_price').value,
         'Total Harga': document.getElementById('pkg_price').value,
         'Deskripsi': document.getElementById('pkg_desc').value,
-        'Is Active': document.getElementById('pkg_active').checked
+        'Is Active': document.getElementById('pkg_active').checked,
+        'Cabang': currentBranch
       };
 
       if (!data['Nama Paket']) { showToast('Nama paket wajib diisi', 'warning'); return; }
@@ -6572,7 +6583,8 @@
         'Satuan': document.getElementById('prod_unit').value,
         'Foto URL': document.getElementById('prod_photo_url').value,
         'productPhoto': productPhotoBase64,
-        'Status': 'Aktif'
+        'Status': 'Aktif',
+        'Cabang': currentBranch
       };
 
       if (!data['Nama Produk']) { showToast('Nama produk wajib diisi', 'warning'); return; }
@@ -7520,7 +7532,7 @@
           btn.disabled = false;
           showToast('Error: ' + err.message, 'error');
         })
-        .processVisitCheckIn({ visitorName: name, visitorPhone: phone, visitType: document.getElementById('visit_type').value, paymentMethod: 'Cash', gym: currentBranch });
+        .processVisitCheckIn({ visitorName: name, visitorPhone: phone, visitType: document.getElementById('visit_type').value, paymentMethod: 'Cash', gym: currentBranch }, currentUser?.name || 'Admin');
     }
 
     // ================ QR SCANNER ================
@@ -9587,11 +9599,13 @@
 
     function syncRealtimeData() {
       if (!currentUser || currentView !== 'dashboard') return;
-      const indicator = document.getElementById('liveIndicator');
-      if (indicator) indicator.style.display = 'block';
+      isSyncing = true;
+      updateSyncIndicator();
 
       google.script.run
         .withSuccessHandler(function (res) {
+          isSyncing = false;
+          updateSyncIndicator();
           if (res.success) {
             updateDashboardCounters(res.stats);
             const timeEl = document.getElementById('lastSyncTime');
@@ -9599,6 +9613,8 @@
           }
         })
         .withFailureHandler(function(err) {
+          isSyncing = false;
+          updateSyncIndicator();
           console.warn('Realtime sync failed (background):', err.message);
         })
         .getDashboardStats(null, null, currentBranch);
