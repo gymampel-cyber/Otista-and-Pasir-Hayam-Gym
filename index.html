@@ -2951,7 +2951,7 @@
       } catch (e) { return null; }
     }
 
-    function fetchInitialAppData() {
+    function fetchInitialAppData(callback) {
       if (!currentUser) return;
       console.log('Fetching initial app data...');
 
@@ -2967,8 +2967,16 @@
             if (d.stats) saveToCache('stats', d.stats);
 
             window.appData.lastFetch = new Date().toISOString();
-            refreshPage();
+            if (typeof callback === 'function') {
+              callback(res);
+            } else {
+              refreshPage();
+            }
           }
+        })
+        .withFailureHandler(function (err) {
+          console.error('Fetch error:', err);
+          if (typeof callback === 'function') callback({ success: false, message: err });
         })
         .getInitialAppData(currentBranch);
     }
@@ -5634,6 +5642,7 @@
     }
 
     // ================ CATALOG & INVENTORY ================
+    let currentCatalogTab = 'package'; 
     function loadCatalogView() {
       document.getElementById('contentArea').innerHTML = `
         <div class="stats-grid" style="margin-bottom:20px">
@@ -5658,10 +5667,15 @@
         </div>
         <div id="catalogContent"></div>
       `;
-      showPackageCatalog();
+      if (currentCatalogTab === 'product') {
+        showProductCatalog();
+      } else {
+        showPackageCatalog();
+      }
     }
 
     function showPackageCatalog() {
+      currentCatalogTab = 'package';
       const container = document.getElementById('catalogContent');
       container.innerHTML = `
         <div class="form-card">
@@ -5731,6 +5745,7 @@
     }
 
     function showProductCatalog() {
+      currentCatalogTab = 'product';
       const container = document.getElementById('catalogContent');
       container.innerHTML = `
         <div class="form-card">
@@ -10845,20 +10860,21 @@
       if (typeof selectedMember !== 'undefined') selectedMember = null;
       
       CACHE.clearMemory();
+      showLoading();
       
       loadAndApplyBranding();
 
       // Refresh all core data for the new branch
       if (typeof fetchInitialAppData === 'function') {
-        fetchInitialAppData();
+        fetchInitialAppData(function() {
+          hideLoading();
+          refreshPage();
+          showToast('Berpindah ke Cabang: ' + (document.getElementById('branchSwitcher').options[document.getElementById('branchSwitcher').selectedIndex].text), 'info');
+        });
+      } else {
+        hideLoading();
+        refreshPage();
       }
-
-      // Automatically refresh the current active view (Gallery, Members, etc.)
-      // This will call loadCatalogView() if the user is in Catalog view, 
-      // which will then fetch fresh packages from the server.
-      refreshPage();
-      
-      showToast('Berpindah ke Cabang: ' + (document.getElementById('branchSwitcher').options[document.getElementById('branchSwitcher').selectedIndex].text), 'info');
     }
 
     function loadAndApplyBranding() {
