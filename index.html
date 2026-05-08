@@ -7320,15 +7320,18 @@
       // Filter paket Visit yang sesuai dengan CABANG saat ini
       const visits = (window.appData && appData.catalogue) ? 
                      appData.catalogue.filter(p => {
-                       const t = (p.type || p['Tipe Paket'] || '').toUpperCase();
-                       const n = (p.name || p['Nama Paket'] || '').toUpperCase();
-                       const b = (p.branch || p['Cabang'] || 'All');
+                       const t = (p.type || p['Tipe Paket'] || '').toString().toUpperCase();
+                       const n = (p.name || p['Nama Paket'] || '').toString().toUpperCase();
+                       const b = (p.branch || p['Cabang'] || 'All').toString().toLowerCase();
+                       const curB = (currentBranch || 'All').toString().toLowerCase();
                        
-                       const isVisit = t === 'VISIT' || n.startsWith('VISIT');
-                       const isBranch = b === 'All' || b === currentBranch;
+                       const isVisit = t === 'VISIT' || n.includes('VISIT');
+                       const isBranch = b === 'all' || b === curB;
                        
                        return isVisit && isBranch;
                      }) : [];
+      
+      console.log('Filtered visit packages for branch', currentBranch, ':', visits);
       
       if (visits.length > 0) {
         visits.forEach(v => {
