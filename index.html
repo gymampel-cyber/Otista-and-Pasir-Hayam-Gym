@@ -2638,11 +2638,7 @@
           <div class="form-group">
             <label class="form-label">Tipe Visit *</label>
             <select id="visit_type" class="form-input" onchange="updateVisitPrice()">
-              <option value="Gym" selected>Gym</option>
-              <option value="Calistenics Privat">Calistenics Privat</option>
-              <option value="Calistenics Group">Calistenics Group</option>
-              <option value="Yoga">Yoga</option>
-              <option value="Zumba">Zumba</option>
+              <!-- Dynamic options from catalog -->
             </select>
           </div>
         </div>
@@ -3819,7 +3815,7 @@
           hideLoading();
           showToast('Gagal memuat galeri: ' + err.message, 'error');
         })
-        .getAllMembers(currentBranch);
+        .getAllMembers('All');
     }
 
     function renderGallery(members) {
@@ -4725,49 +4721,6 @@
           })
           .searchMembers(searchInput);
       }, 300);
-    }
-
-    function searchMemberForCheckin(query) {
-      if (window.ciSearchTimeout) clearTimeout(window.ciSearchTimeout);
-      const searchInput = query.trim();
-      if (searchInput.length < 2) {
-        document.getElementById('ciMemberResults').innerHTML = '';
-        return;
-      }
-      document.getElementById('ciMemberResults').innerHTML = '<div style="text-align:center;padding:10px;color:#94a3b8"><i class="fas fa-spinner fa-spin"></i> Mencari...</div>';
-      window.ciSearchTimeout = setTimeout(function () {
-        google.script.run
-          .withSuccessHandler(function (res) {
-            const el = document.getElementById('ciMemberResults');
-            if (!el) return;
-            if (res && res.success && res.members && res.members.length > 0) {
-              let html = '';
-              res.members.slice(0, 5).forEach(m => {
-                const statusClass = m.status === 'Aktif' ? 'success' : (m.status === 'Expired' ? 'danger' : 'warning');
-                html += `
-                  <div onclick="selectMemberForCheckin('${m.memberId}')" 
-                       style="padding:10px;background:white;border:1px solid #e2e8f0;border-radius:8px;cursor:pointer;margin-bottom:6px;font-size:12px">
-                    <div style="display:flex;justify-content:space-between">
-                      <b>${escapeHtml(m.fullName)}</b>
-                      <span class="badge badge-${statusClass}" style="font-size:10px">${m.status}</span>
-                    </div>
-                    <div style="color:#64748b;font-size:11px">ID: ${m.memberId} | HP: ${m.phone}</div>
-                  </div>
-                `;
-              });
-              el.innerHTML = html;
-            } else {
-              el.innerHTML = '<div style="padding:10px;text-align:center;font-size:12px;color:#94a3b8">Tidak ditemukan</div>';
-            }
-          })
-          .searchMembers(searchInput);
-      }, 300);
-    }
-
-    function selectMemberForCheckin(id) {
-      document.getElementById('ci_memberId').value = id;
-      document.getElementById('ciMemberResults').innerHTML = '';
-      previewMemberCheckin(id);
     }
 
     function searchMemberForPOS(query) {
@@ -6791,8 +6744,12 @@
                 </h4>
                 <div class="form-group">
                   <label class="form-label">Member ID / Nama / HP</label>
-                  <input id="ci_memberId" class="form-input" placeholder="Cari ID, Nama, atau No. HP..." oninput="searchMemberForCheckin(this.value)">
-                  <div id="ciMemberResults" style="margin-top:8px;max-height:250px;overflow-y:auto;border-radius:8px;"></div>
+                  <div style="display:flex; gap:8px">
+                    <input id="ci_memberId" class="form-input" placeholder="Ketik ID atau No. HP..." oninput="autoPreviewCheckin(this.value)" onkeydown="if(event.key==='Enter') previewMemberCheckin()">
+                    <button class="btn btn-primary" onclick="previewMemberCheckin()" style="white-space:nowrap">
+                      <i class="fas fa-search"></i> Cari
+                    </button>
+                  </div>
                 </div>
                 <p style="font-size:13px;color:#64748b;margin-bottom:12px">Setelah data dipilih, detail member akan muncul untuk konfirmasi.</p>
                 <button class="btn btn-info btn-block" onclick="openVisitModal()">
@@ -6878,6 +6835,16 @@
           }
         })
         .getTodayCheckins(currentBranch);
+    }
+
+    function autoPreviewCheckin(val) {
+      if (window.ciAutoTimeout) clearTimeout(window.ciAutoTimeout);
+      const input = val.trim();
+      if (input.length >= 3) {
+        window.ciAutoTimeout = setTimeout(function () {
+          previewMemberCheckin(input);
+        }, 600);
+      }
     }
 
     function previewMemberCheckin(scannedId) {
@@ -7346,7 +7313,29 @@
       document.getElementById('visitSearchResults').innerHTML = '';
       document.getElementById('visit_name').value = '';
       document.getElementById('visit_phone').value = '';
-      document.getElementById('visit_type').value = 'Gym'; // reset to default
+      
+      const select = document.getElementById('visit_type');
+      select.innerHTML = '';
+      
+      const visits = (window.appData && appData.catalogue) ? 
+                     appData.catalogue.filter(p => (p.type || '').toUpperCase() === 'VISIT') : [];
+      
+      if (visits.length > 0) {
+        visits.forEach(v => {
+          const opt = document.createElement('option');
+          opt.value = v.name || '';
+          opt.textContent = v.name || '';
+          select.appendChild(opt);
+        });
+      } else {
+        ['Gym', 'Yoga', 'Zumba'].forEach(t => {
+          const opt = document.createElement('option');
+          opt.value = t;
+          opt.textContent = t;
+          select.appendChild(opt);
+        });
+      }
+      
       updateVisitPrice();
       document.getElementById('visitModal').style.display = 'flex';
     }
@@ -7355,30 +7344,14 @@
       const type = document.getElementById('visit_type').value;
       const priceSpan = document.getElementById('visitPriceSpan');
       const totalSpan = document.getElementById('visitTotalSpan');
-      priceSpan.innerHTML = '<span class="spinner"></span>';
-
-      google.script.run
-        .withSuccessHandler(function (res) {
-          let price = 25000;
-          if (res && res.success && res.packages) {
-            const vName = type.toLowerCase().startsWith('visit') ? type : 'visit ' + type;
-            const pkg = res.packages.find(p => p.name.toLowerCase() === vName.toLowerCase());
-            if (pkg) price = pkg.price || pkg.total || 25000;
-            else {
-              const fallbacks = { 'Gym': 25000, 'Calistenics Privat': 100000, 'Calistenics Group': 50000, 'Yoga': 35000, 'Zumba': 35000 };
-              price = fallbacks[type] || 25000;
-            }
-          }
-          priceSpan.textContent = formatCurrency(price);
-          totalSpan.textContent = formatCurrency(price);
-        })
-        .withFailureHandler(function (err) {
-          const fallbacks = { 'Gym': 25000, 'Calistenics Privat': 100000, 'Calistenics Group': 50000, 'Yoga': 35000, 'Zumba': 35000 };
-          const price = fallbacks[type] || 25000;
-          priceSpan.textContent = formatCurrency(price);
-          totalSpan.textContent = formatCurrency(price);
-        })
-        .getPackages();
+      
+      const pkg = (window.appData && appData.catalogue) ? 
+                  appData.catalogue.find(p => (p.name || '') === type) : null;
+      
+      const price = pkg ? Number(pkg.price || 0) : 25000;
+      
+      priceSpan.textContent = formatCurrency(price);
+      totalSpan.textContent = formatCurrency(price);
     }
 
     function searchVisitorForVisit(query) {
