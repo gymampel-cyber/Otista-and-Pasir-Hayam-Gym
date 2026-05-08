@@ -2901,6 +2901,9 @@
             i--;
           }
         }
+      },
+      clearMemory: function () {
+        window.appData = { members: [], catalogue: [], products: [], branches: [], stats: {}, settings: {}, lastFetch: null };
       }
     };
 
@@ -10828,8 +10831,21 @@
     }
 
     function switchBranch() {
-      currentBranch = document.getElementById('branchSwitcher').value;
+      const newBranch = document.getElementById('branchSwitcher').value;
+      if (newBranch === currentBranch) return;
+      
+      currentBranch = newBranch;
       localStorage.setItem('current_branch', currentBranch);
+
+      // RESET ALL CACHES AND STATE TO PREVENT DATA LEAKAGE BETWEEN BRANCHES
+      if (typeof __productsCache !== 'undefined') __productsCache = null;
+      if (typeof posProducts !== 'undefined') posProducts = [];
+      if (typeof posCart !== 'undefined') posCart = [];
+      if (typeof posSelectedMember !== 'undefined') posSelectedMember = null;
+      if (typeof selectedMember !== 'undefined') selectedMember = null;
+      
+      CACHE.clearMemory();
+      
       loadAndApplyBranding();
 
       // Refresh all core data for the new branch
@@ -10838,7 +10854,11 @@
       }
 
       // Automatically refresh the current active view (Gallery, Members, etc.)
+      // This will call loadCatalogView() if the user is in Catalog view, 
+      // which will then fetch fresh packages from the server.
       refreshPage();
+      
+      showToast('Berpindah ke Cabang: ' + (document.getElementById('branchSwitcher').options[document.getElementById('branchSwitcher').selectedIndex].text), 'info');
     }
 
     function loadAndApplyBranding() {
