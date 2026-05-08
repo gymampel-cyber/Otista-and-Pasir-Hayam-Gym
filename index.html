@@ -6347,7 +6347,7 @@
           if (res.success) {
             showToast('✅ Paket disimpan', 'success');
             loadPackageList();
-            fetchDashboardData(null, null, true); // Force refresh cache
+            loadInitialData(true); // Refresh all app data (catalogue, etc)
           } else {
             showToast('❌ Gagal: ' + res.message, 'error');
             loadPackageList(); // Re-fetch to ensure UI is correct
@@ -6753,7 +6753,7 @@
                 </div>
                 <p style="font-size:13px;color:#64748b;margin-bottom:12px">Setelah data dipilih, detail member akan muncul untuk konfirmasi.</p>
                 <button class="btn btn-info btn-block" onclick="openVisitModal()">
-                  <i class="fas fa-walking"></i> Visit Harian (Rp 25.000)
+                  <i class="fas fa-walking"></i> Visit Harian
                 </button>
               </div>
             </div>
@@ -7318,7 +7318,11 @@
       select.innerHTML = '';
       
       const visits = (window.appData && appData.catalogue) ? 
-                     appData.catalogue.filter(p => (p.type || '').toUpperCase() === 'VISIT') : [];
+                     appData.catalogue.filter(p => {
+                       const t = (p.type || p['Tipe Paket'] || '').toUpperCase();
+                       const n = (p.name || p['Nama Paket'] || '').toUpperCase();
+                       return t === 'VISIT' || n.startsWith('VISIT');
+                     }) : [];
       
       if (visits.length > 0) {
         visits.forEach(v => {
