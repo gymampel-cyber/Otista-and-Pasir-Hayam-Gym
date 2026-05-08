@@ -5162,7 +5162,7 @@
                   </div>
                 </div>
                 
-                <div style="display:flex; gap:16px; margin-top:20px; align-items:flex-end">
+                <div class="pos-checkout-area" style="display:flex; gap:16px; margin-top:20px; align-items:flex-end">
                   <div class="form-group" style="flex:1; margin-bottom:0">
                     <label class="form-label">Metode Pembayaran</label>
                     <select id="pos_payment" class="form-input">
@@ -5476,6 +5476,11 @@
       showConfirm(`Proses transaksi POS senilai ${formatCurrency(total)}?`, function (ok) {
         if (!ok) return;
 
+        const btn = document.querySelector('.pos-checkout-area .btn-primary');
+        const originalHtml = btn.innerHTML;
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+
         showLoading();
         const payload = {
           items: posCart,
@@ -5499,6 +5504,8 @@
         google.script.run
           .withSuccessHandler(function (res) {
             hideLoading();
+            btn.disabled = false;
+            btn.innerHTML = originalHtml;
             if (res.success) {
               showToast('Transaksi Berhasil!', 'success');
 
@@ -5526,6 +5533,8 @@
           })
           .withFailureHandler(function (err) {
             hideLoading();
+            btn.disabled = false;
+            btn.innerHTML = originalHtml;
             // ROLLBACK LOGIC
             posCart = previousCart;
             updateCartUI();
@@ -6147,6 +6156,9 @@
     }
 
     function submitRestock() {
+      const btn = document.querySelector('#restockModal .btn-primary');
+      const originalHtml = btn.innerHTML;
+      
       const payload = {
         productId: document.getElementById('restock_prod_id').value,
         addedQty: parseInt(document.getElementById('restock_qty').value),
@@ -6159,10 +6171,16 @@
       if (payload.addedQty <= 0) { showToast('Jumlah harus lebih dari 0', 'warning'); return; }
       if (payload.totalCost <= 0) { showToast('Total biaya harus diisi', 'warning'); return; }
 
+      btn.disabled = true;
+      btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
       showLoading();
+
       google.script.run
         .withSuccessHandler(function (res) {
           hideLoading();
+          btn.disabled = false;
+          btn.innerHTML = originalHtml;
+          
           if (res.success) {
             showToast('✅ ' + res.message, 'success');
             closeRestockModal();
@@ -6173,6 +6191,12 @@
           } else {
             showToast('❌ ' + res.message, 'error');
           }
+        })
+        .withFailureHandler(function (err) {
+          hideLoading();
+          btn.disabled = false;
+          btn.innerHTML = originalHtml;
+          showToast('Error: ' + err.message, 'error');
         })
         .processRestock(payload);
     }
