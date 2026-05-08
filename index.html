@@ -3983,7 +3983,7 @@
           hideLoading();
           showToast('Gagal memuat paket: ' + err.message, 'error');
         })
-        .getPackages();
+        .getPackages(false, currentBranch);
     }
 
     function selectPkg(el) {
@@ -4642,7 +4642,7 @@
           hideLoading();
           showToast('Gagal: ' + err.message, 'error');
         })
-        .getPackages();
+        .getPackages(false, currentBranch);
     }
 
     function searchMemberForTrx(query) {
@@ -5240,7 +5240,7 @@
             `;
           }
         })
-        .getTodayPOSTransactions();
+        .getTodayPOSTransactions(currentBranch);
     }
 
     function loadPOSProducts(force = false) {
@@ -5286,7 +5286,7 @@
             showToast('Gagal memuat produk: ' + (res.message || 'Error tidak diketahui'), 'error');
           }
         })
-        .getProducts();
+        .getProducts(currentBranch);
     }
 
 
@@ -8200,7 +8200,7 @@
         .withFailureHandler(function (err) {
           console.error('Load PT info error:', err);
         })
-        .getActivePTSessions();
+        .getActivePTSessions(currentBranch);
     }
 
     // ================ APPROVALS ================
@@ -9480,7 +9480,7 @@
             container.innerHTML = '<div style="color:red;padding:20px">' + (res.message || 'Gagal memuat data') + '</div>';
           }
         })
-        .getDashboardDetail(type, startDate, endDate);
+        .getDashboardDetail(type, startDate, endDate, currentBranch);
     }
 
     function closeDetailModal() {
@@ -9949,7 +9949,7 @@
             showToast('Gagal memuat analitik: ' + res.message, 'error');
           }
         })
-        .getAnalyticsData();
+        .getAnalyticsData(currentBranch);
     }
 
     function renderCharts(data) {
