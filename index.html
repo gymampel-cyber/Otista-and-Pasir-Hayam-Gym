@@ -7317,22 +7317,29 @@
       const select = document.getElementById('visit_type');
       select.innerHTML = '';
       
+      // Filter paket Visit yang sesuai dengan CABANG saat ini
       const visits = (window.appData && appData.catalogue) ? 
                      appData.catalogue.filter(p => {
                        const t = (p.type || p['Tipe Paket'] || '').toUpperCase();
                        const n = (p.name || p['Nama Paket'] || '').toUpperCase();
-                       return t === 'VISIT' || n.startsWith('VISIT');
+                       const b = (p.branch || p['Cabang'] || 'All');
+                       
+                       const isVisit = t === 'VISIT' || n.startsWith('VISIT');
+                       const isBranch = b === 'All' || b === currentBranch;
+                       
+                       return isVisit && isBranch;
                      }) : [];
       
       if (visits.length > 0) {
         visits.forEach(v => {
           const opt = document.createElement('option');
-          opt.value = v.name || '';
-          opt.textContent = v.name || '';
+          opt.value = v.name || v['Nama Paket'] || '';
+          opt.textContent = v.name || v['Nama Paket'] || '';
           select.appendChild(opt);
         });
       } else {
-        ['Gym', 'Yoga', 'Zumba'].forEach(t => {
+        // Fallback jika tidak ada paket visit di katalog cabang
+        ['Visit Gym', 'Visit Yoga', 'Visit Zumba'].forEach(t => {
           const opt = document.createElement('option');
           opt.value = t;
           opt.textContent = t;
