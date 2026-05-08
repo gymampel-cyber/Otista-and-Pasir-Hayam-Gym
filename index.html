@@ -8360,8 +8360,7 @@
             .withFailureHandler(function (err) {
               hideLoading();
               showToast('Error: ' + err.message, 'error');
-            })
-          [fn](id, currentUser?.name || 'Admin');
+            })[fn](id, currentUser?.name || 'Admin');
         }
       );
     }
