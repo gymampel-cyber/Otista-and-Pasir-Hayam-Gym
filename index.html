@@ -14,7 +14,9 @@
       'registerMember', 'updateMemberPhoto', 'processCheckIn', 'processCheckInWithPT',
       'processPOSTransaction', 'saveExpense', 'saveProduct', 'deleteProduct',
       'adjustStock', 'approveRegistration', 'approveExtension', 'rejectApproval',
-      'registerPTSession', 'submitRegistration', 'submitExtensionRequest'
+      'registerPTSession', 'submitRegistration', 'submitExtensionRequest', 'updateMemberProfile',
+      'savePackage', 'deletePackage', 'deleteExpense', 'createUser', 'updateUserAccount', 
+      'deleteUserAccount', 'updateBranding', 'saveBirthdayTemplate', 'processVisitCheckIn'
     ];
 
     let isSyncing = false;
@@ -150,6 +152,14 @@
               if (p) p.stock = (p.stock || p.Stok || 0) - item.qty;
             });
           }
+        } else if (action === 'updateMemberProfile') {
+          const profileData = args[0];
+          const m = appData.members.find(member => member.memberId === profileData.memberId);
+          if (m) {
+            m.fullName = profileData.fullName;
+            m.faceIdName = profileData.faceIdName;
+            m.faceIdCode = profileData.faceIdCode;
+          }
         }
 
         saveAppData();
@@ -161,15 +171,35 @@
     }
 
     function isActionCachable(method) {
-      return ['getInitialAppData', 'getMembers', 'getProducts', 'getPackages', 'getDashboardStats', 'getTodayCheckins'].includes(method);
+      const READ_ACTIONS = [
+        'getInitialAppData', 'getMembers', 'getAllMembers', 'getProducts', 'getPackages', 'getDashboardStats', 
+        'getTodayCheckins', 'getTodayPOSTransactions', 'getAnalyticsData', 'getExpenses', 
+        'getPendingApprovals', 'getPendingApprovalCount', 'getAllUsers', 'getBranches', 
+        'getMemberDetail', 'searchMembers', 'getPTCatalogue', 'getFullCatalogue', 'getSettings'
+      ];
+      return READ_ACTIONS.includes(method);
     }
 
     function getCachedDataForAction(method, args) {
       if (!window.appData) return null;
       if (method === 'getInitialAppData') return { success: true, data: appData };
-      if (method === 'getMembers') return { success: true, members: appData.members };
+      if (method === 'getMembers' || method === 'getAllMembers' || method === 'searchMembers') return { success: true, members: appData.members };
       if (method === 'getProducts') return { success: true, products: appData.products };
+      if (method === 'getPackages') return { success: true, packages: appData.catalogue };
+      if (method === 'getPTCatalogue') {
+        const pt = (appData.catalogue || []).filter(p => (p.type === 'PT' || p.Tipe === 'PT'));
+        return { success: true, packages: pt };
+      }
       if (method === 'getDashboardStats') return { success: true, stats: appData.stats };
+      if (method === 'getBranches') return { success: true, branches: appData.branches };
+      if (method === 'getSettings') return { success: true, settings: appData.settings };
+      
+      // Member details from cache
+      if (method === 'getMemberDetail' && args[0]) {
+        const m = appData.members.find(x => x.memberId === args[0] || x.memberPhone === args[0]);
+        if (m) return { success: true, member: m };
+      }
+      
       return null;
     }
 
@@ -222,6 +252,8 @@
     window.addEventListener('online', processSyncQueue);
     window.addEventListener('offline', updateSyncIndicator);
     setInterval(processSyncQueue, 30000);
+
+
   </script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <style>
@@ -2399,6 +2431,37 @@
 <body>
 
   <!-- Loading Overlay -->
+  <!-- Modal Edit Profile -->
+  <div id="editProfileModal" class="modal-overlay" style="display:none;z-index:9999">
+    <div class="modal-container" style="max-width:500px">
+      <div class="modal-header">
+        <h3 style="margin:0"><i class="fas fa-user-edit"></i> Edit Profil Member</h3>
+        <button class="btn-close" onclick="closeEditProfileModal()">&times;</button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="editMemberId">
+        <div class="form-group">
+          <label class="form-label">Nama Lengkap</label>
+          <input type="text" id="editFullName" class="form-input" placeholder="Nama Lengkap">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Nama Face ID</label>
+          <input type="text" id="editFaceIdName" class="form-input" placeholder="Nama yang terdaftar di mesin Face ID">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Kode Face ID</label>
+          <input type="text" id="editFaceIdCode" class="form-input" placeholder="Kode unik dari mesin Face ID">
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="closeEditProfileModal()">Batal</button>
+        <button id="btnSubmitEditProfile" class="btn btn-primary" onclick="submitEditProfile()">
+          <i class="fas fa-save"></i> Simpan Perubahan
+        </button>
+      </div>
+    </div>
+  </div>
+
   <div id="loadingOverlay" class="loading-overlay" style="display:none">
     <div style="text-align:center">
       <div class="spinner" style="margin:0 auto 16px"></div>
@@ -3709,132 +3772,6 @@
       renderTodayCheckins(s.todayCheckinList || []);
     }
 
-    // printDashboard removed
-    /*
-    function printDashboard() {
-      
-      // Get values from DOM for Recapitulation
-      const totalMembers = document.getElementById('statTotal')?.textContent || '0';
-      const activeMembers = document.getElementById('statAktif')?.textContent || '0';
-      const expiringMembers = document.getElementById('statExpiring')?.textContent || '0';
-      const fitnessRevenueText = document.getElementById('statFitnessRevenue')?.textContent || 'Rp 0';
-      const posRevenueText = document.getElementById('statPOSRevenue')?.textContent || 'Rp 0';
-      const posCount = document.getElementById('statPOSToday')?.textContent || '0';
-      const checkinCount = document.getElementById('statCheckin')?.textContent || '0';
-
-      // Helper to parse currency back to number
-      const parseVal = (txt) => Number(txt.replace(/[^0-9]/g, '')) || 0;
-      const fitnessRev = parseVal(fitnessRevenueText);
-      const posRev = parseVal(posRevenueText);
-      const totalExp = parseVal(document.getElementById('statExpenses')?.textContent || '0');
-      const totalRevenue = fitnessRev + posRev;
-      const netProfit = totalRevenue - totalExp;
-
-      const printTitle = document.createElement('div');
-      printTitle.className = 'print-only';
-      printTitle.style.marginBottom = '20px';
-      printTitle.innerHTML = `
-        <div style="text-align:center; margin-bottom:20px; border-bottom:2px solid #000; padding-bottom:10px">
-          <h1 style="margin:0">LAPORAN DASHBOARD ${currentBranchName.toUpperCase()}</h1>
-          <p style="margin:5px 0">Periode: ${period}</p>
-          <p style="font-size:12px; color:#666">Dicetak pada: ${formatDateTime(new Date())}</p>
-        </div>
-
-        <div style="margin-bottom:30px">
-          <h3 style="border-bottom:1px solid #334155; padding-bottom:8px; color:#1e293b; margin-bottom:15px">
-            <i class="fas fa-list-alt"></i> Rekapitulasi Data
-          </h3>
-          <table style="width:100%; border-collapse:collapse; font-size:14px">
-            <thead>
-              <tr style="background:#f1f5f9">
-                <th style="text-align:left; padding:10px; border:1px solid #cbd5e1">Indikator Laporan</th>
-                <th style="text-align:right; padding:10px; border:1px solid #cbd5e1">Nilai / Jumlah</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr>
-                <td style="padding:10px; border:1px solid #e2e8f0">Total Database Member</td>
-                <td style="text-align:right; padding:10px; border:1px solid #e2e8f0; font-weight:600">${totalMembers}</td>
-              </tr>
-              <tr>
-                <td style="padding:10px; border:1px solid #e2e8f0">Member Aktif Saat Ini</td>
-                <td style="text-align:right; padding:10px; border:1px solid #e2e8f0; font-weight:600">${activeMembers}</td>
-              </tr>
-              <tr>
-                <td style="padding:10px; border:1px solid #e2e8f0">Member Akan Habis (7 Hari)</td>
-                <td style="text-align:right; padding:10px; border:1px solid #e2e8f0; font-weight:600">${expiringMembers}</td>
-              </tr>
-              <tr>
-                <td style="padding:10px; border:1px solid #e2e8f0">Total Aktivitas Check-In</td>
-                <td style="text-align:right; padding:10px; border:1px solid #e2e8f0; font-weight:600">${checkinCount}</td>
-              </tr>
-              <tr style="background:#fdfcf0">
-                <td style="padding:10px; border:1px solid #e2e8f0">Total Pendapatan Fitness</td>
-                <td style="text-align:right; padding:10px; border:1px solid #e2e8f0; font-weight:700">${fitnessRevenueText}</td>
-              </tr>
-              <tr>
-                <td style="padding:10px; border:1px solid #e2e8f0">Total Transaksi POS (Retail)</td>
-                <td style="text-align:right; padding:10px; border:1px solid #e2e8f0; font-weight:600">${posCount}</td>
-              </tr>
-              <tr style="background:#fdfcf0">
-                <td style="padding:10px; border:1px solid #cbd5e1">Omzet Fitness (Registrasi & Perpanjangan)</td>
-                <td style="text-align:right; padding:10px; border:1px solid #cbd5e1">${formatCurrency(fitnessRev)}</td>
-              </tr>
-              <tr>
-                <td style="padding:10px; border:1px solid #cbd5e1">Omzet POS (Retail)</td>
-                <td style="text-align:right; padding:10px; border:1px solid #cbd5e1">${formatCurrency(posRev)}</td>
-              </tr>
-              <tr style="background:#f8fafc; font-weight:bold">
-                <td style="padding:10px; border:1px solid #cbd5e1">TOTAL OMZET KOTOR</td>
-                <td style="text-align:right; padding:10px; border:1px solid #cbd5e1">${formatCurrency(totalRevenue)}</td>
-              </tr>
-              <tr>
-                <td style="padding:10px; border:1px solid #cbd5e1; color:#ef4444">Total Pengeluaran Toko</td>
-                <td style="text-align:right; padding:10px; border:1px solid #cbd5e1; color:#ef4444">(${formatCurrency(totalExp)})</td>
-              </tr>
-              <tr style="background:#f0fdf4; font-weight:bold; font-size:16px">
-                <td style="padding:10px; border:1px solid #cbd5e1; color:#16a34a">LABA BERSIH (NET PROFIT)</td>
-                <td style="text-align:right; padding:10px; border:1px solid #cbd5e1; color:#16a34a">${formatCurrency(netProfit)}</td>
-              </tr>
-              <tr>
-                <td style="padding:10px; border:1px solid #cbd5e1">Total Transaksi POS</td>
-                <td style="text-align:right; padding:10px; border:1px solid #cbd5e1">${posCount} Transaksi</td>
-              </tr>
-              <tr>
-                <td style="padding:10px; border:1px solid #cbd5e1">Total Kunjungan (Check-In)</td>
-                <td style="text-align:right; padding:10px; border:1px solid #cbd5e1">${checkinCount} Kunjungan</td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      `;
-      
-      // Temporary style for printing
-      const style = document.createElement('style');
-      style.innerHTML = `
-        @media print {
-          .print-only { display: block !important; }
-          .no-print, .sidebar, .header-actions, .filter-container, button { display: none !important; }
-          body { background: white !important; margin: 0; padding: 20mm; }
-          .main-content { margin: 0 !important; padding: 0 !important; }
-          .dashboard-section { break-inside: avoid; margin-top: 20px; border: 1px solid #eee; padding: 15px; border-radius: 8px; }
-          .stat-card { border: 1px solid #eee !important; box-shadow: none !important; break-inside: avoid; }
-          .dashboard-grid { display: block !important; }
-          .stats-grid { display: grid !important; grid-template-columns: 1fr 1fr 1fr !important; gap: 10px !important; margin-bottom: 20px !important; }
-          h2, h3 { color: #000 !important; }
-        }
-        .print-only { display: none; }
-      `;
-      document.head.appendChild(style);
-      document.querySelector('.main-content').prepend(printTitle);
-      
-      window.print();
-      
-      // Cleanup
-      }, 1000);
-    }
-    */
-
     function renderTodayCheckins(list) {
       const el = document.getElementById('todayCheckins');
       if (!el) return;
@@ -3905,6 +3842,7 @@
               <div style="font-size:12px; color:var(--text-secondary); margin-bottom:16px; font-family:monospace; background:var(--bg-light); padding:4px 8px; border-radius:6px">ID: ${escapeHtml(m.memberId)}</div>
               ${m.photoUrl ? `<a href="${getDirectLink(m.photoUrl)}" target="_blank" class="btn btn-outline" style="padding:8px 16px; font-size:12px; width:100%; border-radius:10px">Buka Foto <i class="fas fa-external-link-alt"></i></a>` : `<button class="btn btn-secondary" style="padding:8px 16px; font-size:12px; width:100%; border-radius:10px" disabled>Tidak Ada Foto</button>`}
               <button class="btn btn-primary" style="padding:8px 16px; font-size:12px; width:100%; border-radius:10px; margin-top:8px" onclick="openChangePhotoModal('${m.memberId}', '${m.photoUrl ? getDirectLink(m.photoUrl) : ''}')"><i class="fas fa-camera"></i> Ganti Foto</button>
+              <button class="btn btn-secondary" style="padding:8px 16px; font-size:12px; width:100%; border-radius:10px; margin-top:8px" onclick="openEditProfileModal('${m.memberId}')"><i class="fas fa-edit"></i> Edit Profil</button>
             </div>
           `).join('')}
         </div>
@@ -9450,13 +9388,13 @@
         let visible = true;
 
         if (role === 'Staff' || role === 'Kasir') {
-          // Hilangkan 'gallery' dari akses Staff/Kasir
-          const staffViews = ['dashboard', 'members', 'transactions', 'checkin', 'pt', 'pos', 'approvals', 'expenses', 'birthdays'];
+          // Hilangkan 'gallery' dari akses Staff/Kasir -> Gallery SEKARANG DIIJINKAN
+          const staffViews = ['dashboard', 'members', 'transactions', 'checkin', 'pt', 'pos', 'approvals', 'expenses', 'birthdays', 'gallery'];
           if (!staffViews.includes(view)) visible = false;
 
-          // Sembunyikan kartu dashboard
-          const galCard = document.getElementById('cardGallery');
-          if (galCard) galCard.style.display = 'none';
+          // Sembunyikan kartu dashboard -> Gallery SEKARANG DIIJINKAN
+          // const galCard = document.getElementById('cardGallery');
+          // if (galCard) galCard.style.display = 'none';
         } else if (role === 'Admin') {
           // Super Admin (All branches) sees everything
           if (currentUser.branch === 'All' || !currentUser.branch) {
@@ -10469,6 +10407,61 @@
       // This is already inside showInventoryTools in index.html
       // We'll update the render part there.
     }
+    function openEditProfileModal(memberId) {
+      const member = (window.appData && appData.members) ? appData.members.find(m => m.memberId === memberId) : null;
+      if (!member) {
+        showToast('Data member tidak ditemukan di cache', 'warning');
+        return;
+      }
+      
+      document.getElementById('editMemberId').value = memberId;
+      document.getElementById('editFullName').value = member.fullName || '';
+      document.getElementById('editFaceIdName').value = member.faceIdName || '';
+      document.getElementById('editFaceIdCode').value = member.faceIdCode || '';
+      
+      document.getElementById('editProfileModal').style.display = 'flex';
+    }
+
+    function closeEditProfileModal() {
+      document.getElementById('editProfileModal').style.display = 'none';
+    }
+
+    function submitEditProfile() {
+      const memberId = document.getElementById('editMemberId').value;
+      const fullName = document.getElementById('editFullName').value.trim();
+      const faceIdName = document.getElementById('editFaceIdName').value.trim();
+      const faceIdCode = document.getElementById('editFaceIdCode').value.trim();
+
+      if (!fullName) {
+        showToast('Nama Lengkap tidak boleh kosong', 'warning');
+        return;
+      }
+
+      const btn = document.getElementById('btnSubmitEditProfile');
+      const origText = btn.innerHTML;
+      btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Menyimpan...';
+      btn.disabled = true;
+
+      google.script.run
+        .withSuccessHandler(function (res) {
+          btn.innerHTML = origText;
+          btn.disabled = false;
+          if (res && res.success) {
+            showToast('Profil berhasil diperbarui', 'success');
+            closeEditProfileModal();
+            if (typeof loadGalleryView === 'function') loadGalleryView(); 
+          } else {
+            showToast('Gagal: ' + (res ? res.message : 'Unknown'), 'error');
+          }
+        })
+        .updateMemberProfile({
+          memberId: memberId,
+          fullName: fullName,
+          faceIdName: faceIdName,
+          faceIdCode: faceIdCode
+        });
+    }
+
     // ================ BIRTHDAYS VIEW ================
     function loadBirthdaysView() {
       const container = document.getElementById('contentArea');
