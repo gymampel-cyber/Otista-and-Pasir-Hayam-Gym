@@ -1394,7 +1394,8 @@
       const totalAmount = (selectedPackage.total || selectedPackage.price) + 0;
 
       const btn = document.getElementById('btnSubmit');
-      btn.innerHTML = '<span class="spinner"></span> Mengirim...'; 
+      const originalHtml = btn.innerHTML;
+      btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Mengirim...'; 
       btn.disabled = true;
       showLoading();
 
@@ -1414,7 +1415,7 @@
       google.script.run
         .withSuccessHandler(function(res) {
           hideLoading();
-          btn.innerHTML = '<i class="fas fa-paper-plane"></i> Kirim Pendaftaran'; 
+          btn.innerHTML = originalHtml; 
           btn.disabled = false;
           
           if (res && res.success) {
@@ -1443,7 +1444,7 @@
         })
         .withFailureHandler(function(err) {
           hideLoading();
-          btn.innerHTML = '<i class="fas fa-paper-plane"></i> Kirim Pendaftaran'; 
+          btn.innerHTML = originalHtml; 
           btn.disabled = false;
           showAlert('Error: ' + err.message, 'error');
         })
