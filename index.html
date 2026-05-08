@@ -15,7 +15,7 @@
       'processPOSTransaction', 'saveExpense', 'saveProduct', 'deleteProduct',
       'adjustStock', 'approveRegistration', 'approveExtension', 'rejectApproval',
       'registerPTSession', 'submitRegistration', 'submitExtensionRequest', 'updateMemberProfile',
-      'savePackage', 'deletePackage', 'deleteExpense', 'createUser', 'updateUserAccount', 
+      'savePackage', 'deletePackage', 'deleteExpense', 'createUser', 'updateUserAccount',
       'deleteUserAccount', 'updateBranding', 'saveBirthdayTemplate', 'processVisitCheckIn'
     ];
 
@@ -172,9 +172,9 @@
 
     function isActionCachable(method) {
       const READ_ACTIONS = [
-        'getInitialAppData', 'getMembers', 'getAllMembers', 'getProducts', 'getPackages', 'getDashboardStats', 
-        'getTodayCheckins', 'getTodayPOSTransactions', 'getAnalyticsData', 'getExpenses', 
-        'getPendingApprovals', 'getPendingApprovalCount', 'getAllUsers', 'getBranches', 
+        'getInitialAppData', 'getMembers', 'getAllMembers', 'getProducts', 'getPackages', 'getDashboardStats',
+        'getTodayCheckins', 'getTodayPOSTransactions', 'getAnalyticsData', 'getExpenses',
+        'getPendingApprovals', 'getPendingApprovalCount', 'getAllUsers', 'getBranches',
         'getMemberDetail', 'searchMembers', 'getPTCatalogue', 'getFullCatalogue', 'getSettings'
       ];
       return READ_ACTIONS.includes(method);
@@ -193,13 +193,13 @@
       if (method === 'getDashboardStats') return { success: true, stats: appData.stats };
       if (method === 'getBranches') return { success: true, branches: appData.branches };
       if (method === 'getSettings') return { success: true, settings: appData.settings };
-      
+
       // Member details from cache
       if (method === 'getMemberDetail' && args[0]) {
         const m = appData.members.find(x => x.memberId === args[0] || x.memberPhone === args[0]);
         if (m) return { success: true, member: m };
       }
-      
+
       return null;
     }
 
@@ -3788,6 +3788,7 @@
               <div class="list-item-title">${escapeHtml(c.name || '-')}</div>
               <div class="list-item-subtitle">
                 <span class="badge badge-${typeClass}" style="font-size:10px">${typeText}</span> • 
+                <span class="badge badge-outline" style="font-size:10px; border:1px solid #e2e8f0; color:#64748b">${escapeHtml(c.branch || '-')}</span> •
                 <code>${escapeHtml(c.id || '-')}</code> • 
                 <span style="color:#64748b"><i class="far fa-clock"></i> ${formatDateTime(c.time)}</span>
               </div>
@@ -7313,26 +7314,26 @@
       document.getElementById('visitSearchResults').innerHTML = '';
       document.getElementById('visit_name').value = '';
       document.getElementById('visit_phone').value = '';
-      
+
       const select = document.getElementById('visit_type');
       select.innerHTML = '';
-      
+
       // Filter paket Visit yang sesuai dengan CABANG saat ini
-      const visits = (window.appData && appData.catalogue) ? 
-                     appData.catalogue.filter(p => {
-                       const t = (p.type || p['Tipe Paket'] || '').toString().toUpperCase();
-                       const n = (p.name || p['Nama Paket'] || '').toString().toUpperCase();
-                       const b = (p.branch || p['Cabang'] || 'All').toString().toLowerCase();
-                       const curB = (currentBranch || 'All').toString().toLowerCase();
-                       
-                       const isVisit = t === 'VISIT' || n.includes('VISIT');
-                       const isBranch = b === 'all' || b === curB;
-                       
-                       return isVisit && isBranch;
-                     }) : [];
-      
+      const visits = (window.appData && appData.catalogue) ?
+        appData.catalogue.filter(p => {
+          const t = (p.type || p['Tipe Paket'] || '').toString().toUpperCase();
+          const n = (p.name || p['Nama Paket'] || '').toString().toUpperCase();
+          const b = (p.branch || p['Cabang'] || 'All').toString().toLowerCase();
+          const curB = (currentBranch || 'All').toString().toLowerCase();
+
+          const isVisit = t === 'VISIT' || n.includes('VISIT');
+          const isBranch = b === 'all' || b === curB;
+
+          return isVisit && isBranch;
+        }) : [];
+
       console.log('Filtered visit packages for branch', currentBranch, ':', visits);
-      
+
       if (visits.length > 0) {
         visits.forEach(v => {
           const opt = document.createElement('option');
@@ -7349,7 +7350,7 @@
           select.appendChild(opt);
         });
       }
-      
+
       updateVisitPrice();
       document.getElementById('visitModal').style.display = 'flex';
     }
@@ -7358,12 +7359,12 @@
       const type = document.getElementById('visit_type').value;
       const priceSpan = document.getElementById('visitPriceSpan');
       const totalSpan = document.getElementById('visitTotalSpan');
-      
-      const pkg = (window.appData && appData.catalogue) ? 
-                  appData.catalogue.find(p => (p.name || '') === type) : null;
-      
+
+      const pkg = (window.appData && appData.catalogue) ?
+        appData.catalogue.find(p => (p.name || '') === type) : null;
+
       const price = pkg ? Number(pkg.price || 0) : 25000;
-      
+
       priceSpan.textContent = formatCurrency(price);
       totalSpan.textContent = formatCurrency(price);
     }
@@ -10287,7 +10288,7 @@
               `_Laporan dikirim otomatis dari System ${currentBranchName}_`;
 
             // Kirim ke nomor owner/manager
-            shareToWhatsApp('082221923200', text);
+            shareToWhatsApp('081809997575', text);
             showToast('Laporan berhasil dikirim!', 'success');
           } else {
             showToast('Gagal: ' + res.message, 'error');
@@ -10401,12 +10402,12 @@
         showToast('Data member tidak ditemukan di cache', 'warning');
         return;
       }
-      
+
       document.getElementById('editMemberId').value = memberId;
       document.getElementById('editFullName').value = member.fullName || '';
       document.getElementById('editFaceIdName').value = member.faceIdName || '';
       document.getElementById('editFaceIdCode').value = member.faceIdCode || '';
-      
+
       document.getElementById('editProfileModal').style.display = 'flex';
     }
 
@@ -10437,7 +10438,7 @@
           if (res && res.success) {
             showToast('Profil berhasil diperbarui', 'success');
             closeEditProfileModal();
-            if (typeof loadGalleryView === 'function') loadGalleryView(); 
+            if (typeof loadGalleryView === 'function') loadGalleryView();
           } else {
             showToast('Gagal: ' + (res ? res.message : 'Unknown'), 'error');
           }
