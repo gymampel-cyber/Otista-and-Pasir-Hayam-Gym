@@ -3880,9 +3880,11 @@
         <div class="dashboard-header-flex">
           <div class="dashboard-section-title"><i class="fas fa-users-cog"></i> Manajemen Member</div>
           <div style="display:flex; gap:12px; align-items:center">
-            <button class="btn btn-success btn-sm" onclick="loadMemberForm()">
-              <i class="fas fa-user-plus"></i> Registrasi Baru
-            </button>
+            ${currentUser.role === 'Admin' ? `
+              <button class="btn btn-success btn-sm" onclick="loadMemberForm()">
+                <i class="fas fa-user-plus"></i> Registrasi Baru
+              </button>
+            ` : ''}
             <div class="stat-card" style="padding:8px 16px; flex-direction:row; align-items:center; gap:12px; margin-bottom:0">
               <i class="fas fa-search" style="color:var(--text-secondary)"></i>
               <input type="text" id="gallerySearch" placeholder="Cari nama atau ID..." style="background:none; border:none; color:var(--text-main); outline:none; font-size:14px; width:180px">
@@ -3910,19 +3912,22 @@
               </div>
 
               ${m.photoUrl ? `<a href="${getDirectLink(m.photoUrl)}" target="_blank" class="btn btn-outline" style="padding:8px 16px; font-size:12px; width:100%; border-radius:10px">Buka Foto <i class="fas fa-external-link-alt"></i></a>` : `<button class="btn btn-secondary" style="padding:8px 16px; font-size:12px; width:100%; border-radius:10px" disabled>Tidak Ada Foto</button>`}
-              <button class="btn btn-primary" style="padding:8px 16px; font-size:12px; width:100%; border-radius:10px; margin-top:8px" onclick="openChangePhotoModal('${m.memberId}', '${m.photoUrl ? getDirectLink(m.photoUrl) : ''}')"><i class="fas fa-camera"></i> Ganti Foto</button>
-              <button class="btn btn-secondary" style="padding:8px 16px; font-size:12px; width:100%; border-radius:10px; margin-top:8px" onclick="openEditProfileModal('${m.memberId}')"><i class="fas fa-edit"></i> Edit Profil</button>
               
               ${currentUser.role === 'Admin' ? `
-                <div style="display:flex; gap:8px; margin-top:12px; width:100%">
-                  <button class="btn btn-info" style="flex:1; padding:8px; font-size:11px; border-radius:10px" onclick="viewMemberFullDetails('${m.memberId}')">
-                    <i class="fas fa-history"></i> Riwayat
-                  </button>
+                <button class="btn btn-primary" style="padding:8px 16px; font-size:12px; width:100%; border-radius:10px; margin-top:8px" onclick="openChangePhotoModal('${m.memberId}', '${m.photoUrl ? getDirectLink(m.photoUrl) : ''}')"><i class="fas fa-camera"></i> Ganti Foto</button>
+                <button class="btn btn-secondary" style="padding:8px 16px; font-size:12px; width:100%; border-radius:10px; margin-top:8px" onclick="openEditProfileModal('${m.memberId}')"><i class="fas fa-edit"></i> Edit Profil</button>
+              ` : ''}
+
+              <div style="display:flex; gap:8px; margin-top:12px; width:100%">
+                <button class="btn btn-info" style="flex:1; padding:8px; font-size:11px; border-radius:10px" onclick="viewMemberFullDetails('${m.memberId}')">
+                  <i class="fas fa-history"></i> Riwayat
+                </button>
+                ${currentUser.role === 'Admin' ? `
                   <button class="btn btn-danger" style="flex:1; padding:8px; font-size:11px; border-radius:10px" onclick="confirmDeleteMember('${m.memberId}', '${escapeHtml(m.fullName)}')">
                     <i class="fas fa-trash"></i> Hapus
                   </button>
-                </div>
-              ` : ''}
+                ` : ''}
+              </div>
             </div>
           `).join('')}
         </div>
@@ -3941,7 +3946,7 @@
     function viewMemberFullDetails(memberId) {
       showLoading();
       google.script.run
-        .withSuccessHandler(function(res) {
+        .withSuccessHandler(function (res) {
           hideLoading();
           if (res.success) {
             const history = res.history;
@@ -3975,11 +3980,13 @@
                   </div>
                   <div style="text-align:right; min-width:120px">
                     <div style="font-weight:800; color:${h.amount > 0 ? '#10b981' : '#64748b'}; font-size:15px">${h.amount > 0 ? formatCurrency(h.amount) : '-'}</div>
-                    <div style="margin-top:8px; display:flex; gap:6px; justify-content:flex-end">
-                       <button class="btn btn-ghost btn-xs" style="color:#ef4444" onclick="confirmDeleteTransactionRecord('${h.id}', '${h.type}', '${memberId}')" title="Hapus Record">
-                          <i class="fas fa-trash-alt"></i> Hapus
-                       </button>
-                    </div>
+                    ${currentUser.role === 'Admin' ? `
+                      <div style="margin-top:8px; display:flex; gap:6px; justify-content:flex-end">
+                         <button class="btn btn-ghost btn-xs" style="color:#ef4444" onclick="confirmDeleteTransactionRecord('${h.id}', '${h.type}', '${memberId}')" title="Hapus Record">
+                            <i class="fas fa-trash-alt"></i> Hapus
+                         </button>
+                      </div>
+                    ` : ''}
                   </div>
                 </div>
               `;
@@ -4016,7 +4023,7 @@
             showToast('Gagal memuat riwayat: ' + res.message, 'error');
           }
         })
-        .withFailureHandler(function(err) {
+        .withFailureHandler(function (err) {
           hideLoading();
           showToast('Error Server: ' + err.message, 'error');
         })
@@ -4024,11 +4031,15 @@
     }
 
     function confirmDeleteMember(id, name) {
-      showConfirm(`HAPUS MEMBER: ${name}\n\nPERHATIAN: Tindakan ini tidak dapat dibatalkan. Menghapus member tidak akan menghapus riwayat transaksinya namun member tersebut tidak akan bisa check-in lagi.\n\nLanjutkan?`, function(ok) {
+      if (currentUser && currentUser.role !== 'Admin') {
+        showToast('Akses ditolak: Hanya Admin yang dapat menghapus member.', 'warning');
+        return;
+      }
+      showConfirm(`HAPUS MEMBER: ${name}\n\nPERHATIAN: Tindakan ini tidak dapat dibatalkan. Menghapus member tidak akan menghapus riwayat transaksinya namun member tersebut tidak akan bisa check-in lagi.\n\nLanjutkan?`, function (ok) {
         if (!ok) return;
         showLoading();
         google.script.run
-          .withSuccessHandler(function(res) {
+          .withSuccessHandler(function (res) {
             hideLoading();
             if (res.success) {
               showToast(res.message, 'success');
@@ -4037,7 +4048,7 @@
               showToast(res.message, 'error');
             }
           })
-          .withFailureHandler(function(err) {
+          .withFailureHandler(function (err) {
             hideLoading();
             showToast('Error: ' + err.message, 'error');
           })
@@ -4046,11 +4057,15 @@
     }
 
     function confirmDeleteTransactionRecord(trxId, type, memberId) {
-      showConfirm(`HAPUS TRANSAKSI: ${trxId}\n\nApakah Anda yakin ingin menghapus catatan transaksi ini? Tindakan ini hanya menghapus record dari sistem dan tidak memproses refund uang secara fisik.\n\nLanjutkan?`, function(ok) {
+      if (currentUser && currentUser.role !== 'Admin') {
+        showToast('Akses ditolak: Hanya Admin yang dapat menghapus transaksi.', 'warning');
+        return;
+      }
+      showConfirm(`HAPUS TRANSAKSI: ${trxId}\n\nApakah Anda yakin ingin menghapus catatan transaksi ini? Tindakan ini hanya menghapus record dari sistem dan tidak memproses refund uang secara fisik.\n\nLanjutkan?`, function (ok) {
         if (!ok) return;
         showLoading();
         google.script.run
-          .withSuccessHandler(function(res) {
+          .withSuccessHandler(function (res) {
             hideLoading();
             if (res.success) {
               showToast(res.message, 'success');
@@ -4060,7 +4075,7 @@
               showToast(res.message, 'error');
             }
           })
-          .withFailureHandler(function(err) {
+          .withFailureHandler(function (err) {
             hideLoading();
             showToast('Error: ' + err.message, 'error');
           })
@@ -4071,6 +4086,11 @@
 
     // ================ MEMBER REGISTRATION ================
     function loadMemberForm() {
+      if (currentUser && currentUser.role !== 'Admin') {
+        showToast('Akses ditolak: Hanya Admin yang dapat melakukan registrasi member baru.', 'warning');
+        showView('gallery');
+        return;
+      }
       showLoading();
       google.script.run
         .withSuccessHandler(function (res) {
@@ -4484,7 +4504,7 @@
                 resultEl.style.display = 'block';
                 // Update cache in background without resetting the current success UI
                 if (typeof fetchInitialAppData === 'function') fetchInitialAppData(() => {
-                   console.log('Background sync complete');
+                  console.log('Background sync complete');
                 });
                 resultEl.innerHTML = `
                   <div style="display:flex;align-items:center;gap:16px;margin-bottom:16px">
@@ -5159,7 +5179,7 @@
                 resultEl.style.display = 'block';
                 // Update cache in background without resetting the current success UI
                 if (typeof fetchInitialAppData === 'function') fetchInitialAppData(() => {
-                   console.log('Background sync complete');
+                  console.log('Background sync complete');
                 });
                 resultEl.innerHTML = `
                   <div style="display:flex;align-items:center;gap:16px;margin-bottom:16px">
@@ -5845,7 +5865,7 @@
     }
 
     // ================ CATALOG & INVENTORY ================
-    let currentCatalogTab = 'package'; 
+    let currentCatalogTab = 'package';
     function loadCatalogView() {
       document.getElementById('contentArea').innerHTML = `
         <div class="stats-grid" style="margin-bottom:20px">
@@ -6379,7 +6399,7 @@
     function submitRestock() {
       const btn = document.querySelector('#restockModal .btn-primary');
       const originalHtml = btn.innerHTML;
-      
+
       const payload = {
         productId: document.getElementById('restock_prod_id').value,
         addedQty: parseInt(document.getElementById('restock_qty').value),
@@ -6401,7 +6421,7 @@
           hideLoading();
           btn.disabled = false;
           btn.innerHTML = originalHtml;
-          
+
           if (res.success) {
             showToast('✅ ' + res.message, 'success');
             closeRestockModal();
@@ -10700,6 +10720,10 @@
       // We'll update the render part there.
     }
     function openEditProfileModal(memberId) {
+      if (currentUser && currentUser.role !== 'Admin') {
+        showToast('Akses ditolak: Hanya Admin yang dapat mengedit profil member.', 'warning');
+        return;
+      }
       const member = (window.appData && appData.members) ? appData.members.find(m => m.memberId === memberId) : null;
       if (!member) {
         showToast('Data member tidak ditemukan di cache', 'warning');
@@ -10915,6 +10939,10 @@
     let changePhotoStream = null;
 
     function openChangePhotoModal(memberId, currentPhotoUrl) {
+      if (currentUser && currentUser.role !== 'Admin') {
+        showToast('Akses ditolak: Hanya Admin yang dapat mengganti foto member.', 'warning');
+        return;
+      }
       changePhotoMemberId = memberId;
       document.getElementById('changePhotoBase64').value = '';
       document.getElementById('changePhotoInput').value = '';
@@ -11110,7 +11138,7 @@
     function switchBranch() {
       const newBranch = document.getElementById('branchSwitcher').value;
       if (newBranch === currentBranch) return;
-      
+
       currentBranch = newBranch;
       localStorage.setItem('current_branch', currentBranch);
 
@@ -11120,15 +11148,15 @@
       if (typeof posCart !== 'undefined') posCart = [];
       if (typeof posSelectedMember !== 'undefined') posSelectedMember = null;
       if (typeof selectedMember !== 'undefined') selectedMember = null;
-      
+
       CACHE.clearMemory();
       showLoading();
-      
+
       loadAndApplyBranding();
 
       // Refresh all core data for the new branch
       if (typeof fetchInitialAppData === 'function') {
-        fetchInitialAppData(function() {
+        fetchInitialAppData(function () {
           hideLoading();
           refreshPage();
           showToast('Berpindah ke Cabang: ' + (document.getElementById('branchSwitcher').options[document.getElementById('branchSwitcher').selectedIndex].text), 'info');
@@ -11197,7 +11225,7 @@
             document.getElementById('set_phone').value = s.phone || '';
             document.getElementById('set_email').value = s.email || '';
             document.getElementById('set_bank').value = s.bank || '';
-            document.getElementById('set_logo_preview').src = s.logo || 'https://i.imgur.com/NO5dVfb.png';
+            document.getElementById('set_logo_preview').src = s.logo || 'https://i.imgur.com/TPoUeRJ.jpeg';
           }
         })
         .getSettings();
