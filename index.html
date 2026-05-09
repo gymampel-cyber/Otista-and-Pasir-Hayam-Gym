@@ -2758,7 +2758,10 @@
           <span id="approvalBadge" class="badge badge-danger" style="margin-left:auto;display:none">0</span>
         </div>
         <div class="menu-item" data-view="pos" onclick="showView('pos')">
-          <i class="fas fa-shopping-cart"></i><span>POS (Point of Sale)</span>
+          <i class="fas fa-shopping-basket"></i><span>POS / Kantin</span>
+        </div>
+        <div class="menu-item" data-view="memberAdmin" onclick="showView('memberAdmin')">
+          <i class="fas fa-user-shield"></i><span>Manajemen Member (Admin)</span>
         </div>
         <div class="menu-item" data-view="catalog" onclick="showView('catalog')">
           <i class="fas fa-boxes-stacked"></i><span>Katalog & Inventori</span>
@@ -2773,7 +2776,7 @@
           <i class="fas fa-chart-pie"></i><span>Laporan Analitik</span>
         </div>
         <div id="adminMenu" class="menu-item hidden" data-view="admin" onclick="showView('admin')">
-          <i class="fas fa-cogs"></i><span>Admin Panel</span>
+          <i class="fas fa-cog"></i><span>Admin Panel</span>
         </div>
         <div id="brandingMenu" class="menu-item hidden" onclick="openBrandingModal()">
           <i class="fas fa-paint-brush"></i><span>Pengaturan Branding</span>
@@ -3450,7 +3453,8 @@
         pt: 'Personal Trainer',
         approvals: 'Pending Approvals',
         admin: 'Admin Panel',
-        pos: 'Point of Sale',
+        pos: 'POS / Kantin',
+        memberAdmin: 'Manajemen Member (Admin)',
         catalog: 'Katalog & Inventori',
         expenses: 'Pengeluaran Toko',
         analytics: 'Laporan Analitik & Grafik',
@@ -3469,8 +3473,9 @@
         case 'checkin': loadCheckinView(); break;
         case 'pt': loadPTView(); break;
         case 'approvals': loadApprovals(); break;
-        case 'admin': loadAdminPanel(); break;
         case 'pos': loadPOSView(); break;
+        case 'memberAdmin': loadMemberAdminView(); break;
+        case 'admin': loadAdminView(); break;
         case 'catalog': loadCatalogView(); break;
         case 'expenses': loadExpensesView(); break;
         case 'analytics': loadAnalyticsView(); break;
@@ -3879,7 +3884,19 @@
                 ${m.photoUrl ? `<img src="${getDirectLink(m.photoUrl)}" style="width:100%; height:100%; object-fit:cover">` : `<i class="fas fa-user fa-4x" style="color:var(--text-secondary)"></i>`}
               </div>
               <div style="font-weight:700; color:var(--text-main); margin-bottom:4px; font-size:16px">${escapeHtml(m.fullName)}</div>
-              <div style="font-size:12px; color:var(--text-secondary); margin-bottom:16px; font-family:monospace; background:var(--bg-light); padding:4px 8px; border-radius:6px">ID: ${escapeHtml(m.memberId)}</div>
+              <div style="font-size:12px; color:var(--text-secondary); margin-bottom:8px; font-family:monospace; background:var(--bg-light); padding:4px 8px; border-radius:6px">ID: ${escapeHtml(m.memberId)}</div>
+              
+              <div style="background:#f1f5f9; border-radius:8px; padding:8px; margin-bottom:16px; text-align:left; font-size:11px; color:#475569">
+                <div style="display:flex; align-items:center; gap:6px; margin-bottom:4px">
+                  <i class="fas fa-fingerprint" style="color:#3b82f6; width:14px"></i>
+                  <span>FaceID: <b>${escapeHtml(m.faceIdCode || '-')}</b></span>
+                </div>
+                <div style="display:flex; align-items:center; gap:6px">
+                  <i class="fas fa-id-badge" style="color:#10b981; width:14px"></i>
+                  <span>Name: <b>${escapeHtml(m.faceIdName || '-')}</b></span>
+                </div>
+              </div>
+
               ${m.photoUrl ? `<a href="${getDirectLink(m.photoUrl)}" target="_blank" class="btn btn-outline" style="padding:8px 16px; font-size:12px; width:100%; border-radius:10px">Buka Foto <i class="fas fa-external-link-alt"></i></a>` : `<button class="btn btn-secondary" style="padding:8px 16px; font-size:12px; width:100%; border-radius:10px" disabled>Tidak Ada Foto</button>`}
               <button class="btn btn-primary" style="padding:8px 16px; font-size:12px; width:100%; border-radius:10px; margin-top:8px" onclick="openChangePhotoModal('${m.memberId}', '${m.photoUrl ? getDirectLink(m.photoUrl) : ''}')"><i class="fas fa-camera"></i> Ganti Foto</button>
               <button class="btn btn-secondary" style="padding:8px 16px; font-size:12px; width:100%; border-radius:10px; margin-top:8px" onclick="openEditProfileModal('${m.memberId}')"><i class="fas fa-edit"></i> Edit Profil</button>
@@ -3888,15 +3905,174 @@
         </div>
       `;
 
-      document.getElementById('gallerySearch').addEventListener('input', function (e) {
-        const q = e.target.value.toLowerCase();
-        let count = 0;
-        document.querySelectorAll('.gallery-item').forEach(item => {
-          const text = item.textContent.toLowerCase();
-          const matches = text.includes(q);
-          item.style.display = matches ? 'flex' : 'none';
-          if (matches) count++;
         });
+      });
+    }
+
+    // ================ MEMBER ADMIN MANAGEMENT ================
+    function loadMemberAdminView() {
+      const el = document.getElementById('contentArea');
+      el.innerHTML = `
+        <div class="dashboard-header-flex">
+          <div class="dashboard-section-title"><i class="fas fa-user-shield"></i> Manajemen Member (Admin)</div>
+          <div class="stat-card" style="padding:10px 20px; flex-direction:row; align-items:center; gap:12px; margin-bottom:0">
+            <i class="fas fa-search" style="color:var(--text-secondary)"></i>
+            <input type="text" id="memberAdminSearch" placeholder="Cari nama atau ID..." style="background:none; border:none; color:var(--text-main); outline:none; font-size:14px; width:250px">
+          </div>
+        </div>
+        
+        <div class="form-card" style="margin-top:24px; padding:0; overflow:hidden">
+          <div style="overflow-x:auto">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Member ID</th>
+                  <th>Nama Lengkap</th>
+                  <th>WhatsApp</th>
+                  <th>Status</th>
+                  <th>Paket Aktif</th>
+                  <th>Cabang</th>
+                  <th>Aksi</th>
+                </tr>
+              </thead>
+              <tbody id="memberAdminList">
+                <tr><td colspan="7" style="text-align:center; padding:40px"><i class="fas fa-spinner fa-spin"></i> Memuat data member...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      `;
+
+      google.script.run
+        .withSuccessHandler(function(res) {
+          if (res.success) {
+            renderMemberAdminList(res.members);
+            document.getElementById('memberAdminSearch').addEventListener('input', function(e) {
+              const q = e.target.value.toLowerCase();
+              const filtered = res.members.filter(m => 
+                m.fullName.toLowerCase().includes(q) || 
+                m.memberId.toLowerCase().includes(q) ||
+                m.phone.includes(q)
+              );
+              renderMemberAdminList(filtered);
+            });
+          } else {
+            showToast('Gagal memuat data member: ' + res.message, 'error');
+          }
+        })
+        .getAllMembers('All');
+    }
+
+    function renderMemberAdminList(members) {
+      const el = document.getElementById('memberAdminList');
+      if (!el) return;
+      
+      if (members.length === 0) {
+        el.innerHTML = '<tr><td colspan="7" style="text-align:center; padding:40px">Tidak ada member ditemukan</td></tr>';
+        return;
+      }
+
+      el.innerHTML = members.map(m => `
+        <tr>
+          <td><code>${escapeHtml(m.memberId)}</code></td>
+          <td><b>${escapeHtml(m.fullName)}</b></td>
+          <td>${escapeHtml(m.phone)}</td>
+          <td><span class="badge badge-${m.status === 'Aktif' ? 'success' : 'danger'}">${m.status}</span></td>
+          <td>${escapeHtml(m.currentPackage)}</td>
+          <td><small>${escapeHtml(m.branch)}</small></td>
+          <td style="display:flex; gap:8px">
+            <button class="btn btn-info btn-xs" onclick="viewMemberFullDetails('${m.memberId}')" title="Riwayat & Detail">
+              <i class="fas fa-history"></i>
+            </button>
+            <button class="btn btn-warning btn-xs" onclick="openEditProfileModal('${m.memberId}')" title="Edit Profil">
+              <i class="fas fa-edit"></i>
+            </button>
+            <button class="btn btn-danger btn-xs" onclick="confirmDeleteMember('${m.memberId}', '${escapeJs(m.fullName)}')" title="Hapus Member">
+              <i class="fas fa-trash"></i>
+            </button>
+          </td>
+        </tr>
+      `).join('');
+    }
+
+    function viewMemberFullDetails(memberId) {
+      showLoading();
+      google.script.run
+        .withSuccessHandler(function(res) {
+          hideLoading();
+          if (res.success) {
+            const history = res.history;
+            let historyHtml = history.map(h => `
+              <div style="padding:12px; border-bottom:1px solid #f1f5f9; display:flex; justify-content:space-between; align-items:center">
+                <div>
+                  <div style="font-size:12px; color:#64748b">${formatDateTime(new Date(h.date))}</div>
+                  <div style="font-weight:600; color:#1e293b">${escapeHtml(h.description)}</div>
+                  <div style="font-size:11px; color:#94a3b8">ID: <code>${h.id}</code> | Tipe: ${h.category}</div>
+                </div>
+                <div style="text-align:right">
+                  <div style="font-weight:700; color:${h.amount > 0 ? '#10b981' : '#64748b'}">${h.amount > 0 ? formatCurrency(h.amount) : '-'}</div>
+                  <div style="margin-top:4px; display:flex; gap:4px; justify-content:flex-end">
+                     <button class="btn btn-danger btn-xs" onclick="confirmDeleteTransactionRecord('${h.id}', '${h.type}', '${memberId}')" title="Hapus Record">
+                        <i class="fas fa-trash-alt"></i>
+                     </button>
+                  </div>
+                </div>
+              </div>
+            `).join('');
+
+            if (history.length === 0) historyHtml = '<div style="text-align:center; padding:40px; color:#94a3b8">Belum ada riwayat transaksi</div>';
+
+            Swal.fire({
+              title: `Riwayat Transaksi - ${memberId}`,
+              html: `
+                <div style="text-align:left; max-height:400px; overflow-y:auto; border:1px solid #e2e8f0; border-radius:8px; margin-top:10px">
+                  ${historyHtml}
+                </div>
+              `,
+              width: '600px',
+              confirmButtonText: 'Tutup'
+            });
+          } else {
+            showToast('Gagal memuat riwayat: ' + res.message, 'error');
+          }
+        })
+        .getMemberFullHistory(memberId);
+    }
+
+    function confirmDeleteMember(id, name) {
+      showConfirm(`HAPUS MEMBER: ${name}\n\nPERHATIAN: Tindakan ini tidak dapat dibatalkan. Menghapus member tidak akan menghapus riwayat transaksinya namun member tersebut tidak akan bisa check-in lagi.\n\nLanjutkan?`, function(ok) {
+        if (!ok) return;
+        showLoading();
+        google.script.run
+          .withSuccessHandler(function(res) {
+            hideLoading();
+            if (res.success) {
+              showToast(res.message, 'success');
+              loadMemberAdminView();
+            } else {
+              showToast(res.message, 'error');
+            }
+          })
+          .deleteMemberRecord(id);
+      });
+    }
+
+    function confirmDeleteTransactionRecord(trxId, type, memberId) {
+      showConfirm(`HAPUS TRANSAKSI: ${trxId}\n\nApakah Anda yakin ingin menghapus catatan transaksi ini? Tindakan ini hanya menghapus record dari sistem dan tidak memproses refund uang secara fisik.\n\nLanjutkan?`, function(ok) {
+        if (!ok) return;
+        showLoading();
+        google.script.run
+          .withSuccessHandler(function(res) {
+            hideLoading();
+            if (res.success) {
+              showToast(res.message, 'success');
+              viewMemberFullDetails(memberId); // Refresh modal
+              fetchDashboardData(null, null, true); // Update dashboard stats
+            } else {
+              showToast(res.message, 'error');
+            }
+          })
+          .deleteTransactionRecord(trxId, type);
       });
     }
 
@@ -4313,7 +4489,10 @@
 
                 resultEl.className = 'result-card success';
                 resultEl.style.display = 'block';
-                if (typeof fetchInitialAppData === 'function') fetchInitialAppData();
+                // Update cache in background without resetting the current success UI
+                if (typeof fetchInitialAppData === 'function') fetchInitialAppData(() => {
+                   console.log('Background sync complete');
+                });
                 resultEl.innerHTML = `
                   <div style="display:flex;align-items:center;gap:16px;margin-bottom:16px">
                     <div style="background:#22c55e;color:white;width:56px;height:56px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:24px">
@@ -4407,8 +4586,8 @@
                     <button class="btn btn-info btn-sm" onclick="const txt = generateReceiptText('registration', { memberId:'${res.memberId}', name:'${res.memberName || name}', package:'${res.currentPackage || pkg.name}', expiry:'${res.expiryDate}', receipt:'${res.receiptNumber}', price:${res.packagePrice || pkg.price}, regFee:${res.registrationFee || 0}, total:${res.totalAmount || totalAmount}, payment:'${res.paymentMethod || pay}', qr:'${res.qrCodeUrl || ''}' }); shareToWhatsApp('${res.memberPhone || phone}', txt)">
                       <i class="fab fa-whatsapp"></i> Kirim WA
                     </button>
-                    <button class="btn btn-primary btn-sm" onclick="clearMemberForm()">
-                      <i class="fas fa-user-plus"></i> Selesai
+                    <button class="btn btn-primary btn-sm" onclick="refreshPage()">
+                      <i class="fas fa-check"></i> Selesai
                     </button>
                   </div>
                 `;
@@ -4985,7 +5164,10 @@
 
                 resultEl.className = 'result-card success';
                 resultEl.style.display = 'block';
-                if (typeof fetchInitialAppData === 'function') fetchInitialAppData();
+                // Update cache in background without resetting the current success UI
+                if (typeof fetchInitialAppData === 'function') fetchInitialAppData(() => {
+                   console.log('Background sync complete');
+                });
                 resultEl.innerHTML = `
                   <div style="display:flex;align-items:center;gap:16px;margin-bottom:16px">
                     <div style="background:#22c55e;color:white;width:56px;height:56px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:24px">
@@ -5056,8 +5238,8 @@
                     <button class="btn btn-info btn-sm" onclick="const txt = generateReceiptText('extension', { memberId:'${r.memberId || selectedMember.memberId}', name:'${r.memberName || selectedMember.fullName}', package:'${r.packageName || pkgName}', expiry:'${r.newExpiry}', receipt:'${r.number}', total:${r.total || price}, payment:'${payEl.value}' }); shareToWhatsApp('${selectedMember.phone}', txt)">
                       <i class="fab fa-whatsapp"></i> Kirim WA
                     </button>
-                    <button class="btn btn-primary btn-sm" onclick="clearTrxForm()">
-                      <i class="fas fa-plus"></i> Selesai
+                    <button class="btn btn-primary btn-sm" onclick="refreshPage()">
+                      <i class="fas fa-check"></i> Selesai
                     </button>
                   </div>
                 `;
@@ -5561,8 +5743,9 @@
                 if (waOk) {
                   sendPOSReceiptToWA(res.trxId, payload);
                 }
-                // Reset POS
+                // Reset POS & Refresh to update all stats/stock
                 resetPOS();
+                refreshPage();
               });
 
             } else {
@@ -7540,7 +7723,7 @@
                    <button class="btn btn-info btn-sm" onclick="const txt = generateReceiptText('visit', { name:'${escapeJs(name)}', visitType:'${res.visitType || 'Harian'}', receipt:'${res.receiptNumber || '-'}', total:${res.amount || 25000}, payment:'${res.paymentMethod || 'Transfer'}' }); shareToWhatsApp('${phone}', txt)">
                     <i class="fab fa-whatsapp"></i> Kirim WA
                   </button>
-                  <button class="btn btn-primary btn-sm" onclick="document.getElementById('checkinResult').innerHTML=''">
+                  <button class="btn btn-primary btn-sm" onclick="refreshPage()">
                     <i class="fas fa-check"></i> Selesai
                   </button>
                 </div>
@@ -8128,8 +8311,8 @@
                     <button class="btn btn-info btn-sm" onclick="const txt = generateReceiptText('pt', { name:'${ptSelectedMember.fullName}', trainer:'${trainer}', sessions:${sessions}, expiry:'${res.expiryDate}', receipt:'${res.receiptNumber}', total:${res.totalAmount || total}, payment:'${payment}' }); shareToWhatsApp('${ptSelectedMember.phone}', txt)">
                       <i class="fab fa-whatsapp"></i> Kirim WA
                     </button>
-                    <button class="btn btn-primary btn-sm" onclick="showView('pt')">
-                      <i class="fas fa-plus"></i> Selesai
+                    <button class="btn btn-primary btn-sm" onclick="refreshPage()">
+                      <i class="fas fa-check"></i> Selesai
                     </button>
                   </div>
                 `;
@@ -8420,6 +8603,8 @@
                     const txt = generateReceiptText(waType, res.waData);
                     shareToWhatsApp(res.waData.phone, txt);
                   }
+                  // Refresh page after approval flow to update list and stats
+                  refreshPage();
                 });
 
                 loadApprovals();
@@ -9484,7 +9669,7 @@
             visible = true;
           } else {
             // Branch-specific Admin (limited views)
-            const branchAdminViews = ['dashboard', 'members', 'transactions', 'checkin', 'pt', 'pos', 'approvals', 'expenses', 'birthdays', 'gallery', 'catalogue', 'products', 'admin'];
+            const branchAdminViews = ['dashboard', 'members', 'transactions', 'checkin', 'pt', 'pos', 'approvals', 'expenses', 'birthdays', 'gallery', 'catalogue', 'products', 'admin', 'memberAdmin'];
             if (!branchAdminViews.includes(view)) visible = false;
           }
         }
