@@ -7229,9 +7229,22 @@
             fetchDashboardData();
             loadTodayCheckins();
 
-            const checkinTime = res.checkinTime ? new Date(res.checkinTime) : new Date();
-            const daysLeft = res.daysLeft || 0;
-            const memberName = res.memberName || mid;
+            let checkinTime = res.checkinTime ? new Date(res.checkinTime) : new Date();
+            let daysLeft = res.daysLeft || 0;
+            let memberName = res.memberName || mid;
+            let expiryDate = res.expiryDate;
+            let currentPackage = res.currentPackage;
+
+            // FALLBACK: If local response (Offline-First), use cached appData for details
+            if (res.local && window.appData && window.appData.members) {
+              const m = window.appData.members.find(member => member.memberId === mid);
+              if (m) {
+                expiryDate = m.expiry || m.expiryDate || expiryDate;
+                currentPackage = m.package || m.currentPackage || currentPackage;
+                daysLeft = m.daysLeft || daysLeft;
+                memberName = m.fullName || m.name || memberName;
+              }
+            }
 
             let warningHtml = '';
             if (res.warning) {
@@ -7268,11 +7281,11 @@
                     </div>
                     <div>
                       <span style="color:#64748b">Paket</span><br>
-                      <b>${escapeHtml(res.currentPackage || '-')}</b>
+                      <b>${escapeHtml(currentPackage || '-')}</b>
                     </div>
                     <div>
                       <span style="color:#64748b">Berlaku s/d</span><br>
-                      <b>${formatDate(res.expiryDate)}</b>
+                      <b>${formatDate(expiryDate)}</b>
                     </div>
                     <div>
                       <span style="color:#64748b">Sisa Hari</span><br>
@@ -7404,11 +7417,24 @@
             // REFRESH DATA
             fetchDashboardData();
             loadTodayCheckins();
-            const checkinTime = res.checkinTime ? new Date(res.checkinTime) : new Date();
-            const daysLeft = res.daysLeft || 0;
-            const memberName = res.memberName || mid;
-            const ptUsed = res.ptUsed || false;
-            const remainingPT = res.remainingPTSessions || 0;
+            let checkinTime = res.checkinTime ? new Date(res.checkinTime) : new Date();
+            let daysLeft = res.daysLeft || 0;
+            let memberName = res.memberName || mid;
+            let ptUsed = res.ptUsed || false;
+            let remainingPT = res.remainingPTSessions || 0;
+            let expiryDate = res.expiryDate;
+            let currentPackage = res.currentPackage;
+
+            // FALLBACK for Offline-First
+            if (res.local && window.appData && window.appData.members) {
+              const m = window.appData.members.find(member => member.memberId === mid);
+              if (m) {
+                expiryDate = m.expiry || m.expiryDate || expiryDate;
+                currentPackage = m.package || m.currentPackage || currentPackage;
+                daysLeft = m.daysLeft || daysLeft;
+                memberName = m.fullName || m.name || memberName;
+              }
+            }
 
             let warningHtml = '';
             if (res.warning) {
@@ -7451,11 +7477,11 @@
                     </div>
                     <div>
                       <span style="color:#64748b">Paket</span><br>
-                      <b>${escapeHtml(res.currentPackage || '-')}</b>
+                      <b>${escapeHtml(currentPackage || '-')}</b>
                     </div>
                     <div>
                       <span style="color:#64748b">Berlaku s/d</span><br>
-                      <b>${formatDate(res.expiryDate)}</b>
+                      <b>${formatDate(expiryDate)}</b>
                     </div>
                     <div>
                       <span style="color:#64748b">Sisa Hari</span><br>
