@@ -177,8 +177,12 @@
         }
 
         saveAppData();
-        if (typeof renderCurrentView === 'function') renderCurrentView();
-        else if (typeof refreshPage === 'function') refreshPage();
+        // Skip automatic UI refresh for registration actions to prevent hiding the success card/WhatsApp button
+        const skipRefresh = ['registerMember', 'submitRegistration', 'submitExtensionRequest'].includes(action);
+        if (!skipRefresh) {
+          if (typeof renderCurrentView === 'function') renderCurrentView();
+          else if (typeof refreshPage === 'function') refreshPage();
+        }
       } catch (e) {
         console.warn('Optimistic update failed:', e);
       }
