@@ -4021,6 +4021,10 @@
               showToast(res.message, 'error');
             }
           })
+          .withFailureHandler(function(err) {
+            hideLoading();
+            showToast('Error: ' + err.message, 'error');
+          })
           .deleteMemberRecord(id);
       });
     }
@@ -4034,15 +4038,20 @@
             hideLoading();
             if (res.success) {
               showToast(res.message, 'success');
-              viewMemberFullDetails(memberId); // Refresh modal
-              fetchDashboardData(null, null, true); // Update dashboard stats
+              viewMemberFullDetails(memberId);
+              if (typeof fetchDashboardData === 'function') fetchDashboardData(null, null, true);
             } else {
               showToast(res.message, 'error');
             }
           })
+          .withFailureHandler(function(err) {
+            hideLoading();
+            showToast('Error: ' + err.message, 'error');
+          })
           .deleteTransactionRecord(trxId, type);
       });
     }
+
 
     // ================ MEMBER REGISTRATION ================
     function loadMemberForm() {
@@ -7061,7 +7070,7 @@
     function autoPreviewCheckin(val) {
       if (window.ciAutoTimeout) clearTimeout(window.ciAutoTimeout);
       const input = val.trim();
-      if (input.length >= 3) {
+      if (input.length >= 2) {
         window.ciAutoTimeout = setTimeout(function () {
           previewMemberCheckin(input);
         }, 600);
