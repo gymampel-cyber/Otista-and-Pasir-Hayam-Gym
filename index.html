@@ -3146,6 +3146,38 @@
           `Metode: ${data.payment}\n` +
           `--------------------------------\n` +
           `Selamat berlatih!`;
+      } else if (type === 'visit') {
+        text = `*RECEIPT VISIT HARIAN ${currentBranchName.toUpperCase()}*\n` +
+          `--------------------------------\n` +
+          `Waktu: ${now}\n` +
+          `Nama: ${data.name}\n` +
+          `Tipe Visit: ${data.visitType}\n` +
+          `No. Transaksi: ${data.receipt}\n` +
+          `--------------------------------\n` +
+          `Alamat: ${currentBranchAddress}\n` +
+          `No HP: ${currentBranchPhone}\n` +
+          `--------------------------------\n` +
+          `*Rincian Pembayaran*\n` +
+          `Total: ${formatCurrency(data.total)}\n` +
+          `Metode: ${data.payment}\n` +
+          `--------------------------------\n` +
+          `Terima kasih telah berkunjung!`;
+      } else if (type === 'pos') {
+        let itemsText = data.items.map(it => `• ${it.name} x${it.qty}`).join('\n');
+        text = `*STRUK PENJUALAN - ${currentBranchName.toUpperCase()}*\n` +
+          `--------------------------------\n` +
+          `ID Trx: ${data.receipt}\n` +
+          `Tanggal: ${now}\n` +
+          `Customer: ${data.name}\n` +
+          `--------------------------------\n` +
+          `${itemsText}\n` +
+          `--------------------------------\n` +
+          `Subtotal: ${formatCurrency(data.subtotal)}\n` +
+          `Diskon: ${data.discount}%\n` +
+          `*Total: ${formatCurrency(data.total)}*\n` +
+          `Pembayaran: ${data.payment}\n\n` +
+          `Download Struk PDF:\n${data.pdfUrl}\n\n` +
+          `Terima kasih telah berbelanja di ${currentBranchName}!`;
       }
       return text;
     }
@@ -5576,21 +5608,16 @@
         .withSuccessHandler(function (res) {
           hideLoading();
           if (res.success) {
-            let itemsText = data.items.map(it => `• ${it.name} x${it.qty}`).join('\n');
-            let text = `*STRUK PENJUALAN - ${currentBranchName.toUpperCase()}*\n` +
-              `--------------------------------\n` +
-              `ID Trx: ${trxId}\n` +
-              `Tanggal: ${new Date().toLocaleString('id-ID')}\n` +
-              `Customer: ${data.customerName}\n` +
-              `--------------------------------\n` +
-              `${itemsText}\n` +
-              `--------------------------------\n` +
-              `Subtotal: ${formatCurrency(data.subtotal)}\n` +
-              `Diskon: ${data.discount}%\n` +
-              `*Total: ${formatCurrency(data.total)}*\n` +
-              `Pembayaran: ${data.paymentMethod}\n\n` +
-              `Download Struk PDF:\n${res.url}\n\n` +
-              `Terima kasih telah berbelanja di ${currentBranchName}!`;
+            const text = generateReceiptText('pos', {
+              receipt: trxId,
+              name: data.customerName,
+              items: data.items,
+              subtotal: data.subtotal,
+              discount: data.discount,
+              total: data.total,
+              payment: data.paymentMethod,
+              pdfUrl: res.url
+            });
 
             const waNumber = data.whatsapp || '';
             if (waNumber) {
@@ -7504,6 +7531,18 @@
                 <div class="info-box" style="background:white;border-radius:10px;padding:16px;margin:12px 0">
                   <p><b>${escapeHtml(name)}</b> (${escapeHtml(phone)})</p>
                   <p style="margin-top:4px;font-size:13px;color:#64748b">Visit ${res.visitType || 'Harian'} - ${formatCurrency(res.amount || 25000)}</p>
+                  <div style="margin-top:8px;padding-top:8px;border-top:1px dashed #cbd5e1;font-size:12px">
+                    <span>Metode: ${res.paymentMethod || 'Transfer'}</span><br>
+                    <span>No. Transaksi: <code>${res.receiptNumber || '-'}</code></span>
+                  </div>
+                </div>
+                <div style="display:flex;gap:8px;justify-content:flex-end">
+                   <button class="btn btn-info btn-sm" onclick="const txt = generateReceiptText('visit', { name:'${escapeJs(name)}', visitType:'${res.visitType || 'Harian'}', receipt:'${res.receiptNumber || '-'}', total:${res.amount || 25000}, payment:'${res.paymentMethod || 'Transfer'}' }); shareToWhatsApp('${phone}', txt)">
+                    <i class="fab fa-whatsapp"></i> Kirim WA
+                  </button>
+                  <button class="btn btn-primary btn-sm" onclick="document.getElementById('checkinResult').innerHTML=''">
+                    <i class="fas fa-check"></i> Selesai
+                  </button>
                 </div>
               </div>
             `;
@@ -8367,7 +8406,22 @@
             .withSuccessHandler(function (res) {
               hideLoading();
               if (res && res.success) {
-                showToast('✅ Berhasil di-approve!', 'success');
+                Swal.fire({
+                  title: '✅ Berhasil di-approve!',
+                  text: 'Member sekarang aktif. Kirim rincian rincian transaksi via WhatsApp?',
+                  icon: 'success',
+                  showCancelButton: true,
+                  confirmButtonText: '<i class="fab fa-whatsapp"></i> Kirim WA',
+                  cancelButtonText: 'Selesai',
+                  confirmButtonColor: '#22c55e'
+                }).then((result) => {
+                  if (result.isConfirmed && res.waData) {
+                    const waType = (type === 'Registration') ? 'registration' : 'extension';
+                    const txt = generateReceiptText(waType, res.waData);
+                    shareToWhatsApp(res.waData.phone, txt);
+                  }
+                });
+
                 loadApprovals();
                 loadApprovalCount();
                 fetchDashboardData(null, null, true); // Force refresh after approval
