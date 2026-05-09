@@ -10,9 +10,11 @@
   <script>
     const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzKWdekXY27eWx5h4CI7HvLxnTboVPryp_gTpqTtCNM-G7yqLe4m0owvj7YwGgTm8bv/exec';
 
+    // WRITE_ACTIONS: Routine actions that use Offline-First (Local-First + Sync)
+    // Actions NOT in this list (like registerMember, processTransaction, processPOSTransaction, processVisitCheckIn)
+    // will be executed in real-time because they require server-generated IDs/Receipts for WhatsApp confirmations.
     const WRITE_ACTIONS = [
-      'processCheckIn', 'processCheckInWithPT', 'processPOSTransaction', 
-      'saveExpense', 'processVisitCheckIn'
+      'processCheckIn', 'processCheckInWithPT', 'saveExpense'
     ];
 
     let isSyncing = false;
@@ -7223,8 +7225,9 @@
           if (!el) return;
 
           if (res && res.success === true) {
-            // BACKGROUND REVALIDATION: Update dashboard stats after successful check-in
+            // BACKGROUND REVALIDATION: Update dashboard stats and today's table
             fetchDashboardData();
+            loadTodayCheckins();
 
             const checkinTime = res.checkinTime ? new Date(res.checkinTime) : new Date();
             const daysLeft = res.daysLeft || 0;
@@ -7398,6 +7401,9 @@
 
           if (res && res.success === true) {
             document.getElementById('checkinPreviewArea').innerHTML = ''; // Clear preview on success
+            // REFRESH DATA
+            fetchDashboardData();
+            loadTodayCheckins();
             const checkinTime = res.checkinTime ? new Date(res.checkinTime) : new Date();
             const daysLeft = res.daysLeft || 0;
             const memberName = res.memberName || mid;
