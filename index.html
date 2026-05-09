@@ -3880,7 +3880,7 @@
         <div class="dashboard-header-flex">
           <div class="dashboard-section-title"><i class="fas fa-users-cog"></i> Manajemen Member</div>
           <div style="display:flex; gap:12px; align-items:center">
-            ${currentUser.role === 'Admin' ? `
+            ${(currentUser.role === 'Admin' || currentUser.role === 'Staff' || currentUser.role === 'Kasir') ? `
               <button class="btn btn-success btn-sm" onclick="loadMemberForm()">
                 <i class="fas fa-user-plus"></i> Registrasi Baru
               </button>
@@ -4086,8 +4086,8 @@
 
     // ================ MEMBER REGISTRATION ================
     function loadMemberForm() {
-      if (currentUser && currentUser.role !== 'Admin') {
-        showToast('Akses ditolak: Hanya Admin yang dapat melakukan registrasi member baru.', 'warning');
+      if (currentUser && !['Admin', 'Staff', 'Kasir'].includes(currentUser.role)) {
+        showToast('Akses ditolak: Anda tidak memiliki izin untuk melakukan registrasi member baru.', 'warning');
         showView('gallery');
         return;
       }
