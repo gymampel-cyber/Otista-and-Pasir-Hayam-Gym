@@ -3862,6 +3862,7 @@
         .withSuccessHandler(function (res) {
           hideLoading();
           if (res.success) {
+            if (window.appData) window.appData.members = res.members;
             renderGallery(res.members);
           } else {
             showToast('Gagal memuat galeri: ' + res.message, 'error');
