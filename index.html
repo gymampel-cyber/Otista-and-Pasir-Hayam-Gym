@@ -4011,7 +4011,7 @@
             let historyHtml = history.map(h => `
               <div style="padding:12px; border-bottom:1px solid #f1f5f9; display:flex; justify-content:space-between; align-items:center">
                 <div>
-                  <div style="font-size:12px; color:#64748b">${formatDateTime(new Date(h.date))}</div>
+                  <div style="font-size:12px; color:#64748b">${h.date ? formatDateTime(h.date) : 'Tanggal tidak tersedia'}</div>
                   <div style="font-weight:600; color:#1e293b">${escapeHtml(h.description)}</div>
                   <div style="font-size:11px; color:#94a3b8">ID: <code>${h.id}</code> | Tipe: ${h.category}</div>
                 </div>
@@ -4041,6 +4041,11 @@
           } else {
             showToast('Gagal memuat riwayat: ' + res.message, 'error');
           }
+        })
+        .withFailureHandler(function(err) {
+          hideLoading();
+          console.error('History Fetch Error:', err);
+          showToast('Terjadi kesalahan server saat memuat riwayat', 'error');
         })
         .getMemberFullHistory(memberId);
     }
@@ -4994,8 +4999,8 @@
     }
 
     function escapeHtml(unsafe) {
-      if (!unsafe) return '';
-      return unsafe
+      if (unsafe === undefined || unsafe === null) return '';
+      return String(unsafe)
         .replace(/&/g, "&amp;")
         .replace(/</g, "&lt;")
         .replace(/>/g, "&gt;")
