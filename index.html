@@ -2760,9 +2760,6 @@
         <div class="menu-item" data-view="pos" onclick="showView('pos')">
           <i class="fas fa-shopping-basket"></i><span>POS / Kantin</span>
         </div>
-        <div class="menu-item" data-view="memberAdmin" onclick="showView('memberAdmin')">
-          <i class="fas fa-user-shield"></i><span>Manajemen Member (Admin)</span>
-        </div>
         <div class="menu-item" data-view="catalog" onclick="showView('catalog')">
           <i class="fas fa-boxes-stacked"></i><span>Katalog & Inventori</span>
         </div>
@@ -3454,7 +3451,6 @@
         approvals: 'Pending Approvals',
         admin: 'Admin Panel',
         pos: 'POS / Kantin',
-        memberAdmin: 'Manajemen Member (Admin)',
         catalog: 'Katalog & Inventori',
         expenses: 'Pengeluaran Toko',
         analytics: 'Laporan Analitik & Grafik',
@@ -3900,6 +3896,17 @@
               ${m.photoUrl ? `<a href="${getDirectLink(m.photoUrl)}" target="_blank" class="btn btn-outline" style="padding:8px 16px; font-size:12px; width:100%; border-radius:10px">Buka Foto <i class="fas fa-external-link-alt"></i></a>` : `<button class="btn btn-secondary" style="padding:8px 16px; font-size:12px; width:100%; border-radius:10px" disabled>Tidak Ada Foto</button>`}
               <button class="btn btn-primary" style="padding:8px 16px; font-size:12px; width:100%; border-radius:10px; margin-top:8px" onclick="openChangePhotoModal('${m.memberId}', '${m.photoUrl ? getDirectLink(m.photoUrl) : ''}')"><i class="fas fa-camera"></i> Ganti Foto</button>
               <button class="btn btn-secondary" style="padding:8px 16px; font-size:12px; width:100%; border-radius:10px; margin-top:8px" onclick="openEditProfileModal('${m.memberId}')"><i class="fas fa-edit"></i> Edit Profil</button>
+              
+              ${currentUser.role === 'Admin' ? `
+                <div style="display:flex; gap:8px; margin-top:12px; width:100%">
+                  <button class="btn btn-info" style="flex:1; padding:8px; font-size:11px; border-radius:10px" onclick="viewMemberFullDetails('${m.memberId}')">
+                    <i class="fas fa-history"></i> Riwayat
+                  </button>
+                  <button class="btn btn-danger" style="flex:1; padding:8px; font-size:11px; border-radius:10px" onclick="confirmDeleteMember('${m.memberId}', '${escapeHtml(m.fullName)}')">
+                    <i class="fas fa-trash"></i> Hapus
+                  </button>
+                </div>
+              ` : ''}
             </div>
           `).join('')}
         </div>
@@ -3915,92 +3922,6 @@
       });
     }
 
-    // ================ MEMBER ADMIN MANAGEMENT ================
-    function loadMemberAdminView() {
-      const el = document.getElementById('contentArea');
-      el.innerHTML = `
-        <div class="dashboard-header-flex">
-          <div class="dashboard-section-title"><i class="fas fa-user-shield"></i> Manajemen Member (Admin)</div>
-          <div class="stat-card" style="padding:10px 20px; flex-direction:row; align-items:center; gap:12px; margin-bottom:0">
-            <i class="fas fa-search" style="color:var(--text-secondary)"></i>
-            <input type="text" id="memberAdminSearch" placeholder="Cari nama atau ID..." style="background:none; border:none; color:var(--text-main); outline:none; font-size:14px; width:250px">
-          </div>
-        </div>
-        
-        <div class="form-card" style="margin-top:24px; padding:0; overflow:hidden">
-          <div style="overflow-x:auto">
-            <table class="data-table">
-              <thead>
-                <tr>
-                  <th>Member ID</th>
-                  <th>Nama Lengkap</th>
-                  <th>WhatsApp</th>
-                  <th>Status</th>
-                  <th>Paket Aktif</th>
-                  <th>Cabang</th>
-                  <th>Aksi</th>
-                </tr>
-              </thead>
-              <tbody id="memberAdminList">
-                <tr><td colspan="7" style="text-align:center; padding:40px"><i class="fas fa-spinner fa-spin"></i> Memuat data member...</td></tr>
-              </tbody>
-            </table>
-          </div>
-        </div>
-      `;
-
-      google.script.run
-        .withSuccessHandler(function(res) {
-          if (res.success) {
-            renderMemberAdminList(res.members);
-            document.getElementById('memberAdminSearch').addEventListener('input', function(e) {
-              const q = e.target.value.toLowerCase();
-              const filtered = res.members.filter(m => 
-                m.fullName.toLowerCase().includes(q) || 
-                m.memberId.toLowerCase().includes(q) ||
-                m.phone.includes(q)
-              );
-              renderMemberAdminList(filtered);
-            });
-          } else {
-            showToast('Gagal memuat data member: ' + res.message, 'error');
-          }
-        })
-        .getAllMembers('All');
-    }
-
-    function renderMemberAdminList(members) {
-      const el = document.getElementById('memberAdminList');
-      if (!el) return;
-      
-      if (members.length === 0) {
-        el.innerHTML = '<tr><td colspan="7" style="text-align:center; padding:40px">Tidak ada member ditemukan</td></tr>';
-        return;
-      }
-
-      el.innerHTML = members.map(m => `
-        <tr>
-          <td><code>${escapeHtml(m.memberId)}</code></td>
-          <td><b>${escapeHtml(m.fullName)}</b></td>
-          <td>${escapeHtml(m.phone)}</td>
-          <td><span class="badge badge-${m.status === 'Aktif' ? 'success' : 'danger'}">${m.status}</span></td>
-          <td>${escapeHtml(m.currentPackage)}</td>
-          <td><small>${escapeHtml(m.branch)}</small></td>
-          <td style="display:flex; gap:8px">
-            <button class="btn btn-info btn-xs" onclick="viewMemberFullDetails('${m.memberId}')" title="Riwayat & Detail">
-              <i class="fas fa-history"></i>
-            </button>
-            <button class="btn btn-warning btn-xs" onclick="openEditProfileModal('${m.memberId}')" title="Edit Profil">
-              <i class="fas fa-edit"></i>
-            </button>
-            <button class="btn btn-danger btn-xs" onclick="confirmDeleteMember('${m.memberId}', '${escapeJs(m.fullName)}')" title="Hapus Member">
-              <i class="fas fa-trash"></i>
-            </button>
-          </td>
-        </tr>
-      `).join('');
-    }
-
     function viewMemberFullDetails(memberId) {
       showLoading();
       google.script.run
@@ -4008,35 +3929,72 @@
           hideLoading();
           if (res.success) {
             const history = res.history;
-            let historyHtml = history.map(h => `
-              <div style="padding:12px; border-bottom:1px solid #f1f5f9; display:flex; justify-content:space-between; align-items:center">
-                <div>
-                  <div style="font-size:12px; color:#64748b">${h.date ? formatDateTime(h.date) : 'Tanggal tidak tersedia'}</div>
-                  <div style="font-weight:600; color:#1e293b">${escapeHtml(h.description)}</div>
-                  <div style="font-size:11px; color:#94a3b8">ID: <code>${h.id}</code> | Tipe: ${h.category}</div>
-                </div>
-                <div style="text-align:right">
-                  <div style="font-weight:700; color:${h.amount > 0 ? '#10b981' : '#64748b'}">${h.amount > 0 ? formatCurrency(h.amount) : '-'}</div>
-                  <div style="margin-top:4px; display:flex; gap:4px; justify-content:flex-end">
-                     <button class="btn btn-danger btn-xs" onclick="confirmDeleteTransactionRecord('${h.id}', '${h.type}', '${memberId}')" title="Hapus Record">
-                        <i class="fas fa-trash-alt"></i>
-                     </button>
+            const totalSpent = history.reduce((sum, h) => sum + (Number(h.amount) || 0), 0);
+            const totalCheckins = history.filter(h => h.type === 'Checkin').length;
+            const lastCheckin = history.find(h => h.type === 'Checkin');
+
+            let historyHtml = history.map(h => {
+              let typeBadge = '';
+              let rowStyle = '';
+              if (h.type === 'Transaction') {
+                typeBadge = '<span class="badge badge-success" style="font-size:9px">MEMBERSHIP</span>';
+                rowStyle = 'border-left: 4px solid #10b981';
+              } else if (h.type === 'POS') {
+                typeBadge = '<span class="badge badge-info" style="font-size:9px">POS/KANTIN</span>';
+                rowStyle = 'border-left: 4px solid #3b82f6';
+              } else {
+                typeBadge = '<span class="badge badge-warning" style="font-size:9px">CHECK-IN</span>';
+                rowStyle = 'border-left: 4px solid #f59e0b';
+              }
+
+              return `
+                <div style="padding:15px; border-bottom:1px solid #f1f5f9; display:flex; justify-content:space-between; align-items:center; ${rowStyle}; margin-bottom:8px; background:white; border-radius:0 8px 8px 0; box-shadow: 0 2px 4px rgba(0,0,0,0.02)">
+                  <div style="flex:1">
+                    <div style="display:flex; align-items:center; gap:8px; margin-bottom:4px">
+                      ${typeBadge}
+                      <span style="font-size:11px; color:#64748b; font-family:monospace">${h.date ? formatDateTime(h.date) : '-'}</span>
+                    </div>
+                    <div style="font-weight:700; color:#1e293b; font-size:14px">${escapeHtml(h.description)}</div>
+                    <div style="font-size:11px; color:#94a3b8; margin-top:2px">ID: <code style="background:#f8fafc; padding:2px 4px; border-radius:4px">${h.id}</code> | ${h.payment || '-'}</div>
+                  </div>
+                  <div style="text-align:right; min-width:120px">
+                    <div style="font-weight:800; color:${h.amount > 0 ? '#10b981' : '#64748b'}; font-size:15px">${h.amount > 0 ? formatCurrency(h.amount) : '-'}</div>
+                    <div style="margin-top:8px; display:flex; gap:6px; justify-content:flex-end">
+                       <button class="btn btn-ghost btn-xs" style="color:#ef4444" onclick="confirmDeleteTransactionRecord('${h.id}', '${h.type}', '${memberId}')" title="Hapus Record">
+                          <i class="fas fa-trash-alt"></i> Hapus
+                       </button>
+                    </div>
                   </div>
                 </div>
-              </div>
-            `).join('');
+              `;
+            }).join('');
 
-            if (history.length === 0) historyHtml = '<div style="text-align:center; padding:40px; color:#94a3b8">Belum ada riwayat transaksi</div>';
+            if (history.length === 0) historyHtml = '<div style="text-align:center; padding:60px 20px; color:#94a3b8"><i class="fas fa-history fa-3x" style="opacity:0.2; margin-bottom:15px; display:block"></i>Belum ada riwayat transaksi ditemukan untuk member ini.</div>';
 
             Swal.fire({
-              title: `Riwayat Transaksi - ${memberId}`,
+              title: `<div style="text-align:left; font-size:18px">Riwayat Member: <span style="color:var(--primary-color)">${memberId}</span></div>`,
               html: `
-                <div style="text-align:left; max-height:400px; overflow-y:auto; border:1px solid #e2e8f0; border-radius:8px; margin-top:10px">
+                <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:20px; text-align:left">
+                  <div class="stat-card" style="margin:0; padding:12px; background:#f0fdf4; border:1px solid #dcfce7">
+                    <div style="font-size:10px; color:#166534; text-transform:uppercase; letter-spacing:1px">Total Belanja</div>
+                    <div style="font-size:18px; font-weight:800; color:#166534">${formatCurrency(totalSpent)}</div>
+                  </div>
+                  <div class="stat-card" style="margin:0; padding:12px; background:#fef3c7; border:1px solid #fde68a">
+                    <div style="font-size:10px; color:#92400e; text-transform:uppercase; letter-spacing:1px">Total Check-in</div>
+                    <div style="font-size:18px; font-weight:800; color:#92400e">${totalCheckins} Kali</div>
+                  </div>
+                </div>
+                <div style="background:#f8fafc; padding:15px; border-radius:12px; max-height:450px; overflow-y:auto; border:1px solid #e2e8f0">
                   ${historyHtml}
                 </div>
+                <div style="text-align:left; font-size:11px; color:#94a3b8; margin-top:12px">
+                  <i class="fas fa-info-circle"></i> Terakhir Check-in: ${lastCheckin ? formatDateTime(lastCheckin.date) : 'Belum pernah'}
+                </div>
               `,
-              width: '600px',
-              confirmButtonText: 'Tutup'
+              width: '700px',
+              showCloseButton: true,
+              confirmButtonText: 'Tutup',
+              confirmButtonColor: '#64748b'
             });
           } else {
             showToast('Gagal memuat riwayat: ' + res.message, 'error');
@@ -4044,8 +4002,7 @@
         })
         .withFailureHandler(function(err) {
           hideLoading();
-          console.error('History Fetch Error:', err);
-          showToast('Terjadi kesalahan server saat memuat riwayat', 'error');
+          showToast('Error Server: ' + err.message, 'error');
         })
         .getMemberFullHistory(memberId);
     }
@@ -4059,7 +4016,7 @@
             hideLoading();
             if (res.success) {
               showToast(res.message, 'success');
-              loadMemberAdminView();
+              showView('gallery');
             } else {
               showToast(res.message, 'error');
             }
