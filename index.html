@@ -132,8 +132,21 @@
       try {
         if (!window.appData) return;
 
-        if (action === 'processCheckIn' || action === 'processCheckInWithPT') {
+        if (action === 'processCheckIn' || action === 'processCheckInWithPT' || action === 'processVisitCheckIn') {
           appData.stats.checkins = (appData.stats.checkins || 0) + 1;
+          // Add to local list for instant feedback
+          if (appData.todayCheckinList) {
+            const memberData = args[0] || {};
+            appData.todayCheckinList.unshift({
+              memberId: memberData.memberId || '...',
+              memberName: memberData.fullName || 'Member',
+              type: action === 'processVisitCheckIn' ? 'VISIT' : 'MEMBER',
+              status: 'Optimistic',
+              checkInTime: new Date().toISOString()
+            });
+            if (appData.todayCheckinList.length > 50) appData.todayCheckinList.pop();
+            if (typeof renderCurrentView === 'function') renderCurrentView();
+          }
         } else if (action === 'registerMember') {
           const memberData = args[0];
           appData.members.unshift({
@@ -2738,11 +2751,8 @@
         <div class="menu-item active" data-view="dashboard" onclick="showView('dashboard')">
           <i class="fas fa-chart-line"></i><span>Dashboard</span>
         </div>
-        <div class="menu-item" data-view="members" onclick="showView('members')">
-          <i class="fas fa-users"></i><span>Daftar Member</span>
-        </div>
         <div class="menu-item" data-view="gallery" onclick="showView('gallery')">
-          <i class="fas fa-images"></i><span>Galeri Member</span>
+          <i class="fas fa-users-cog"></i><span>Manajemen Member</span>
         </div>
         <div class="menu-item" data-view="transactions" onclick="showView('transactions')">
           <i class="fas fa-cash-register"></i><span>Transaksi Perpanjangan</span>
@@ -3464,7 +3474,7 @@
 
       switch (view) {
         case 'dashboard': loadDashboard(null, null, currentBranch); break;
-        case 'members': loadMemberForm(); break;
+        case 'gallery': loadGalleryView(); break;
         case 'transactions': loadTransactionForm(); break;
         case 'checkin': loadCheckinView(); break;
         case 'pt': loadPTView(); break;
@@ -3476,7 +3486,6 @@
         case 'expenses': loadExpensesView(); break;
         case 'analytics': loadAnalyticsView(); break;
         case 'birthdays': loadBirthdaysView(); break;
-        case 'gallery': loadGalleryView(); break;
       }
     }
 
@@ -3867,10 +3876,15 @@
       const el = document.getElementById('contentArea');
       el.innerHTML = `
         <div class="dashboard-header-flex">
-          <div class="dashboard-section-title"><i class="fas fa-images"></i> Galeri Foto Member</div>
-          <div class="stat-card" style="padding:10px 20px; flex-direction:row; align-items:center; gap:12px; margin-bottom:0">
-            <i class="fas fa-search" style="color:var(--text-secondary)"></i>
-            <input type="text" id="gallerySearch" placeholder="Cari nama atau ID..." style="background:none; border:none; color:var(--text-main); outline:none; font-size:14px; width:200px">
+          <div class="dashboard-section-title"><i class="fas fa-users-cog"></i> Manajemen Member</div>
+          <div style="display:flex; gap:12px; align-items:center">
+            <button class="btn btn-success btn-sm" onclick="loadMemberForm()">
+              <i class="fas fa-user-plus"></i> Registrasi Baru
+            </button>
+            <div class="stat-card" style="padding:8px 16px; flex-direction:row; align-items:center; gap:12px; margin-bottom:0">
+              <i class="fas fa-search" style="color:var(--text-secondary)"></i>
+              <input type="text" id="gallerySearch" placeholder="Cari nama atau ID..." style="background:none; border:none; color:var(--text-main); outline:none; font-size:14px; width:180px">
+            </div>
           </div>
         </div>
         <div id="galleryGrid" style="display:grid; grid-template-columns:repeat(auto-fill, minmax(220px, 1fr)); gap:24px; margin-top:24px">
