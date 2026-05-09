@@ -712,7 +712,7 @@
 
     <!-- Header (Hidden on Landing) -->
     <div class="header" id="mainHeader" style="display:none">
-      <img id="gymLogoHeader" src="https://i.imgur.com/TPoUeRJ.jpeg" 
+      <img id="gymLogoHeader" src="https://i.imgur.com/NO5dVfb.png" 
            style="width:100px;height:100px;border-radius:50%;margin:0 auto 20px;display:block;border:4px solid var(--primary);object-fit:cover;box-shadow: 0 10px 20px rgba(0,0,0,0.1);">
       <h1 id="gymNameHeader" style="color: #000;">Gym Name</h1>
       <p id="gymMottoHeader" style="color: #555;">Daftar Membership Online — Cepat, Mudah, dan Aman</p>
@@ -1471,7 +1471,7 @@
         branches.forEach(b => {
           html += `
             <div onclick="selectBranch('${b.id}')" style="background: white; border-radius: 24px; padding: 40px; cursor: pointer; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); box-shadow: 0 10px 25px rgba(0,0,0,0.05); border: 1px solid #e5e5ea; display: flex; flex-direction: column; align-items: center; gap: 20px;" onmouseover="this.style.transform='translateY(-8px)'; this.style.borderColor='#d4af37'; this.style.boxShadow='0 20px 40px rgba(212,175,55,0.12)'" onmouseout="this.style.transform='translateY(0)'; this.style.borderColor='#e5e5ea'; this.style.boxShadow='0 10px 25px rgba(0,0,0,0.05)'">
-              <img src="${b.logo || 'https://i.imgur.com/TPoUeRJ.jpeg'}" style="width: 120px; height: 120px; border-radius: 30px; object-fit: cover; box-shadow: 0 8px 16px rgba(0,0,0,0.1);">
+              <img src="${b.logo || 'https://i.imgur.com/NO5dVfb.png'}" style="width: 120px; height: 120px; border-radius: 30px; object-fit: cover; box-shadow: 0 8px 16px rgba(0,0,0,0.1);">
               <div style="text-align: center;">
                 <h3 style="font-size: 22px; font-weight: 800; color: #000;">${b.name}</h3>
                 <p style="color: #555; font-size: 14px; margin-top: 4px;">${b.address || ''}</p>
@@ -1548,7 +1548,7 @@
 
       function applyBranchBranding() {
         if (!branchSettings) return;
-        document.getElementById('gymLogoHeader').src = branchSettings.logo || 'https://i.imgur.com/TPoUeRJ.jpeg';
+        document.getElementById('gymLogoHeader').src = branchSettings.logo || 'https://i.imgur.com/NO5dVfb.png';
         document.getElementById('gymNameHeader').textContent = branchSettings.name || 'Gym Name';
         document.title = "Registrasi Member - " + branchSettings.name;
         
