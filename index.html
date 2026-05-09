@@ -10,14 +10,9 @@
   <script>
     const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzKWdekXY27eWx5h4CI7HvLxnTboVPryp_gTpqTtCNM-G7yqLe4m0owvj7YwGgTm8bv/exec';
 
-    // Actions that should be executed locally first and then queued for sync
     const WRITE_ACTIONS = [
-      'registerMember', 'updateMemberPhoto', 'processCheckIn', 'processCheckInWithPT',
-      'processPOSTransaction', 'saveExpense', 'saveProduct', 'deleteProduct',
-      'adjustStock', 'approveRegistration', 'approveExtension', 'rejectApproval',
-      'registerPTSession', 'submitRegistration', 'submitExtensionRequest', 'updateMemberProfile',
-      'savePackage', 'deletePackage', 'deleteExpense', 'createUser', 'updateUserAccount',
-      'deleteUserAccount', 'updateBranding', 'saveBirthdayTemplate', 'processVisitCheckIn'
+      'processCheckIn', 'processCheckInWithPT', 'processPOSTransaction', 
+      'saveExpense', 'processVisitCheckIn'
     ];
 
     let isSyncing = false;
