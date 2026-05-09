@@ -163,8 +163,8 @@
         }
 
         saveAppData();
-        if (typeof refreshPage === 'function') refreshPage();
-        else if (typeof renderCurrentView === 'function') renderCurrentView();
+        if (typeof renderCurrentView === 'function') renderCurrentView();
+        else if (typeof refreshPage === 'function') refreshPage();
       } catch (e) {
         console.warn('Optimistic update failed:', e);
       }
@@ -4004,7 +4004,7 @@
           hideLoading();
           showToast('Error Server: ' + err.message, 'error');
         })
-        .getMemberFullHistory(memberId);
+        .fetchMemberFullHistory(memberId);
     }
 
     function confirmDeleteMember(id, name) {
