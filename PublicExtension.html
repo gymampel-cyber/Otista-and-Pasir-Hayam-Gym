@@ -331,7 +331,7 @@
 
     <div id="extensionContent" style="display:none">
       <div class="header">
-        <img id="gymLogoHeader" src="https://i.imgur.com/TPoUeRJ.jpeg" style="width:80px;height:80px;border-radius:50%;margin-bottom:16px;border:3px solid white;box-shadow: 0 10px 20px rgba(0,0,0,0.1);object-fit:cover">
+        <img id="gymLogoHeader" src="https://i.imgur.com/NO5dVfb.png" style="width:80px;height:80px;border-radius:50%;margin-bottom:16px;border:3px solid white;box-shadow: 0 10px 20px rgba(0,0,0,0.1);object-fit:cover">
         <h1 id="gymNameHeader">Perpanjangan Member</h1>
         <p id="gymMottoHeader">Form perpanjangan keanggotaan online</p>
       </div>
@@ -509,7 +509,7 @@
         branches.forEach(b => {
           html += `
             <div onclick="selectBranch('${b.id}')" style="background: white; border-radius: 20px; padding: 24px; cursor: pointer; transition: all 0.3s ease; border: 1px solid #e5e5ea; display: flex; align-items: center; gap: 16px; text-align: left;" onmouseover="this.style.transform='translateY(-4px)'; this.style.borderColor='#d4af37'; this.style.boxShadow='0 12px 24px rgba(212,175,55,0.12)'" onmouseout="this.style.transform='translateY(0)'; this.style.borderColor='#e5e5ea'; this.style.boxShadow='none'">
-              <img src="${b.logo || 'https://i.imgur.com/TPoUeRJ.jpeg'}" style="width: 60px; height: 60px; border-radius: 15px; object-fit: cover;">
+              <img src="${b.logo || 'https://i.imgur.com/NO5dVfb.png'}" style="width: 60px; height: 60px; border-radius: 15px; object-fit: cover;">
               <div style="flex: 1;">
                 <h3 style="font-size: 18px; font-weight: 800; color: #000;">${b.name}</h3>
                 <p style="color: #555; font-size: 13px;">${b.address || ''}</p>
@@ -582,7 +582,7 @@
 
     function applyBranchBranding() {
       if (!branchSettings) return;
-      document.getElementById('gymLogoHeader').src = branchSettings.logo || 'https://i.imgur.com/TPoUeRJ.jpeg';
+      document.getElementById('gymLogoHeader').src = branchSettings.logo || 'https://i.imgur.com/NO5dVfb.png';
       document.getElementById('gymNameHeader').textContent = branchSettings.name || 'Perpanjangan Member';
       document.getElementById('gymMottoHeader').textContent = "Pusat Perpanjangan Member Online - " + (branchSettings.name || 'Gym');
       document.title = "Perpanjangan Member - " + branchSettings.name;
