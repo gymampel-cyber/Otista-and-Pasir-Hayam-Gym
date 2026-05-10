@@ -5498,7 +5498,7 @@
                         <td><code>${t.id}</code></td>
                         <td>${t.time}</td>
                         <td>${escapeHtml(t.customer)}</td>
-                        <td><small>${escapeHtml(t.items || '-')}</small></td>
+                        <td>${t.items || '-'}</td>
                         <td><b>${formatCurrency(t.total)}</b></td>
                         <td><small>${t.cashier}</small></td>
                       </tr>
@@ -10724,7 +10724,7 @@
                         ${new Date(t.Waktu).toLocaleString('id-ID', { day: '2-digit', month: 'long', hour: '2-digit', minute: '2-digit' })} • 
                         <i class="fas fa-user-tie"></i> ${t.Kasir}
                       </div>
-                      <div style="font-size:11px; color:#64748b; margin-top:4px">${escapeHtml(t['Daftar Item'] || '-')}</div>
+                      <div style="font-size:11px; color:#64748b; margin-top:4px">${t['Daftar Item'] || '-'}</div>
                     </div>
                     <div class="list-item-action">
                       <div style="text-align:right">
