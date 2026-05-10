@@ -4102,8 +4102,18 @@
             hideLoading();
             if (res.success) {
               showToast(res.message, 'success');
-              viewMemberFullDetails(memberId);
+              // Refresh member detail if in member profile view
+              if (memberId && typeof viewMemberFullDetails === 'function') viewMemberFullDetails(memberId);
+              
+              // Refresh dashboard stats (revenue cards, check-ins)
               if (typeof fetchDashboardData === 'function') fetchDashboardData(null, null, true);
+              
+              // Refresh POS tables if they exist
+              if (typeof loadTodayPOSTransactions === 'function') loadTodayPOSTransactions();
+              if (typeof loadPOSTransactionHistory === 'function') {
+                const histStart = document.getElementById('pos_hist_start');
+                if (histStart) loadPOSTransactionHistory();
+              }
             } else {
               showToast(res.message, 'error');
             }
@@ -5490,6 +5500,7 @@
                       <th>Produk</th>
                       <th>Total</th>
                       <th>Kasir</th>
+                      ${currentUser.role === 'Admin' ? '<th>Aksi</th>' : ''}
                     </tr>
                   </thead>
                   <tbody>
@@ -5501,6 +5512,13 @@
                         <td>${t.items || '-'}</td>
                         <td><b>${formatCurrency(t.total)}</b></td>
                         <td><small>${t.cashier}</small></td>
+                        ${currentUser.role === 'Admin' ? `
+                          <td style="text-align:center">
+                            <button class="btn btn-ghost btn-xs" style="color:#ef4444" onclick="event.stopPropagation(); confirmDeleteTransactionRecord('${t.id}', 'POS', null)" title="Hapus Transaksi">
+                              <i class="fas fa-trash-alt"></i>
+                            </button>
+                          </td>
+                        ` : ''}
                       </tr>
                     `).join('')}
                   </tbody>
@@ -10731,6 +10749,13 @@
                         ${formatCurrency(t.Total)}
                         <div style="font-size:11px; color:#8E8E93; font-weight:normal">${t['Metode Pembayaran']}</div>
                       </div>
+                      ${currentUser.role === 'Admin' ? `
+                        <div style="text-align:right; margin-top:8px">
+                          <button class="btn btn-ghost btn-xs" style="color:#ef4444" onclick="event.stopPropagation(); confirmDeleteTransactionRecord('${t['ID Transaksi']}', 'POS', null)" title="Hapus Transaksi">
+                            <i class="fas fa-trash-alt"></i> Hapus
+                          </button>
+                        </div>
+                      ` : ''}
                     </div>
                   </div>
                 `).join('')}
