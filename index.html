@@ -3816,14 +3816,6 @@
       if (document.getElementById('statPOSNetProfit')) document.getElementById('statPOSNetProfit').textContent = formatCurrency(s.posNetProfit || 0);
       if (document.getElementById('statNetProfit')) document.getElementById('statNetProfit').textContent = formatCurrency(s.netProfit || 0);
 
-      // Hide financial stats for Staff & Kasir
-      if (currentUser && (currentUser.role === 'Staff' || currentUser.role === 'Kasir')) {
-        const financialStats = ['statFitnessRevenue', 'statPOSRevenue', 'statExpenses', 'statNetProfit', 'statFitnessNetProfit', 'statPOSNetProfit'];
-        financialStats.forEach(id => {
-          const el = document.getElementById(id);
-          if (el) el.textContent = '***';
-        });
-      }
 
       // Low Stock Widget
       const lsEl = document.getElementById('lowStockWidget');
