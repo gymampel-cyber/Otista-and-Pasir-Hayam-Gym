@@ -1207,8 +1207,7 @@
         return;
       }
 
-      // Save form data
-      formData = { fullName, phone, email, dob };
+      // Data diri sudah tersimpan di formData
 
       // Show package section
       document.getElementById('personalDataSection').style.display = 'none';
@@ -1234,7 +1233,7 @@
       document.getElementById('summaryPackage').textContent = selectedPackage.name;
       document.getElementById('summaryPackagePrice').textContent = formatCurrency(selectedPackage.price);
       
-      const total = selectedPackage.price + 0;
+      const total = (selectedPackage.total || selectedPackage.price) + 0;
       document.getElementById('summaryTotal').textContent = formatCurrency(total);
 
       // Show payment section
@@ -1286,7 +1285,7 @@
       const selectedGym = document.getElementById('gymLocation').value;
       packages = res.packages.filter(p => {
         const isRegular = p.type && p.type.toLowerCase().includes('regular');
-        const matchGym = !p.Gym || p.Gym === selectedGym || p.Gym === 'Both';
+        const matchGym = !p.branch || p.branch === selectedGym || p.branch === 'All';
         return isRegular && matchGym;
       });
       
