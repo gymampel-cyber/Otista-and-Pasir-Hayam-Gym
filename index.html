@@ -2460,6 +2460,10 @@
           <input type="text" id="editFullName" class="form-input" placeholder="Nama Lengkap">
         </div>
         <div class="form-group">
+          <label class="form-label">No. HP</label>
+          <input type="text" id="editPhone" class="form-input" placeholder="08xxxxxxxxxx">
+        </div>
+        <div class="form-group">
           <label class="form-label">Nama Face ID</label>
           <input type="text" id="editFaceIdName" class="form-input" placeholder="Nama yang terdaftar di mesin Face ID">
         </div>
@@ -4116,10 +4120,6 @@
                     <label class="form-label">Nama Lengkap *</label>
                     <input id="reg_name" class="form-input" placeholder="Contoh: Budi Santoso">
                   </div>
-                  <div class="form-group">
-                    <label class="form-label">Tanggal Lahir</label>
-                    <input id="reg_dob" type="date" class="form-input">
-                  </div>
                 </div>
                 <div class="form-row">
                   <div class="form-group">
@@ -4415,7 +4415,7 @@
       const name = document.getElementById('reg_name')?.value?.trim();
       const phone = document.getElementById('reg_phone')?.value?.trim();
       const email = document.getElementById('reg_email')?.value?.trim();
-      const dob = document.getElementById('reg_dob')?.value;
+      const dob = '';
       const pay = document.getElementById('reg_payment')?.value;
       const notes = document.getElementById('reg_notes')?.value?.trim();
       const pkg = getSelectedPkg();
@@ -9706,8 +9706,7 @@
         let visible = true;
 
         if (role === 'Staff' || role === 'Kasir') {
-          // Hilangkan 'gallery' dari akses Staff/Kasir -> Gallery SEKARANG DIIJINKAN
-          const staffViews = ['dashboard', 'members', 'transactions', 'checkin', 'pt', 'pos', 'approvals', 'expenses', 'birthdays', 'gallery'];
+          const staffViews = ['dashboard', 'members', 'transactions', 'checkin', 'pt', 'pos', 'approvals', 'expenses', 'birthdays', 'gallery', 'analytics'];
           if (!staffViews.includes(view)) visible = false;
 
           // Sembunyikan kartu dashboard -> Gallery SEKARANG DIIJINKAN
@@ -9750,10 +9749,8 @@
 
     function showDashboardDetail(type) {
       const financialTypes = ['fitness_revenue', 'pos_revenue', 'expenses', 'fitness_expenses', 'pos_expenses'];
-      if (currentUser && (currentUser.role === 'Staff' || currentUser.role === 'Kasir') && financialTypes.includes(type)) {
-        showToast('Akses ditolak: Staf/Kasir tidak diizinkan melihat rincian keuangan.', 'warning');
-        return;
-      }
+      // Staff/Kasir are now allowed to see financial details
+      // if (currentUser && (currentUser.role === 'Staff' || currentUser.role === 'Kasir') && financialTypes.includes(type)) { ... }
 
       const modal = document.getElementById('detailModal');
       const title = document.getElementById('detailModalTitle');
@@ -10702,6 +10699,7 @@
                         ${new Date(t.Waktu).toLocaleString('id-ID', { day: '2-digit', month: 'long', hour: '2-digit', minute: '2-digit' })} • 
                         <i class="fas fa-user-tie"></i> ${t.Kasir}
                       </div>
+                      <div style="font-size:11px; color:#64748b; margin-top:4px">${escapeHtml(t['Daftar Item'] || '-')}</div>
                     </div>
                     <div class="list-item-action">
                       <div style="text-align:right">
@@ -10739,6 +10737,7 @@
 
       document.getElementById('editMemberId').value = memberId;
       document.getElementById('editFullName').value = member.fullName || '';
+      document.getElementById('editPhone').value = member.phone || '';
       document.getElementById('editFaceIdName').value = member.faceIdName || '';
       document.getElementById('editFaceIdCode').value = member.faceIdCode || '';
 
@@ -10752,6 +10751,7 @@
     function submitEditProfile() {
       const memberId = document.getElementById('editMemberId').value;
       const fullName = document.getElementById('editFullName').value.trim();
+      const phone = document.getElementById('editPhone').value.trim();
       const faceIdName = document.getElementById('editFaceIdName').value.trim();
       const faceIdCode = document.getElementById('editFaceIdCode').value.trim();
 
@@ -10780,6 +10780,7 @@
         .updateMemberProfile({
           memberId: memberId,
           fullName: fullName,
+          phone: phone,
           faceIdName: faceIdName,
           faceIdCode: faceIdCode
         });
