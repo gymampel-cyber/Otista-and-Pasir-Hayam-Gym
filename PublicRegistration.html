@@ -768,10 +768,6 @@
                 <input id="fullName" class="form-input" placeholder="Contoh: Budi Santoso">
                 <small style="color:#94a3b8;margin-top:4px;display:block">Minimal 3 karakter</small>
               </div>
-              <div class="form-group">
-                <label class="form-label">Tanggal Lahir</label>
-                <input id="dob" type="date" class="form-input">
-              </div>
             </div>
             <div class="form-row">
               <div class="form-group">
@@ -973,8 +969,7 @@
     var formData = {
       fullName: '',
       phone: '',
-      email: '',
-      dob: ''
+      email: ''
     };
     var currentBranch = null;
     var branchSettings = null;
@@ -1184,20 +1179,19 @@
 
     function nextToPackage() {
       // Validate personal data
-      const fullName = document.getElementById('fullName').value.trim();
-      const phone = document.getElementById('phone').value.trim();
-      const email = document.getElementById('email').value.trim();
-      const dob = document.getElementById('dob').value;
+      formData.fullName = document.getElementById('fullName').value.trim();
+      formData.phone    = document.getElementById('phone').value.trim();
+      formData.email    = document.getElementById('email').value.trim();
 
-      if (!fullName || fullName.length < 3) {
+      if (!formData.fullName || formData.fullName.length < 3) {
         showAlert('Nama lengkap minimal 3 karakter', 'warning');
         return;
       }
-      if (!phone || !validatePhone(phone)) {
+      if (!formData.phone || !validatePhone(formData.phone)) {
         showAlert('Format nomor telepon tidak valid (Contoh: 081234567890)', 'warning');
         return;
       }
-      if (!email || !validateEmail(email)) {
+      if (!formData.email || !validateEmail(formData.email)) {
         showAlert('Format email tidak valid', 'warning');
         return;
       }
@@ -1403,7 +1397,7 @@
         fullName: formData.fullName,
         phone: formData.phone,
         email: formData.email,
-        dob: formData.dob,
+        dob: '',
         gym: document.getElementById('gymLocation').value,
         packageId: selectedPackage.id,
         paymentMethod: paymentMethod,
