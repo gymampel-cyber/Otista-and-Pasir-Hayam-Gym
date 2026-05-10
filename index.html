@@ -2440,6 +2440,28 @@
         border: 1px solid #ddd !important;
       }
     }
+
+    /* Admin Panel Styling */
+    .admin-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 24px;
+    }
+    .admin-card {
+      background: var(--bg-card);
+      border-radius: 20px;
+      padding: 24px;
+      border: 1px solid var(--border-color);
+      box-shadow: var(--shadow-premium);
+    }
+    .admin-card h4 {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      border-bottom: 1px solid var(--border-color);
+      padding-bottom: 12px;
+      margin-top: 0;
+    }
   </style>
 </head>
 
@@ -2712,7 +2734,7 @@
         onclick="window.location.href = 'whatsapp://send?phone=6285777723458'"
         onmouseover="this.style.opacity='1'; this.style.transform='scale(1.05)'"
         onmouseout="this.style.opacity='0.9'; this.style.transform='scale(1)'">
-        <img src="https://i.imgur.com/uFGDJ3a.png" alt="KIZIY Logo"
+        <img src="https://i.imgur.com/NO5dVfb.png" alt="KIZIY Logo"
           style="width: 80px; height: auto; margin-bottom: 6px; object-fit: contain; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.1));">
         <div
           style="font-weight: 800; color: #1e293b; font-size: 16px; letter-spacing: 2px; text-align: center; text-transform: uppercase;">
@@ -2741,7 +2763,7 @@
     <div class="sidebar" id="sidebar">
       <div class="sidebar-header">
         <div style="display:flex;align-items:center;gap:12px">
-          <img class="gym-logo-brand" src="https://i.imgur.com/PAB0dhW.png"
+          <img class="gym-logo-brand" src="https://i.imgur.com/NO5dVfb.png"
             style="width:48px;height:48px;border-radius:50%;object-fit:cover">
           <div>
             <div id="userName" style="font-size:15px;font-weight:600">-</div>
@@ -3493,7 +3515,7 @@
         case 'approvals': loadApprovals(); break;
         case 'pos': loadPOSView(); break;
         case 'memberAdmin': loadMemberAdminView(); break;
-        case 'admin': loadAdminView(); break;
+        case 'admin': loadAdminPanel(); break;
         case 'catalog': loadCatalogView(); break;
         case 'expenses': loadExpensesView(); break;
         case 'analytics': loadAnalyticsView(); break;
@@ -5465,6 +5487,7 @@
                       <th>ID</th>
                       <th>Waktu</th>
                       <th>Pelanggan</th>
+                      <th>Produk</th>
                       <th>Total</th>
                       <th>Kasir</th>
                     </tr>
@@ -5475,6 +5498,7 @@
                         <td><code>${t.id}</code></td>
                         <td>${t.time}</td>
                         <td>${escapeHtml(t.customer)}</td>
+                        <td><small>${escapeHtml(t.items || '-')}</small></td>
                         <td><b>${formatCurrency(t.total)}</b></td>
                         <td><small>${t.cashier}</small></td>
                       </tr>
@@ -8711,7 +8735,8 @@
 
     // ================ ADMIN PANEL ================
     function loadAdminPanel() {
-      if (!currentUser || (currentUser.role !== 'Admin' && currentUser.role !== 'Super Admin')) {
+      const role = currentUser?.role?.toLowerCase() || '';
+      if (role !== 'admin' && role !== 'super admin') {
         document.getElementById('contentArea').innerHTML = `
           <div class="alert alert-warning">
             <i class="fas fa-lock fa-lg"></i>
