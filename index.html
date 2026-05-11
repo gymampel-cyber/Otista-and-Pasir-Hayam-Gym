@@ -10026,6 +10026,20 @@
                       </tr>
                     `).join('')}
                   </tbody>
+                  ${res.footer ? `
+                  <tfoot style="border-top:2px solid #e2e8f0">
+                    <tr style="background:#f8fafc; font-weight:700">
+                      ${res.footer.map((cell, idx) => {
+                        const h = res.headers[idx];
+                        let style = 'padding:12px 8px;';
+                        if (['Qty', 'Transfer/Bank', 'Cash/Tunai', 'Total', 'Jumlah', 'Total Modal'].includes(h)) {
+                          style += 'text-align:right;';
+                        }
+                        return `<td style="${style}">${cell}</td>`;
+                      }).join('')}
+                    </tr>
+                  </tfoot>
+                  ` : ''}
                 </table>
               </div>
             `;
