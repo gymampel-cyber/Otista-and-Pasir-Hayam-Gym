@@ -18,7 +18,7 @@
     ];
 
     let isSyncing = false;
-    let syncQueue = JSON.parse(localStorage.getItem('ugym_sync_queue') || '[]');
+    let syncQueue = JSON.parse(localStorage.getItem('gym_sync_queue') || '[]');
 
     const google = {
       script: {
@@ -121,7 +121,7 @@
         args: args,
         timestamp: new Date().toISOString()
       });
-      localStorage.setItem('ugym_sync_queue', JSON.stringify(syncQueue));
+      localStorage.setItem('gym_sync_queue', JSON.stringify(syncQueue));
       updateSyncIndicator();
       processSyncQueue();
     }
@@ -236,7 +236,7 @@
 
           if (res.success) {
             syncQueue.shift();
-            localStorage.setItem('ugym_sync_queue', JSON.stringify(syncQueue));
+            localStorage.setItem('gym_sync_queue', JSON.stringify(syncQueue));
           } else break;
         } catch (e) { break; }
         updateSyncIndicator();
@@ -3159,8 +3159,9 @@
               font-family: 'Courier New', Courier, monospace; 
               font-size: 10px; 
               line-height: 1.2; 
-              padding: 2mm; 
+              padding: 2mm 6mm 2mm 2mm; /* Padding kanan diperbesar agar tidak terpotong */
               box-sizing: border-box;
+              width: 58mm;
             }
             .header { text-align: center; margin-bottom: 6px; }
             .header h2 { margin: 0; font-size: 12px; text-transform: uppercase; }
@@ -3244,10 +3245,8 @@
       }
 
       html += `
-          <div class="divider"></div>
           <div class="footer">
             <p>Terima kasih!</p>
-            <p>Powered by UGYM</p>
           </div>
         </body>
         </html>
