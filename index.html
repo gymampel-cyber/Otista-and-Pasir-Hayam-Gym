@@ -3130,6 +3130,122 @@
       document.body.removeChild(tempLink);
     }
 
+    function printReceipt(type, data) {
+      const now = formatDateTime(new Date());
+      const printWindow = window.open('', '_blank');
+      if (!printWindow) {
+        showToast('Gagal membuka jendela cetak. Periksa pop-up blocker Anda.', 'error');
+        return;
+      }
+
+      let html = `
+        <html>
+        <head>
+          <title>Receipt - ${data.receipt || 'Trx'}</title>
+          <style>
+            @page { size: 58mm auto; margin: 0; }
+            body { 
+              font-family: 'Courier New', Courier, monospace; 
+              font-size: 11px; 
+              line-height: 1.3; 
+              width: 50mm; 
+              padding: 4mm; 
+              margin: 0; 
+              color: #000;
+              background: #fff;
+            }
+            .header { text-align: center; margin-bottom: 8px; }
+            .header h2 { margin: 0; font-size: 13px; text-transform: uppercase; }
+            .header p { margin: 2px 0; font-size: 9px; }
+            .divider { border-top: 1px dashed #000; margin: 6px 0; }
+            .row { display: flex; justify-content: space-between; margin-bottom: 2px; }
+            .row-label { flex: 1; }
+            .row-value { text-align: right; font-weight: bold; }
+            .footer { text-align: center; margin-top: 12px; font-size: 9px; }
+            .total { font-weight: bold; font-size: 12px; }
+            .items { width: 100%; border-collapse: collapse; margin: 4px 0; }
+            .items td { padding: 1px 0; font-size: 10px; }
+            .items .qty { width: 20px; text-align: center; }
+            .items .price { text-align: right; }
+            @media print {
+              body { width: 100%; }
+            }
+          </style>
+        </head>
+        <body onload="setTimeout(() => { window.print(); window.close(); }, 500);">
+          <div class="header">
+            <h2>${currentBranchName.toUpperCase()}</h2>
+            <p>${currentBranchAddress || '-'}</p>
+            <p>${currentBranchPhone || '-'}</p>
+          </div>
+          <div class="divider"></div>
+          <div class="row"><span>Waktu:</span> <span>${now}</span></div>
+          <div class="row"><span>No. Trx:</span> <span>${data.receipt || '-'}</span></div>
+      `;
+
+      if (type === 'registration' || type === 'extension') {
+        html += `
+          <div class="row"><span>ID Member:</span> <span>${data.memberId}</span></div>
+          <div class="row"><span>Nama:</span> <span>${data.name}</span></div>
+          <div class="row"><span>Paket:</span> <span>${data.package}</span></div>
+          <div class="row"><span>Exp:</span> <span>${formatDate(data.expiry)}</span></div>
+          <div class="divider"></div>
+          <div class="row total"><span>TOTAL:</span> <span>${formatCurrency(data.total)}</span></div>
+          <div class="row"><span>Metode:</span> <span>${data.payment}</span></div>
+        `;
+      } else if (type === 'pt') {
+        html += `
+          <div class="row"><span>Member:</span> <span>${data.name}</span></div>
+          <div class="row"><span>Trainer:</span> <span>${data.trainer}</span></div>
+          <div class="row"><span>Sesi:</span> <span>${data.sessions}</span></div>
+          <div class="row"><span>Exp:</span> <span>${formatDate(data.expiry)}</span></div>
+          <div class="divider"></div>
+          <div class="row total"><span>TOTAL:</span> <span>${formatCurrency(data.total)}</span></div>
+          <div class="row"><span>Metode:</span> <span>${data.payment}</span></div>
+        `;
+      } else if (type === 'visit') {
+        html += `
+          <div class="row"><span>Nama:</span> <span>${data.name}</span></div>
+          <div class="row"><span>Tipe:</span> <span>${data.visitType}</span></div>
+          <div class="divider"></div>
+          <div class="row total"><span>TOTAL:</span> <span>${formatCurrency(data.total)}</span></div>
+          <div class="row"><span>Metode:</span> <span>${data.payment}</span></div>
+        `;
+      } else if (type === 'pos') {
+        html += `
+          <div class="row"><span>Customer:</span> <span>${data.name}</span></div>
+          <div class="divider"></div>
+          <table class="items">
+            ${(data.items || []).map(it => `
+              <tr>
+                <td>${it.name}</td>
+                <td class="qty">x${it.qty}</td>
+                <td class="price">${formatCurrency(it.price * it.qty)}</td>
+              </tr>
+            `).join('')}
+          </table>
+          <div class="divider"></div>
+          <div class="row"><span>Subtotal:</span> <span>${formatCurrency(data.subtotal)}</span></div>
+          <div class="row"><span>Diskon:</span> <span>${data.discount}%</span></div>
+          <div class="row total"><span>TOTAL:</span> <span>${formatCurrency(data.total)}</span></div>
+          <div class="row"><span>Metode:</span> <span>${data.payment}</span></div>
+        `;
+      }
+
+      html += `
+          <div class="divider"></div>
+          <div class="footer">
+            <p>Terima kasih!</p>
+            <p>Powered by UGYM</p>
+          </div>
+        </body>
+        </html>
+      `;
+
+      printWindow.document.write(html);
+      printWindow.document.close();
+    }
+
     function generateReceiptText(type, data) {
       const now = formatDateTime(new Date());
       let text = '';
@@ -4627,6 +4743,9 @@
                   </div>
                   
                   <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:16px;flex-wrap:wrap">
+                    <button class="btn btn-sm btn-outline" onclick="printReceipt('registration', { memberId:'${res.memberId}', name:'${res.memberName || name}', package:'${res.currentPackage || pkg.name}', expiry:'${res.expiryDate}', receipt:'${res.receiptNumber}', total:${res.totalAmount || totalAmount}, payment:'${res.paymentMethod || pay}' })">
+                      <i class="fas fa-print"></i> Cetak Struk
+                    </button>
                     <button class="btn btn-info btn-sm" onclick="const txt = generateReceiptText('registration', { memberId:'${res.memberId}', name:'${res.memberName || name}', package:'${res.currentPackage || pkg.name}', expiry:'${res.expiryDate}', receipt:'${res.receiptNumber}', price:${res.packagePrice || pkg.price}, regFee:${res.registrationFee || 0}, total:${res.totalAmount || totalAmount}, payment:'${res.paymentMethod || pay}', qr:'${res.qrCodeUrl || ''}' }); shareToWhatsApp('${res.memberPhone || phone}', txt)">
                       <i class="fab fa-whatsapp"></i> Kirim WA
                     </button>
@@ -5279,6 +5398,9 @@
                   ` : ''}
                   
                   <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:16px;flex-wrap:wrap">
+                    <button class="btn btn-sm btn-outline" onclick="printReceipt('extension', { memberId:'${r.memberId || selectedMember.memberId}', name:'${r.memberName || selectedMember.fullName}', package:'${r.packageName || pkgName}', expiry:'${r.newExpiry}', receipt:'${r.number}', total:${r.total || price}, payment:'${payEl.value}' })">
+                      <i class="fas fa-print"></i> Cetak Struk
+                    </button>
                     <button class="btn btn-info btn-sm" onclick="const txt = generateReceiptText('extension', { memberId:'${r.memberId || selectedMember.memberId}', name:'${r.memberName || selectedMember.fullName}', package:'${r.packageName || pkgName}', expiry:'${r.newExpiry}', receipt:'${r.number}', total:${r.total || price}, payment:'${payEl.value}' }); shareToWhatsApp('${selectedMember.phone}', txt)">
                       <i class="fab fa-whatsapp"></i> Kirim WA
                     </button>
@@ -5793,14 +5915,54 @@
               CACHE.clearStats(); // Clear all stats cache
 
               // Print receipt option
-              showConfirm('Transaksi Berhasil! Kirim Struk via WhatsApp?', (waOk) => {
-                if (waOk) {
-                  sendPOSReceiptToWA(res.trxId, payload);
-                }
-                // Reset POS & Refresh to update all stats/stock
+              showConfirm('Transaksi Berhasil! Pilih Aksi:', (ok) => {
+                // Default behavior handles the selection via multiple buttons if we had a better modal
+                // For now, let's just use a simple flow or a custom modal
+              }, 'Kirim WA', 'Batal'); // Standard showConfirm might not be enough for 3 options
+
+              // Re-implementing with a custom UI for POS success
+              const resultDiv = document.createElement('div');
+              resultDiv.style = "position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:9999";
+              resultDiv.innerHTML = `
+                <div class="form-card" style="width:90%;max-width:400px;text-align:center">
+                  <div class="form-card-header"><h3>✅ Transaksi Berhasil</h3></div>
+                  <div class="form-card-body">
+                    <p style="margin-bottom:20px">Pilih aksi untuk struk pembayaran:</p>
+                    <div style="display:flex;flex-direction:column;gap:10px">
+                      <button class="btn btn-info" id="btnPosWA"><i class="fab fa-whatsapp"></i> Kirim ke WhatsApp</button>
+                      <button class="btn btn-outline" id="btnPosPrint"><i class="fas fa-print"></i> Cetak Struk Lokal</button>
+                      <button class="btn btn-primary" id="btnPosDone">Selesai</button>
+                    </div>
+                  </div>
+                </div>
+              `;
+              document.body.appendChild(resultDiv);
+              
+              document.getElementById('btnPosWA').onclick = () => {
+                sendPOSReceiptToWA(res.trxId, payload);
+                document.body.removeChild(resultDiv);
                 resetPOS();
                 refreshPage();
-              });
+              };
+              document.getElementById('btnPosPrint').onclick = () => {
+                printReceipt('pos', {
+                  receipt: res.trxId,
+                  name: payload.customerName,
+                  items: payload.items,
+                  subtotal: payload.subtotal,
+                  discount: payload.discount,
+                  total: payload.total,
+                  payment: payload.paymentMethod
+                });
+                document.body.removeChild(resultDiv);
+                resetPOS();
+                refreshPage();
+              };
+              document.getElementById('btnPosDone').onclick = () => {
+                document.body.removeChild(resultDiv);
+                resetPOS();
+                refreshPage();
+              };
 
             } else {
               // ROLLBACK LOGIC
@@ -7803,7 +7965,10 @@
                     <span>No. Transaksi: <code>${res.receiptNumber || '-'}</code></span>
                   </div>
                 </div>
-                <div style="display:flex;gap:8px;justify-content:flex-end">
+                <div style="display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap">
+                   <button class="btn btn-sm btn-outline" onclick="printReceipt('visit', { name:'${escapeJs(name)}', visitType:'${res.visitType || 'Harian'}', receipt:'${res.receiptNumber || '-'}', total:${res.amount || 25000}, payment:'${res.paymentMethod || 'Transfer'}' })">
+                    <i class="fas fa-print"></i> Cetak
+                  </button>
                    <button class="btn btn-info btn-sm" onclick="const txt = generateReceiptText('visit', { name:'${escapeJs(name)}', visitType:'${res.visitType || 'Harian'}', receipt:'${res.receiptNumber || '-'}', total:${res.amount || 25000}, payment:'${res.paymentMethod || 'Transfer'}' }); shareToWhatsApp('${phone}', txt)">
                     <i class="fab fa-whatsapp"></i> Kirim WA
                   </button>
@@ -8392,7 +8557,10 @@
                   </div>
                   
                   <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:16px;flex-wrap:wrap">
-                    <button class="btn btn-info btn-sm" onclick="const txt = generateReceiptText('pt', { name:'${ptSelectedMember.fullName}', trainer:'${trainer}', sessions:${sessions}, expiry:'${res.expiryDate}', receipt:'${res.receiptNumber}', total:${res.totalAmount || total}, payment:'${payment}' }); shareToWhatsApp('${ptSelectedMember.phone}', txt)">
+                    <button class="btn btn-sm btn-outline" onclick="printReceipt('pt', { name:'${escapeJs(ptSelectedMember.fullName)}', trainer:'${escapeJs(trainer)}', sessions:${sessions}, expiry:'${res.expiryDate}', receipt:'${res.receiptNumber}', total:${res.totalAmount || total}, payment:'${payment}' })">
+                      <i class="fas fa-print"></i> Cetak Struk
+                    </button>
+                    <button class="btn btn-info btn-sm" onclick="const txt = generateReceiptText('pt', { name:'${escapeJs(ptSelectedMember.fullName)}', trainer:'${escapeJs(trainer)}', sessions:${sessions}, expiry:'${res.expiryDate}', receipt:'${res.receiptNumber}', total:${res.totalAmount || total}, payment:'${payment}' }); shareToWhatsApp('${ptSelectedMember.phone}', txt)">
                       <i class="fab fa-whatsapp"></i> Kirim WA
                     </button>
                     <button class="btn btn-primary btn-sm" onclick="refreshPage()">
