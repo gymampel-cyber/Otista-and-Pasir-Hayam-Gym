@@ -10008,7 +10008,16 @@
                   <tbody>
                     ${res.data.map(row => `
                       <tr>
-                        ${row.map(cell => `<td>${cell}</td>`).join('')}
+                        ${row.map((cell, idx) => {
+                          if (res.headers[idx] === 'Face ID') {
+                            if (cell && cell.toString().startsWith('http')) {
+                              return `<td style="width:50px;text-align:center"><img src="${cell}" style="width:32px;height:32px;border-radius:50%;object-fit:cover;border:1px solid #e2e8f0" onerror="this.src='https://i.imgur.com/NO5dVfb.png'"></td>`;
+                            } else {
+                              return `<td style="width:50px;text-align:center"><div style="width:32px;height:32px;border-radius:50%;background:#f1f5f9;display:flex;align-items:center;justify-content:center;color:#94a3b8;margin:0 auto"><i class="fas fa-user"></i></div></td>`;
+                            }
+                          }
+                          return `<td>${cell}</td>`;
+                        }).join('')}
                       </tr>
                     `).join('')}
                   </tbody>
