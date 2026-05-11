@@ -10002,17 +10002,26 @@
                 <table class="table">
                   <thead>
                     <tr>
-                      ${res.headers.map(h => `<th>${h}</th>`).join('')}
+                      ${res.headers.map(h => {
+                        let style = '';
+                        if (['Qty', 'Transfer/Bank', 'Cash/Tunai', 'Total', 'Jumlah', 'Total Modal'].includes(h)) {
+                          style = 'text-align:right;';
+                        }
+                        return `<th style="${style}">${h}</th>`;
+                      }).join('')}
                     </tr>
                   </thead>
                   <tbody>
                     ${res.data.map(row => `
                       <tr>
                         ${row.map((cell, idx) => {
-                          if (res.headers[idx] === 'Face ID') {
-                            return `<td style="font-weight:bold;color:#475569">${cell}</td>`;
+                          const h = res.headers[idx];
+                          let style = '';
+                          if (h === 'Face ID') style = 'font-weight:bold;color:#475569;';
+                          if (['Qty', 'Transfer/Bank', 'Cash/Tunai', 'Total', 'Jumlah', 'Total Modal'].includes(h)) {
+                            style += 'text-align:right; font-weight:500;';
                           }
-                          return `<td>${cell}</td>`;
+                          return `<td style="${style}">${cell}</td>`;
                         }).join('')}
                       </tr>
                     `).join('')}
