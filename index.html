@@ -5546,7 +5546,7 @@
                   <tbody>
                     ${list.map(t => {
                       const memberId = t.memberId;
-                      const member = appData.members.find(m => m.memberId === memberId);
+                      const member = (window.appData && appData.members) ? appData.members.find(m => m.memberId === memberId) : null;
                       const phone = member ? member.phone || member.memberPhone : '';
                       
                       return `
@@ -5735,7 +5735,7 @@
                       <th>Produk</th>
                       <th>Total</th>
                       <th>Kasir</th>
-                      ${currentUser.role === 'Admin' ? '<th>Aksi</th>' : ''}
+                      <th>Aksi</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -5747,13 +5747,21 @@
                         <td>${t.items || '-'}</td>
                         <td><b>${formatCurrency(t.total)}</b></td>
                         <td><small>${t.cashier}</small></td>
-                        ${currentUser.role === 'Admin' ? `
-                          <td style="text-align:center">
-                            <button class="btn btn-ghost btn-xs" style="color:#ef4444" onclick="event.stopPropagation(); confirmDeleteTransactionRecord('${t.id}', 'POS', null)" title="Hapus Transaksi">
-                              <i class="fas fa-trash-alt"></i>
+                        <td style="text-align:center">
+                          <div style="display:flex; gap:6px; justify-content:center">
+                            <button class="btn btn-ghost btn-xs" onclick="event.stopPropagation(); printReceipt('pos', { receipt: '${t.id}', name: '${escapeJs(t.customer)}', items: JSON.parse('${escapeJs(t.rawItems || '[]')}'), total: ${t.total}, payment: '${t.paymentMethod}' })" title="Cetak Struk">
+                              <i class="fas fa-print"></i>
                             </button>
-                          </td>
-                        ` : ''}
+                            <button class="btn btn-ghost btn-xs" style="color:#22c55e" onclick="event.stopPropagation(); const txt = generateReceiptText('pos', { receipt: '${t.id}', name: '${escapeJs(t.customer)}', items: JSON.parse('${escapeJs(t.rawItems || '[]')}'), total: ${t.total}, payment: '${t.paymentMethod}' }); shareToWhatsApp(getMemberPhone('${t.memberId}'), txt)" title="Kirim WA">
+                              <i class="fab fa-whatsapp"></i>
+                            </button>
+                            ${currentUser.role === 'Admin' ? `
+                              <button class="btn btn-ghost btn-xs" style="color:#ef4444" onclick="event.stopPropagation(); confirmDeleteTransactionRecord('${t.id}', 'POS', null)" title="Hapus Transaksi">
+                                <i class="fas fa-trash-alt"></i>
+                              </button>
+                            ` : ''}
+                          </div>
+                        </td>
                       </tr>
                     `).join('')}
                   </tbody>
