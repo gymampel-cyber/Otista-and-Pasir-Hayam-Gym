@@ -5559,10 +5559,10 @@
                           <td style="padding:12px"><span class="badge badge-info" style="font-size:10px; padding:4px 8px; border-radius:6px">${t.paymentMethod}</span></td>
                           <td style="padding:12px; border-radius:0 12px 12px 0; text-align:center">
                             <div style="display:flex;gap:6px;justify-content:center">
-                              <button class="btn btn-ghost btn-xs" onclick="printReceipt('${t.type === 'Registrasi Baru' ? 'registration' : 'extension'}', { memberId:'${t.memberId}', name:'${escapeJs(t.memberName)}', package:'${escapeJs(t.packageName)}', receipt:'${t.receiptNumber}', total:${t.totalAmount}, payment:'${t.paymentMethod}', expiry:'${t.transactionDate}' })" title="Cetak Struk">
+                              <button class="btn btn-ghost btn-xs" onclick="printReceipt('${t.type === 'Registrasi Baru' ? 'registration' : 'extension'}', { memberId:'${t.memberId}', name:decodeURIComponent('${encodeURIComponent(t.memberName)}'), package:decodeURIComponent('${encodeURIComponent(t.packageName)}'), receipt:'${t.receiptNumber}', total:${t.totalAmount}, payment:'${t.paymentMethod}', expiry:'${t.transactionDate}' })" title="Cetak Struk">
                                 <i class="fas fa-print"></i>
                               </button>
-                              <button class="btn btn-ghost btn-xs" style="color:#22c55e" onclick="const txt = generateReceiptText('${t.type === 'Registrasi Baru' ? 'registration' : 'extension'}', { memberId:'${t.memberId}', name:'${escapeJs(t.memberName)}', package:'${escapeJs(t.packageName)}', receipt:'${t.receiptNumber}', price:${t.packagePrice || t.totalAmount}, total:${t.totalAmount}, payment:'${t.paymentMethod}', expiry:'${t.transactionDate}' }); shareToWhatsApp('${phone}', txt)" title="Kirim WA">
+                              <button class="btn btn-ghost btn-xs" style="color:#22c55e" onclick="const txt = generateReceiptText('${t.type === 'Registrasi Baru' ? 'registration' : 'extension'}', { memberId:'${t.memberId}', name:decodeURIComponent('${encodeURIComponent(t.memberName)}'), package:decodeURIComponent('${encodeURIComponent(t.packageName)}'), receipt:'${t.receiptNumber}', price:${t.packagePrice || t.totalAmount}, total:${t.totalAmount}, payment:'${t.paymentMethod}', expiry:'${t.transactionDate}' }); shareToWhatsApp('${phone}', txt)" title="Kirim WA">
                                 <i class="fab fa-whatsapp"></i>
                               </button>
                             </div>
@@ -5749,10 +5749,10 @@
                         <td><small>${t.cashier}</small></td>
                         <td style="text-align:center">
                           <div style="display:flex; gap:6px; justify-content:center">
-                            <button class="btn btn-ghost btn-xs" onclick="event.stopPropagation(); printReceipt('pos', { receipt: '${t.id}', name: '${escapeJs(t.customer)}', items: JSON.parse('${escapeJs(t.rawItems || '[]')}'), total: ${t.total}, payment: '${t.paymentMethod}' })" title="Cetak Struk">
+                            <button class="btn btn-ghost btn-xs" onclick="event.stopPropagation(); printReceipt('pos', { receipt: '${t.id}', name: decodeURIComponent('${encodeURIComponent(t.customer)}'), items: JSON.parse(decodeURIComponent('${encodeURIComponent(t.rawItems || '[]')}')), total: ${t.total}, payment: '${t.paymentMethod}' })" title="Cetak Struk">
                               <i class="fas fa-print"></i>
                             </button>
-                            <button class="btn btn-ghost btn-xs" style="color:#22c55e" onclick="event.stopPropagation(); const txt = generateReceiptText('pos', { receipt: '${t.id}', name: '${escapeJs(t.customer)}', items: JSON.parse('${escapeJs(t.rawItems || '[]')}'), total: ${t.total}, payment: '${t.paymentMethod}' }); shareToWhatsApp(getMemberPhone('${t.memberId}'), txt)" title="Kirim WA">
+                            <button class="btn btn-ghost btn-xs" style="color:#22c55e" onclick="event.stopPropagation(); const txt = generateReceiptText('pos', { receipt: '${t.id}', name: decodeURIComponent('${encodeURIComponent(t.customer)}'), items: JSON.parse(decodeURIComponent('${encodeURIComponent(t.rawItems || '[]')}')), total: ${t.total}, payment: '${t.paymentMethod}' }); shareToWhatsApp(getMemberPhone('${t.memberId}'), txt)" title="Kirim WA">
                               <i class="fab fa-whatsapp"></i>
                             </button>
                             ${currentUser.role === 'Admin' ? `
@@ -11058,10 +11058,10 @@
                         <div style="font-size:11px; color:#8E8E93; font-weight:normal">${t['Metode Pembayaran']}</div>
                       </div>
                       <div style="display:flex; gap:8px; margin-top:8px; justify-content:flex-end">
-                        <button class="btn btn-ghost btn-xs" onclick="event.stopPropagation(); printReceipt('pos', { receipt: '${t['ID Transaksi']}', name: '${escapeJs(t['Nama Pembeli'])}', items: JSON.parse('${escapeJs(t.rawItems || '[]')}'), total: ${t.Total}, payment: '${t['Metode Pembayaran']}' })" title="Cetak Struk">
+                        <button class="btn btn-ghost btn-xs" onclick="event.stopPropagation(); printReceipt('pos', { receipt: '${t['ID Transaksi']}', name: decodeURIComponent('${encodeURIComponent(t['Nama Pembeli'])}'), items: JSON.parse(decodeURIComponent('${encodeURIComponent(t.rawItems || '[]')}')), total: ${t.Total}, payment: '${t['Metode Pembayaran']}' })" title="Cetak Struk">
                           <i class="fas fa-print"></i>
                         </button>
-                        <button class="btn btn-ghost btn-xs" style="color:#22c55e" onclick="event.stopPropagation(); const txt = generateReceiptText('pos', { receipt: '${t['ID Transaksi']}', name: '${escapeJs(t['Nama Pembeli'])}', items: JSON.parse('${escapeJs(t.rawItems || '[]')}'), total: ${t.Total}, payment: '${t['Metode Pembayaran']}' }); shareToWhatsApp(getMemberPhone('${t['Member ID']}'), txt)" title="Kirim WA">
+                        <button class="btn btn-ghost btn-xs" style="color:#22c55e" onclick="event.stopPropagation(); const txt = generateReceiptText('pos', { receipt: '${t['ID Transaksi']}', name: decodeURIComponent('${encodeURIComponent(t['Nama Pembeli'])}'), items: JSON.parse(decodeURIComponent('${encodeURIComponent(t.rawItems || '[]')}')), total: ${t.Total}, payment: '${t['Metode Pembayaran']}' }); shareToWhatsApp(getMemberPhone('${t['Member ID']}'), txt)" title="Kirim WA">
                           <i class="fab fa-whatsapp"></i>
                         </button>
                         ${currentUser.role === 'Admin' ? `
