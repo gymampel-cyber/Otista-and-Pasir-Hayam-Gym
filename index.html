@@ -7984,11 +7984,6 @@
     }
 
     function openVisitModal() {
-      document.getElementById('visit_search').value = '';
-      document.getElementById('visitSearchResults').innerHTML = '';
-      document.getElementById('visit_name').value = '';
-      document.getElementById('visit_phone').value = '';
-
       const select = document.getElementById('visit_type');
       select.innerHTML = '';
 
@@ -10173,7 +10168,7 @@
             container.innerHTML = '<div style="color:red;padding:20px">' + (res.message || 'Gagal memuat data') + '</div>';
           }
         })
-        .getDashboardDetail(type, startDate, endDate, currentBranch);
+        .getDashboardDetail(type, startDate, endDate, currentBranch, currentUser.role === 'Admin' ? 'All' : currentUser.name);
     }
 
     function closeDetailModal() {
