@@ -6587,7 +6587,7 @@
           hideLoading();
           if (res.success) {
             showToast('✅ Berhasil diupdate', 'success');
-            loadProductList();
+            loadProductList(true);
             fetchDashboardData(null, null, true); // Force refresh cache
           } else {
             showToast('❌ ' + res.message, 'error');
@@ -6634,7 +6634,7 @@
           if (res.success) {
             showToast('✅ ' + res.message, 'success');
             closeRestockModal();
-            loadProductList();
+            loadProductList(true);
             if (currentView === 'expenses') refreshExpenses();
             if (currentView === 'dashboard') refreshDashboard();
             fetchDashboardData(null, null, true); // Force refresh cache after restock
@@ -6735,7 +6735,7 @@
           if (res.success) {
             showToast('✅ ' + res.message, 'success');
             closeAdjustModal();
-            loadProductList();
+            loadProductList(true);
             fetchDashboardData(null, null, true); // Force refresh after stock adjustment
           } else {
             showToast('❌ ' + res.message, 'error');
