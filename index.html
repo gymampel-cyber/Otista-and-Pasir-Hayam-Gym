@@ -10941,7 +10941,8 @@
       const dashStart = document.getElementById('dash_start_date')?.value;
       const dashEnd = document.getElementById('dash_end_date')?.value;
       const isPeriod = !!(dashStart && dashEnd);
-      const staffFilter = document.getElementById('reportStaffFilter')?.value || 'All';
+      const isAdmin = currentUser.role === 'Admin' || currentUser.role === 'Super Admin';
+      const staffFilter = isAdmin ? (document.getElementById('reportStaffFilter')?.value || 'All') : currentUser.name;
 
       google.script.run
         .withSuccessHandler(function (res) {
