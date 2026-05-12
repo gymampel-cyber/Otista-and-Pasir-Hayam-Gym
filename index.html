@@ -18,6 +18,7 @@
     ];
 
     let isSyncing = false;
+    let isResultActive = false; // Flag to prevent automatic refresh while success card is shown
     let syncQueue = JSON.parse(localStorage.getItem('gym_sync_queue') || '[]');
 
     const google = {
@@ -3110,6 +3111,12 @@
       }
     }
 
+    function getMemberPhone(memberId) {
+      if (!memberId || !window.appData || !appData.members) return '';
+      const m = appData.members.find(x => x.memberId === memberId || x.id === memberId);
+      return m ? (m.phone || m.memberPhone || '') : '';
+    }
+
     // ================ WHATSAPP & PRINT UTILS ================
     function shareToWhatsApp(phone, text) {
       if (!phone) {
@@ -3607,6 +3614,8 @@
 
     // ================ NAVIGATION ================
     function showView(view) {
+      isResultActive = false; // Reset lock when manually changing view
+      
       document.querySelectorAll('.menu-item').forEach(el =>
         el.classList.toggle('active', el.dataset.view === view)
       );
@@ -3650,6 +3659,10 @@
     }
 
     function refreshPage() {
+      if (isResultActive) {
+        console.log('Skipping automatic refresh because a result card is active.');
+        return;
+      }
       const active = document.querySelector('.menu-item.active');
       if (active) showView(active.dataset.view);
     }
@@ -4360,7 +4373,22 @@
                 </div>
               </div>
             </div>
+
+            <div class="form-card" style="margin-top:24px">
+              <div class="form-card-header">
+                <h3><i class="fas fa-history"></i> Riwayat Registrasi Admin (Terbaru)</h3>
+              </div>
+              <div class="form-card-body">
+                <div id="regHistoryContainer" style="overflow-x:auto">
+                  <div style="text-align:center; padding:20px; color:#94a3b8">
+                    <i class="fas fa-spinner fa-spin"></i> Memuat riwayat...
+                  </div>
+                </div>
+              </div>
+            </div>
           `;
+          
+          loadAdminTrxHistory('Registrasi Baru', 'regHistoryContainer');
 
           document.querySelectorAll('.pkg-card').forEach(card => {
             card.addEventListener('click', function () {
@@ -4659,6 +4687,7 @@
 
                 resultEl.className = 'result-card success';
                 resultEl.style.display = 'block';
+                isResultActive = true; // Prevent automatic refresh
                 // Update cache in background without resetting the current success UI
                 if (typeof fetchInitialAppData === 'function') fetchInitialAppData(() => {
                   console.log('Background sync complete');
@@ -4759,7 +4788,7 @@
                     <button class="btn btn-info btn-sm" onclick="const txt = generateReceiptText('registration', { memberId:'${res.memberId}', name:'${res.memberName || name}', package:'${res.currentPackage || pkg.name}', expiry:'${res.expiryDate}', receipt:'${res.receiptNumber}', price:${res.packagePrice || pkg.price}, regFee:${res.registrationFee || 0}, total:${res.totalAmount || totalAmount}, payment:'${res.paymentMethod || pay}', qr:'${res.qrCodeUrl || ''}' }); shareToWhatsApp('${res.memberPhone || phone}', txt)">
                       <i class="fab fa-whatsapp"></i> Kirim WA
                     </button>
-                    <button class="btn btn-primary btn-sm" onclick="refreshPage()">
+                    <button class="btn btn-primary btn-sm" onclick="isResultActive=false; refreshPage()">
                       <i class="fas fa-check"></i> Selesai
                     </button>
                   </div>
@@ -5029,7 +5058,22 @@
                 </div>
               </div>
             </div>
+
+            <div class="form-card" style="margin-top:24px">
+              <div class="form-card-header">
+                <h3><i class="fas fa-history"></i> Riwayat Perpanjangan Admin (Terbaru)</h3>
+              </div>
+              <div class="form-card-body">
+                <div id="extHistoryContainer" style="overflow-x:auto">
+                  <div style="text-align:center; padding:20px; color:#94a3b8">
+                    <i class="fas fa-spinner fa-spin"></i> Memuat riwayat...
+                  </div>
+                </div>
+              </div>
+            </div>
           `;
+          
+          loadAdminTrxHistory('Perpanjangan', 'extHistoryContainer');
 
           document.getElementById('trx_package').addEventListener('change', updateTransactionSummary);
         })
@@ -5337,6 +5381,7 @@
 
                 resultEl.className = 'result-card success';
                 resultEl.style.display = 'block';
+                isResultActive = true; // Prevent automatic refresh
                 // Update cache in background without resetting the current success UI
                 if (typeof fetchInitialAppData === 'function') fetchInitialAppData(() => {
                   console.log('Background sync complete');
@@ -5414,7 +5459,7 @@
                     <button class="btn btn-info btn-sm" onclick="const txt = generateReceiptText('extension', { memberId:'${r.memberId || selectedMember.memberId}', name:'${r.memberName || selectedMember.fullName}', package:'${r.packageName || pkgName}', expiry:'${r.newExpiry}', receipt:'${r.number}', total:${r.total || price}, payment:'${payEl.value}' }); shareToWhatsApp('${selectedMember.phone}', txt)">
                       <i class="fab fa-whatsapp"></i> Kirim WA
                     </button>
-                    <button class="btn btn-primary btn-sm" onclick="refreshPage()">
+                    <button class="btn btn-primary btn-sm" onclick="isResultActive=false; refreshPage()">
                       <i class="fas fa-check"></i> Selesai
                     </button>
                   </div>
@@ -5469,6 +5514,72 @@
             }, currentUser?.name || 'Admin');
         }
       );
+    }
+
+    function loadAdminTrxHistory(type, containerId) {
+      const container = document.getElementById(containerId);
+      if (!container) return;
+
+      google.script.run
+        .withSuccessHandler(function (res) {
+          if (res && res.success) {
+            const list = res.transactions;
+            if (!list || list.length === 0) {
+              container.innerHTML = '<div style="text-align:center; padding:32px; color:#94a3b8; background:rgba(0,0,0,0.02); border-radius:12px; border:1px dashed var(--border-color)"><i class="fas fa-receipt" style="font-size:24px; margin-bottom:12px; display:block; opacity:0.5"></i> Belum ada riwayat transaksi.</div>';
+              return;
+            }
+
+            let html = `
+              <div class="table-responsive">
+                <table class="table-premium" style="width:100%; border-collapse:separate; border-spacing:0 8px">
+                  <thead>
+                    <tr style="background:transparent">
+                      <th style="padding:12px; font-size:11px; text-transform:uppercase; color:#64748b; font-weight:700">Waktu</th>
+                      <th style="padding:12px; font-size:11px; text-transform:uppercase; color:#64748b; font-weight:700">No. Resi</th>
+                      <th style="padding:12px; font-size:11px; text-transform:uppercase; color:#64748b; font-weight:700">Member</th>
+                      <th style="padding:12px; font-size:11px; text-transform:uppercase; color:#64748b; font-weight:700">Paket</th>
+                      <th style="padding:12px; font-size:11px; text-transform:uppercase; color:#64748b; font-weight:700">Total</th>
+                      <th style="padding:12px; font-size:11px; text-transform:uppercase; color:#64748b; font-weight:700">Metode</th>
+                      <th style="padding:12px; font-size:11px; text-transform:uppercase; color:#64748b; font-weight:700; text-align:center">Aksi</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    ${list.map(t => {
+                      const memberId = t.memberId;
+                      const member = appData.members.find(m => m.memberId === memberId);
+                      const phone = member ? member.phone || member.memberPhone : '';
+                      
+                      return `
+                        <tr style="background:var(--bg-card); box-shadow:0 2px 4px rgba(0,0,0,0.02); transition:0.2s">
+                          <td style="padding:12px; border-radius:12px 0 0 12px"><div style="font-size:11px;color:#64748b">${formatDate(t.transactionDate)}</div></td>
+                          <td style="padding:12px"><code>${t.receiptNumber}</code></td>
+                          <td style="padding:12px"><b>${escapeHtml(t.memberName)}</b><br><small style="color:#64748b">${t.memberId}</small></td>
+                          <td style="padding:12px">${escapeHtml(t.packageName)}</td>
+                          <td style="padding:12px"><b>${formatCurrency(t.totalAmount)}</b></td>
+                          <td style="padding:12px"><span class="badge badge-info" style="font-size:10px; padding:4px 8px; border-radius:6px">${t.paymentMethod}</span></td>
+                          <td style="padding:12px; border-radius:0 12px 12px 0; text-align:center">
+                            <div style="display:flex;gap:6px;justify-content:center">
+                              <button class="btn btn-ghost btn-xs" onclick="printReceipt('${t.type === 'Registrasi Baru' ? 'registration' : 'extension'}', { memberId:'${t.memberId}', name:'${escapeJs(t.memberName)}', package:'${escapeJs(t.packageName)}', receipt:'${t.receiptNumber}', total:${t.totalAmount}, payment:'${t.paymentMethod}', expiry:'${t.transactionDate}' })" title="Cetak Struk">
+                                <i class="fas fa-print"></i>
+                              </button>
+                              <button class="btn btn-ghost btn-xs" style="color:#22c55e" onclick="const txt = generateReceiptText('${t.type === 'Registrasi Baru' ? 'registration' : 'extension'}', { memberId:'${t.memberId}', name:'${escapeJs(t.memberName)}', package:'${escapeJs(t.packageName)}', receipt:'${t.receiptNumber}', price:${t.packagePrice || t.totalAmount}, total:${t.totalAmount}, payment:'${t.paymentMethod}', expiry:'${t.transactionDate}' }); shareToWhatsApp('${phone}', txt)" title="Kirim WA">
+                                <i class="fab fa-whatsapp"></i>
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      `;
+                    }).join('')}
+                  </tbody>
+                </table>
+              </div>
+            `;
+            container.innerHTML = html;
+          } else {
+            container.innerHTML = `<div style="text-align:center; padding:20px; color:#ef4444">Gagal memuat riwayat: ${res.message}</div>`;
+          }
+        })
+        .getFilteredTransactionHistory(type, currentBranch);
     }
 
     // ================ POS (POINT OF SALE) ================
@@ -10938,13 +11049,19 @@
                         ${formatCurrency(t.Total)}
                         <div style="font-size:11px; color:#8E8E93; font-weight:normal">${t['Metode Pembayaran']}</div>
                       </div>
-                      ${currentUser.role === 'Admin' ? `
-                        <div style="text-align:right; margin-top:8px">
+                      <div style="display:flex; gap:8px; margin-top:8px; justify-content:flex-end">
+                        <button class="btn btn-ghost btn-xs" onclick="event.stopPropagation(); printReceipt('pos', { receipt: '${t['ID Transaksi']}', name: '${escapeJs(t['Nama Pembeli'])}', items: JSON.parse('${escapeJs(t.rawItems || '[]')}'), total: ${t.Total}, payment: '${t['Metode Pembayaran']}' })" title="Cetak Struk">
+                          <i class="fas fa-print"></i>
+                        </button>
+                        <button class="btn btn-ghost btn-xs" style="color:#22c55e" onclick="event.stopPropagation(); const txt = generateReceiptText('pos', { receipt: '${t['ID Transaksi']}', name: '${escapeJs(t['Nama Pembeli'])}', items: JSON.parse('${escapeJs(t.rawItems || '[]')}'), total: ${t.Total}, payment: '${t['Metode Pembayaran']}' }); shareToWhatsApp(getMemberPhone('${t['Member ID']}'), txt)" title="Kirim WA">
+                          <i class="fab fa-whatsapp"></i>
+                        </button>
+                        ${currentUser.role === 'Admin' ? `
                           <button class="btn btn-ghost btn-xs" style="color:#ef4444" onclick="event.stopPropagation(); confirmDeleteTransactionRecord('${t['ID Transaksi']}', 'POS', null)" title="Hapus Transaksi">
-                            <i class="fas fa-trash-alt"></i> Hapus
+                            <i class="fas fa-trash-alt"></i>
                           </button>
-                        </div>
-                      ` : ''}
+                        ` : ''}
+                      </div>
                     </div>
                   </div>
                 `).join('')}
