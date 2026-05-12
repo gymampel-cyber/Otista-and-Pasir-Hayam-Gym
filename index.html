@@ -6616,14 +6616,11 @@
       const payload = {
         productId: document.getElementById('restock_prod_id').value,
         addedQty: parseInt(document.getElementById('restock_qty').value),
-        totalCost: parseInt(document.getElementById('restock_cost').value),
-        paymentMethod: document.getElementById('restock_payment').value,
         user: currentUser ? currentUser.name : 'System',
         gym: currentBranch
       };
 
       if (payload.addedQty <= 0) { showToast('Jumlah harus lebih dari 0', 'warning'); return; }
-      if (payload.totalCost <= 0) { showToast('Total biaya harus diisi', 'warning'); return; }
 
       btn.disabled = true;
       btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
@@ -10349,23 +10346,9 @@
           <label class="form-label">Nama Produk</label>
           <input type="text" id="restock_prod_name" class="form-input" readonly style="background:#f1f5f9">
         </div>
-        <div class="form-row">
-          <div class="form-group">
-            <label class="form-label">Jumlah Ditambah</label>
-            <input type="number" id="restock_qty" class="form-input" value="0" min="1">
-          </div>
-          <div class="form-group">
-            <label class="form-label">Total Biaya Beli (Rp)</label>
-            <input type="number" id="restock_cost" class="form-input" value="0">
-          </div>
-        </div>
         <div class="form-group">
-          <label class="form-label">Metode Pembayaran (Diambil dari Kas)</label>
-          <select id="restock_payment" class="form-input">
-            <option value="Tunai">Tunai</option>
-            <option value="Transfer">Transfer</option>
-            <option value="QRIS">QRIS</option>
-          </select>
+          <label class="form-label">Jumlah Ditambah</label>
+          <input type="number" id="restock_qty" class="form-input" value="0" min="1">
         </div>
 
       </div>
