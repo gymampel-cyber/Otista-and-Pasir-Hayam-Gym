@@ -3972,32 +3972,24 @@
 
     function renderDashboardUI(s) {
       if (!s) return;
+      
+      // Fitness Stats
+      if (document.getElementById('statTotal')) document.getElementById('statTotal').textContent = s.total || s.stats?.total || 0;
+      if (document.getElementById('statAktif')) document.getElementById('statAktif').textContent = s.active || s.stats?.active || 0;
+      if (document.getElementById('statGallery')) document.getElementById('statGallery').textContent = s.galleryCount || s.stats?.galleryCount || 0;
+      if (document.getElementById('statBirthday')) document.getElementById('statBirthday').textContent = s.birthdayCount || s.stats?.birthdayCount || 0;
+      if (document.getElementById('statExpiring')) document.getElementById('statExpiring').textContent = s.expiring || s.stats?.expiring || 0;
+      if (document.getElementById('statExpired')) document.getElementById('statExpired').textContent = s.expired || s.stats?.expired || 0;
+      if (document.getElementById('statCheckin')) document.getElementById('statCheckin').textContent = s.checkins || s.stats?.checkins || 0;
+      if (document.getElementById('statPending')) document.getElementById('statPending').textContent = s.pendingApprovals || s.stats?.pendingApprovals || 0;
+      if (document.getElementById('statFitnessRevenue')) document.getElementById('statFitnessRevenue').textContent = formatCurrency(s.revenue || s.stats?.revenue || 0);
 
       // Period Info
-      const periodEl = document.getElementById('dashboardPeriod');
-      const periodVal = document.getElementById('periodValue');
       const titleEl = document.getElementById('checkinTableTitle');
-      if (periodEl && periodVal) {
-        if (s.isFiltered) {
-          periodEl.style.display = 'flex';
-          periodVal.textContent = s.period;
-          if (titleEl) titleEl.innerHTML = `<i class="fas fa-history" style="color:#64748b"></i> Aktivitas Check-In (${s.period})`;
-        } else {
-          periodEl.style.display = 'none';
-          if (titleEl) titleEl.innerHTML = `<i class="fas fa-history" style="color:#64748b"></i> Aktivitas Check-In Terbaru`;
-        }
+      if (titleEl) {
+        if (s.isFiltered || s.stats?.isFiltered) titleEl.innerHTML = `<i class="fas fa-history" style="color:#64748b"></i> Aktivitas Check-In (${s.period || s.stats?.period})`;
+        else titleEl.innerHTML = `<i class="fas fa-history" style="color:#64748b"></i> Aktivitas Check-In Terbaru`;
       }
-
-      // Fitness Stats
-      if (document.getElementById('statTotal')) document.getElementById('statTotal').textContent = s.total || 0;
-      if (document.getElementById('statAktif')) document.getElementById('statAktif').textContent = s.active || 0;
-      if (document.getElementById('statGallery')) document.getElementById('statGallery').textContent = s.galleryCount || 0;
-      if (document.getElementById('statBirthday')) document.getElementById('statBirthday').textContent = s.birthdayCount || 0;
-      if (document.getElementById('statExpiring')) document.getElementById('statExpiring').textContent = s.expiring || 0;
-      if (document.getElementById('statExpired')) document.getElementById('statExpired').textContent = s.expired || 0;
-      if (document.getElementById('statCheckin')) document.getElementById('statCheckin').textContent = s.checkins || 0;
-      if (document.getElementById('statPending')) document.getElementById('statPending').textContent = s.pendingApprovals || 0;
-      if (document.getElementById('statFitnessRevenue')) document.getElementById('statFitnessRevenue').textContent = formatCurrency(s.revenue || 0);
 
       // POS Stats
       if (document.getElementById('statPOSRevenue')) document.getElementById('statPOSRevenue').textContent = formatCurrency(s.posRevenue || 0);
@@ -4036,7 +4028,7 @@
         }
       }
 
-      renderTodayCheckins(s.todayCheckinList || []);
+      renderTodayCheckins(s.todayCheckinList || (s.stats ? s.stats.todayCheckinList : []) || []);
     }
 
     function renderTodayCheckins(list) {
