@@ -3203,7 +3203,7 @@
           <div class="divider"></div>
           <div class="row"><span>Waktu:</span> <span>${now}</span></div>
           <div class="row"><span>No. Trx:</span> <span>${data.receipt || '-'}</span></div>
-          <div class="row"><span>Kasir:</span> <span>${data.cashier || currentUser.name || '-'}</span></div>
+          <div class="row"><span>Kasir:</span> <span>${(data.cashier || currentUser.name || '-').replace(/ \[.*?\]/g, '')}</span></div>
       `;
 
       if (type === 'registration' || type === 'extension') {
@@ -3966,7 +3966,7 @@
             renderDashboardUI(s);
           }
         })
-        .getDashboardStats(start, end, currentBranch, currentUser.role === 'Admin' ? 'All' : currentUser.name);
+        .getDashboardStats(start, end, currentBranch, currentUser.role === 'Admin' ? 'All' : (currentUser.id || currentUser.name));
     }
 
     function renderDashboardUI(s) {
@@ -6170,7 +6170,7 @@
           paymentMethod: payment,
           memberId: posSelectedMember ? posSelectedMember.id : '',
           customerName: posSelectedMember ? posSelectedMember.name : 'Guest',
-          cashier: currentUser?.name || 'Admin',
+          cashier: currentUser ? `${currentUser.name} [${currentUser.id}]` : 'Admin',
           whatsapp: document.getElementById('pos_wa_number').value.trim(),
           notes: '',
           gym: currentBranch
@@ -9259,7 +9259,7 @@
             .withFailureHandler(function (err) {
               hideLoading();
               showToast('Error: ' + err.message, 'error');
-            })[fn](id, currentUser?.name || 'Admin');
+            })[fn](id, currentUser ? `${currentUser.name} [${currentUser.id}]` : 'Admin');
         }
       );
     }
@@ -10193,7 +10193,7 @@
         description: document.getElementById('exp_description').value,
         amount: Number(document.getElementById('exp_amount').value),
         paymentMethod: document.getElementById('exp_payment').value,
-        user: currentUser?.fullName || currentUser?.name || 'Admin'
+        user: currentUser ? `${currentUser.name} [${currentUser.id}]` : 'Admin'
       };
 
       if (!payload.category || !payload.amount || !payload.description) {
@@ -10513,7 +10513,7 @@
         .withFailureHandler(function (err) {
           console.warn('Realtime sync failed (background):', err.message);
         })
-        .getDashboardStats(start, end, currentBranch, currentUser.role === 'Admin' ? 'All' : currentUser.name);
+        .getDashboardStats(start, end, currentBranch, currentUser.role === 'Admin' ? 'All' : (currentUser.id || currentUser.name));
     }
 
     function updateDashboardCounters(stats) {
