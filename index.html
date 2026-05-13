@@ -3970,20 +3970,20 @@
       if (!s) return;
 
       // Fitness Stats
-      if (document.getElementById('statTotal')) document.getElementById('statTotal').textContent = s.total || s.stats?.total || 0;
-      if (document.getElementById('statAktif')) document.getElementById('statAktif').textContent = s.active || s.stats?.active || 0;
-      if (document.getElementById('statGallery')) document.getElementById('statGallery').textContent = s.galleryCount || s.stats?.galleryCount || 0;
-      if (document.getElementById('statBirthday')) document.getElementById('statBirthday').textContent = s.birthdayCount || s.stats?.birthdayCount || 0;
-      if (document.getElementById('statExpiring')) document.getElementById('statExpiring').textContent = s.expiring || s.stats?.expiring || 0;
-      if (document.getElementById('statExpired')) document.getElementById('statExpired').textContent = s.expired || s.stats?.expired || 0;
-      if (document.getElementById('statCheckin')) document.getElementById('statCheckin').textContent = s.checkins || s.stats?.checkins || 0;
-      if (document.getElementById('statPending')) document.getElementById('statPending').textContent = s.pendingApprovals || s.stats?.pendingApprovals || 0;
-      if (document.getElementById('statFitnessRevenue')) document.getElementById('statFitnessRevenue').textContent = formatCurrency(s.fitnessRevenue || s.revenue || s.stats?.revenue || 0);
+      if (document.getElementById('statTotal')) document.getElementById('statTotal').textContent = s.total || 0;
+      if (document.getElementById('statAktif')) document.getElementById('statAktif').textContent = s.active || 0;
+      if (document.getElementById('statGallery')) document.getElementById('statGallery').textContent = s.galleryCount || 0;
+      if (document.getElementById('statBirthday')) document.getElementById('statBirthday').textContent = s.birthdayCount || 0;
+      if (document.getElementById('statExpiring')) document.getElementById('statExpiring').textContent = s.expiring || 0;
+      if (document.getElementById('statExpired')) document.getElementById('statExpired').textContent = s.expired || 0;
+      if (document.getElementById('statCheckin')) document.getElementById('statCheckin').textContent = s.checkins || 0;
+      if (document.getElementById('statPending')) document.getElementById('statPending').textContent = s.pendingApprovals || 0;
+      if (document.getElementById('statFitnessRevenue')) document.getElementById('statFitnessRevenue').textContent = formatCurrency(s.fitnessRevenue || 0);
 
       // Period Info
       const titleEl = document.getElementById('checkinTableTitle');
       if (titleEl) {
-        if (s.isFiltered || s.stats?.isFiltered) titleEl.innerHTML = `<i class="fas fa-history" style="color:#64748b"></i> Aktivitas Check-In (${s.period || s.stats?.period})`;
+        if (s.isFiltered) titleEl.innerHTML = `<i class="fas fa-history" style="color:#64748b"></i> Aktivitas Check-In (${s.period})`;
         else titleEl.innerHTML = `<i class="fas fa-history" style="color:#64748b"></i> Aktivitas Check-In Terbaru`;
       }
 
@@ -4000,9 +4000,9 @@
       const periodBanner = document.getElementById('dashboardPeriod');
       const periodVal = document.getElementById('periodValue');
       if (periodBanner && periodVal) {
-        if (s.isFiltered || s.stats?.isFiltered) {
+        if (s.isFiltered) {
           periodBanner.style.display = 'flex';
-          periodVal.textContent = s.period || s.stats?.period || 'Filtered';
+          periodVal.textContent = s.period || 'Filtered';
         } else {
           periodBanner.style.display = 'none';
         }
