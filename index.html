@@ -7682,7 +7682,7 @@
                     
                     <div style="margin-bottom:16px;padding:10px;background:${m.ptSessionsLeft > 0 ? '#f8fafc' : '#fff1f2'};border-radius:8px;border:1px solid ${m.ptSessionsLeft > 0 ? '#e2e8f0' : '#fecaca'}">
                       <label style="display:flex;align-items:center;gap:10px;cursor:${m.ptSessionsLeft > 0 ? 'pointer' : 'not-allowed'}; opacity: ${m.ptSessionsLeft > 0 ? '1' : '0.6'}">
-                        <input type="checkbox" id="ci_usePT" style="width:18px;height:18px" ${m.ptSessionsLeft > 0 ? '' : 'disabled'}>
+                        <input type="checkbox" id="ci_usePT" style="width:18px;height:18px" ${m.ptSessionsLeft > 0 ? 'checked' : 'disabled'}>
                         <div>
                           <span style="font-weight:600;font-size:13px"><i class="fas fa-dumbbell" style="color:#8b5cf6"></i> Gunakan Sesi Personal Trainer</span>
                           ${m.ptSessionsLeft <= 0 ? '<div style="font-size:10px;color:#ef4444">Sesi PT tidak tersedia atau sudah habis</div>' : ''}
