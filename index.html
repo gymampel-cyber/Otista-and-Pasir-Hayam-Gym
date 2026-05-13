@@ -3942,9 +3942,11 @@
     }
 
     function fetchDashboardData(start, end, force = false) {
+      // Force refresh logic: clear local cache if force is true
       const cacheKey = `dashboard_stats_${start || 'all'}_${end || 'all'}_${currentBranch}`;
-      const cached = force ? null : getFromCache(cacheKey);
+      if (force) localStorage.removeItem(cacheKey);
 
+      const cached = force ? null : getFromCache(cacheKey);
       if (cached) {
         console.log('Rendering dashboard from cache:', cacheKey);
         renderDashboardUI(cached);
@@ -3952,20 +3954,11 @@
 
       google.script.run
         .withSuccessHandler(function (res) {
-          console.log('Dashboard data received from background:', res);
-
           if (res && res.success) {
             const s = res.stats;
             saveToCache(cacheKey, s);
             renderDashboardUI(s);
-          } else {
-            console.error('Dashboard data error:', res?.message);
-            if (!cached) showToast('Gagal memuat data dashboard', 'error');
           }
-        })
-        .withFailureHandler(function (err) {
-          console.error('Dashboard fetch error:', err);
-          if (!cached) showToast('Gagal memuat data: ' + err.message, 'error');
         })
         .getDashboardStats(start, end, currentBranch, currentUser.role === 'Admin' ? 'All' : currentUser.name);
     }
@@ -8249,6 +8242,7 @@
               </div>
             `;
             loadTodayCheckins();
+            refreshDashboard(); // Trigger dashboard update
             showToast('Visit harian berhasil dicatat', 'success');
           } else {
             showToast('Gagal: ' + (res.message || 'Error tidak diketahui'), 'error');
