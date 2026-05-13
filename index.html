@@ -3966,7 +3966,7 @@
             renderDashboardUI(s);
           }
         })
-        .getDashboardStats(start, end, currentBranch, currentUser.role === 'Admin' ? 'All' : (currentUser.id || currentUser.name));
+        .getDashboardStats(start, end, currentBranch, currentUser.role === 'Admin' ? 'All' : (currentUser.id || 'Admin'));
     }
 
     function renderDashboardUI(s) {
@@ -7925,7 +7925,7 @@
           }
           showToast('Error: ' + err.message, 'error');
         })
-        .processCheckIn({ memberId: mid, gym: currentBranch }, currentUser?.name || 'Admin');
+        .processCheckIn({ memberId: mid, gym: currentBranch }, currentUser ? `${currentUser.name} [${currentUser.id}]` : 'Admin');
     }
 
     function doCheckinWithPT(forcedMid) {
@@ -8133,7 +8133,7 @@
           memberId: mid,
           usePT: usePT,
           gym: currentBranch
-        }, currentUser?.name || 'Admin');
+        }, currentUser ? `${currentUser.name} [${currentUser.id}]` : 'Admin');
     }
 
     function openVisitModal() {
@@ -8278,7 +8278,7 @@
           qty: qty,
           paymentMethod: payment,
           gym: currentBranch
-        }, currentUser?.name || 'Admin');
+        }, currentUser ? `${currentUser.name} [${currentUser.id}]` : 'Admin');
     }
 
     // ================ QR SCANNER ================
@@ -10513,7 +10513,7 @@
         .withFailureHandler(function (err) {
           console.warn('Realtime sync failed (background):', err.message);
         })
-        .getDashboardStats(start, end, currentBranch, currentUser.role === 'Admin' ? 'All' : (currentUser.id || currentUser.name));
+        .getDashboardStats(start, end, currentBranch, currentUser.role === 'Admin' ? 'All' : (currentUser.id || 'Admin'));
     }
 
     function updateDashboardCounters(stats) {
