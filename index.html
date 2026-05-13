@@ -4056,23 +4056,23 @@
         html += `
           <div class="list-item" style="display:flex; justify-content:space-between; align-items:center; background:white; margin-bottom:8px; border-radius:12px; border:1px solid #f1f5f9; box-shadow: 0 2px 4px rgba(0,0,0,0.02); padding:14px 20px">
             <div class="list-item-content" style="flex:1">
-              <div class="list-item-title" style="font-weight:600; font-size:15px; color:#1c1c1e">${escapeHtml(c.name || '-')}</div>
+              <div class="list-item-title" style="font-weight:600; font-size:15px; color:#1c1c1e">${escapeHtml(c.memberName || '-')}</div>
               <div class="list-item-subtitle" style="font-size:12px; color:#8e8e93">
                 <span class="badge badge-${typeClass}" style="font-size:10px">${typeText}</span> • 
                 <span class="badge badge-outline" style="font-size:10px; border:1px solid #e2e8f0; color:#64748b">${escapeHtml(c.branch || '-')}</span> •
                 <code>${escapeHtml(c.id || '-')}</code> • 
-                <span style="color:#64748b"><i class="far fa-clock"></i> ${formatDateTime(c.time)}</span>
+                <span style="color:#64748b"><i class="far fa-clock"></i> ${formatDateTime(c.checkInTime)}</span>
               </div>
             </div>
             <div class="list-item-action" style="display:flex; gap:8px; align-items:center; margin-left:16px">
-              <button class="btn btn-ghost btn-xs" onclick="printCheckinSlip('${c.id}', decodeURIComponent('${encodeURIComponent(c.name)}'), '${escapeHtml(c.type)}', '${formatDateTime(c.time)}')" title="Cetak Slip">
+              <button class="btn btn-ghost btn-xs" onclick="printCheckinSlip('${c.id}', decodeURIComponent('${encodeURIComponent(c.memberName)}'), '${escapeHtml(c.type)}', '${formatDateTime(c.checkInTime)}')" title="Cetak Slip">
                 <i class="fas fa-print"></i>
               </button>
-              <button class="btn btn-ghost btn-xs" style="color:#22c55e" onclick="sendCheckinWhatsApp('${c.id}', '${c.memberId}', decodeURIComponent('${encodeURIComponent(c.name)}'), '${formatDateTime(c.time)}')" title="Kirim WA">
+              <button class="btn btn-ghost btn-xs" style="color:#22c55e" onclick="sendCheckinWhatsApp('${c.id}', '${c.memberId}', decodeURIComponent('${encodeURIComponent(c.memberName)}'), '${formatDateTime(c.checkInTime)}')" title="Kirim WA">
                 <i class="fab fa-whatsapp"></i>
               </button>
               ${(currentUser.role === 'Admin' || currentUser.role === 'Super Admin') ? `
-                <button class="btn btn-ghost btn-xs" style="color:#ef4444" onclick="confirmDeleteCheckin('${c.id}', '${c.memberId}', '${escapeHtml(c.type)}', decodeURIComponent('${encodeURIComponent(c.name)}'))" title="Hapus Check-in">
+                <button class="btn btn-ghost btn-xs" style="color:#ef4444" onclick="confirmDeleteCheckin('${c.id}', '${c.memberId}', '${escapeHtml(c.type)}', decodeURIComponent('${encodeURIComponent(c.memberName)}'))" title="Hapus Check-in">
                   <i class="fas fa-trash-alt"></i>
                 </button>
               ` : ''}
@@ -7525,14 +7525,13 @@
                       <th>ID</th>
                       <th>Waktu</th>
                       <th>Tipe</th>
-                      <th>Status</th>
-                      <th>Keterangan</th>
+                      <th style="text-align:center">Aksi</th>
                     </tr>
                   </thead>
                   <tbody>
                     ${list.map((c, i) => {
               const typeClass = c.type === 'Visit' ? 'primary' : 'success';
-              const statusClass = c.status === 'Aktif' ? 'success' : 'warning';
+              const isAdmin = currentUser && (currentUser.role === 'Admin' || currentUser.role === 'Super Admin');
               return `
                         <tr>
                           <td>${i + 1}</td>
@@ -7540,8 +7539,21 @@
                           <td><code>${escapeHtml(c.memberId || '-')}</code></td>
                           <td>${formatTime(c.checkInTime)}</td>
                           <td><span class="badge badge-${typeClass}">${c.type || 'Member'}</span></td>
-                          <td><span class="badge badge-${statusClass}">${escapeHtml(c.status || '-')}</span></td>
-                          <td><small class="text-muted">${escapeHtml(c.notes || '-')}</small></td>
+                          <td style="text-align:center">
+                            <div style="display:flex; gap:6px; justify-content:center">
+                              <button class="btn btn-ghost btn-xs" onclick="printCheckinSlip('${c.id}', decodeURIComponent('${encodeURIComponent(c.memberName)}'), '${escapeHtml(c.type)}', '${formatDateTime(c.checkInTime)}')" title="Cetak Slip">
+                                <i class="fas fa-print"></i>
+                              </button>
+                              <button class="btn btn-ghost btn-xs" style="color:#22c55e" onclick="sendCheckinWhatsApp('${c.id}', '${c.memberId}', decodeURIComponent('${encodeURIComponent(c.memberName)}'), '${formatDateTime(c.checkInTime)}')" title="Kirim WA">
+                                <i class="fab fa-whatsapp"></i>
+                              </button>
+                              ${isAdmin ? `
+                                <button class="btn btn-ghost btn-xs" style="color:#ef4444" onclick="confirmDeleteCheckin('${c.id}', '${c.memberId}', '${escapeHtml(c.type)}', decodeURIComponent('${encodeURIComponent(c.memberName)}')); loadTodayCheckins();" title="Hapus">
+                                  <i class="fas fa-trash-alt"></i>
+                                </button>
+                              ` : ''}
+                            </div>
+                          </td>
                         </tr>
                       `;
             }).join('')}
