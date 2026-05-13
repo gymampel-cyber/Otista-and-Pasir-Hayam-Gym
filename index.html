@@ -10428,7 +10428,7 @@
             container.innerHTML = '<div style="color:red;padding:20px">' + (res.message || 'Gagal memuat data') + '</div>';
           }
         })
-        .getDashboardDetail(type, startDate, endDate, currentBranch, currentUser.role === 'Admin' ? 'All' : currentUser.name);
+        .getDashboardDetail(type, startDate, endDate, currentBranch, currentUser.role === 'Admin' ? 'All' : (currentUser.id || 'Admin'));
     }
 
     function closeDetailModal() {
