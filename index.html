@@ -8168,7 +8168,7 @@
       const pkg = (window.appData && appData.catalogue) ?
         appData.catalogue.find(p => (p.name || '') === type) : null;
 
-      const price = pkg ? Number(pkg.price || 0) : 25000;
+      const price = pkg ? Number(pkg.price || 0) : 0;
       const total = price * qty;
 
       priceSpan.textContent = formatCurrency(price);
