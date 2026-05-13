@@ -4065,7 +4065,7 @@
               </div>
             </div>
             <div class="list-item-action" style="display:flex; gap:8px; align-items:center; margin-left:16px">
-              <button class="btn btn-ghost btn-xs" onclick="printCheckinSlip('${c.id}', decodeURIComponent('${encodeURIComponent(c.memberName)}'), '${escapeHtml(c.type)}', '${formatDateTime(c.checkInTime)}')" title="Cetak Slip">
+              <button class="btn btn-ghost btn-xs" onclick="printCheckinSlip('${c.id}', decodeURIComponent('${encodeURIComponent(c.memberName)}'), '${escapeHtml(c.type)}', '${formatDateTime(c.checkInTime)}', ${c.price || 0})" title="Cetak Slip">
                 <i class="fas fa-print"></i>
               </button>
               <button class="btn btn-ghost btn-xs" style="color:#22c55e" onclick="sendCheckinWhatsApp('${c.id}', '${c.memberId}', decodeURIComponent('${encodeURIComponent(c.memberName)}'), '${formatDateTime(c.checkInTime)}')" title="Kirim WA">
@@ -4084,7 +4084,7 @@
       el.innerHTML = html;
     }
     
-    function printCheckinSlip(id, name, type, time) {
+    function printCheckinSlip(id, name, type, time, price) {
       const printWindow = window.open('', '_blank');
       if (!printWindow) return;
       
@@ -4110,6 +4110,10 @@
           <div class="divider"></div>
           <div class="row"><span>Nama:</span> <span>${name}</span></div>
           <div class="row"><span>Tipe:</span> <span>${type}</span></div>
+          ${price > 0 ? `
+            <div class="divider"></div>
+            <div class="row" style="font-weight:bold"><span>Total:</span> <span>${formatCurrency(price)}</span></div>
+          ` : ''}
           <div class="divider"></div>
           <div class="center" style="margin-top:20px; font-size:10px">
             Selamat Berlatih!
@@ -7541,7 +7545,7 @@
                           <td><span class="badge badge-${typeClass}">${c.type || 'Member'}</span></td>
                           <td style="text-align:center">
                             <div style="display:flex; gap:6px; justify-content:center">
-                              <button class="btn btn-ghost btn-xs" onclick="printCheckinSlip('${c.id}', decodeURIComponent('${encodeURIComponent(c.memberName)}'), '${escapeHtml(c.type)}', '${formatDateTime(c.checkInTime)}')" title="Cetak Slip">
+                              <button class="btn btn-ghost btn-xs" onclick="printCheckinSlip('${c.id}', decodeURIComponent('${encodeURIComponent(c.memberName)}'), '${escapeHtml(c.type)}', '${formatDateTime(c.checkInTime)}', ${c.price || 0})" title="Cetak Slip">
                                 <i class="fas fa-print"></i>
                               </button>
                               <button class="btn btn-ghost btn-xs" style="color:#22c55e" onclick="sendCheckinWhatsApp('${c.id}', '${c.memberId}', decodeURIComponent('${encodeURIComponent(c.memberName)}'), '${formatDateTime(c.checkInTime)}')" title="Kirim WA">
