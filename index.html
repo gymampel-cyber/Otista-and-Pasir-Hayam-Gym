@@ -8146,13 +8146,13 @@
           select.appendChild(opt);
         });
       } else {
-        // Fallback jika tidak ada paket visit di katalog cabang
-        ['Visit Gym', 'Visit Yoga', 'Visit Zumba'].forEach(t => {
-          const opt = document.createElement('option');
-          opt.value = t;
-          opt.textContent = t;
-          select.appendChild(opt);
-        });
+        // Jika tidak ada paket visit di katalog cabang
+        const opt = document.createElement('option');
+        opt.value = "";
+        opt.textContent = "-- Tidak ada paket visit di katalog --";
+        opt.disabled = true;
+        opt.selected = true;
+        select.appendChild(opt);
       }
 
       updateVisitPrice();
