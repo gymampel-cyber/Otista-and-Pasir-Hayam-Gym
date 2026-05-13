@@ -2449,6 +2449,7 @@
       grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
       gap: 24px;
     }
+
     .admin-card {
       background: var(--bg-card);
       border-radius: 20px;
@@ -2456,6 +2457,7 @@
       border: 1px solid var(--border-color);
       box-shadow: var(--shadow-premium);
     }
+
     .admin-card h4 {
       display: flex;
       align-items: center;
@@ -3130,7 +3132,7 @@
       else if (!cleanPhone.startsWith('62')) cleanPhone = '62' + cleanPhone;
 
       const url = `whatsapp://send?phone=${cleanPhone}&text=${encodeURIComponent(text)}`;
-      
+
       const tempLink = document.createElement('a');
       tempLink.href = url;
       tempLink.setAttribute('data-action', 'share/whatsapp/share');
@@ -3375,11 +3377,11 @@
     function sendPOSWhatsApp(trxId, phone, customer, subtotal, discount, total, payment, itemsJson) {
       showLoading();
       google.script.run
-        .withSuccessHandler(function(res) {
+        .withSuccessHandler(function (res) {
           hideLoading();
           let pdfUrl = '';
           if (res && res.success) pdfUrl = res.url;
-          
+
           const items = JSON.parse(itemsJson || '[]');
           const txt = generateReceiptText('pos', {
             receipt: trxId,
@@ -3393,7 +3395,7 @@
           });
           shareToWhatsApp(phone, txt);
         })
-        .withFailureHandler(function(err) {
+        .withFailureHandler(function (err) {
           hideLoading();
           console.error('Failed to generate POS PDF for WA:', err);
           // Fallback without URL
@@ -3669,7 +3671,7 @@
     // ================ NAVIGATION ================
     function showView(view) {
       isResultActive = false; // Reset lock when manually changing view
-      
+
       document.querySelectorAll('.menu-item').forEach(el =>
         el.classList.toggle('active', el.dataset.view === view)
       );
@@ -3966,7 +3968,7 @@
 
     function renderDashboardUI(s) {
       if (!s) return;
-      
+
       // Fitness Stats
       if (document.getElementById('statTotal')) document.getElementById('statTotal').textContent = s.total || s.stats?.total || 0;
       if (document.getElementById('statAktif')) document.getElementById('statAktif').textContent = s.active || s.stats?.active || 0;
@@ -4072,11 +4074,11 @@
       html += '</div>';
       el.innerHTML = html;
     }
-    
+
     function printCheckinSlip(id, name, type, time, price) {
       const printWindow = window.open('', '_blank');
       if (!printWindow) return;
-      
+
       const html = `
         <html>
         <head>
@@ -4116,28 +4118,28 @@
 
     function sendCheckinWhatsApp(id, memberId, name, time) {
       const text = `*KONFIRMASI CHECK-IN*\n` +
-                 `--------------------------------\n` +
-                 `Waktu: ${time}\n` +
-                 `Nama: ${name}\n` +
-                 `ID: ${memberId || id}\n` +
-                 `--------------------------------\n` +
-                 `Terima kasih telah berkunjung ke ${currentBranchName}.\n\n` +
-                 `_Pesan otomatis dari System ${currentBranchName}_`;
-      
+        `--------------------------------\n` +
+        `Waktu: ${time}\n` +
+        `Nama: ${name}\n` +
+        `ID: ${memberId || id}\n` +
+        `--------------------------------\n` +
+        `Terima kasih telah berkunjung ke ${currentBranchName}.\n\n` +
+        `_Pesan otomatis dari System ${currentBranchName}_`;
+
       const phone = getMemberPhone(memberId || id);
       shareToWhatsApp(phone, text);
     }
 
     function confirmDeleteCheckin(id, memberId, type, name) {
-      showConfirm(`HAPUS CHECK-IN: ${name}\n\nApakah Anda yakin ingin menghapus data check-in ini?${type === 'PT Session' ? '\n\nINFO: Sesi PT yang sudah terpotong akan dikembalikan secara otomatis.' : ''}`, function(ok) {
-        if(!ok) return;
+      showConfirm(`HAPUS CHECK-IN: ${name}\n\nApakah Anda yakin ingin menghapus data check-in ini?${type === 'PT Session' ? '\n\nINFO: Sesi PT yang sudah terpotong akan dikembalikan secara otomatis.' : ''}`, function (ok) {
+        if (!ok) return;
         showLoading();
         google.script.run
-          .withSuccessHandler(function(res) {
+          .withSuccessHandler(function (res) {
             hideLoading();
-            if(res.success) {
+            if (res.success) {
               showToast(res.message, 'success');
-              if(typeof fetchDashboardData === 'function') fetchDashboardData(null, null, true);
+              if (typeof fetchDashboardData === 'function') fetchDashboardData(null, null, true);
             } else {
               showToast(res.message, 'error');
             }
@@ -4175,9 +4177,6 @@
             ${(currentUser.role === 'Admin' || currentUser.role === 'Staff' || currentUser.role === 'Kasir') ? `
               <button class="btn btn-success btn-sm" onclick="loadMemberForm()">
                 <i class="fas fa-user-plus"></i> Registrasi Baru
-              </button>
-              <button class="btn btn-info btn-sm" onclick="openVisitModal()">
-                <i class="fas fa-walking"></i> Visit Harian
               </button>
             ` : ''}
             <div class="stat-card" style="padding:8px 16px; flex-direction:row; align-items:center; gap:12px; margin-bottom:0">
@@ -4366,10 +4365,10 @@
               showToast(res.message, 'success');
               // Refresh member detail if in member profile view
               if (memberId && typeof viewMemberFullDetails === 'function') viewMemberFullDetails(memberId);
-              
+
               // Refresh dashboard stats (revenue cards, check-ins)
               if (typeof fetchDashboardData === 'function') fetchDashboardData(null, null, true);
-              
+
               // Refresh POS tables if they exist
               if (typeof loadTodayPOSTransactions === 'function') loadTodayPOSTransactions();
               if (typeof loadPOSTransactionHistory === 'function') {
@@ -4520,7 +4519,7 @@
               </div>
             </div>
           `;
-          
+
           loadAdminTrxHistory('Registrasi Baru', 'regHistoryContainer');
 
           document.querySelectorAll('.pkg-card').forEach(card => {
@@ -5205,7 +5204,7 @@
               </div>
             </div>
           `;
-          
+
           loadAdminTrxHistory('Perpanjangan', 'extHistoryContainer');
 
           document.getElementById('trx_package').addEventListener('change', updateTransactionSummary);
@@ -5678,11 +5677,11 @@
                   </thead>
                   <tbody>
                     ${list.map(t => {
-                      const memberId = t.memberId;
-                      const member = (window.appData && appData.members) ? appData.members.find(m => m.memberId === memberId) : null;
-                      const phone = member ? member.phone || member.memberPhone : '';
-                      
-                      return `
+              const memberId = t.memberId;
+              const member = (window.appData && appData.members) ? appData.members.find(m => m.memberId === memberId) : null;
+              const phone = member ? member.phone || member.memberPhone : '';
+
+              return `
                         <tr style="background:var(--bg-card); box-shadow:0 2px 4px rgba(0,0,0,0.02); transition:0.2s">
                           <td style="padding:12px; border-radius:12px 0 0 12px"><div style="font-size:11px;color:#64748b">${formatDate(t.transactionDate)}</div></td>
                           <td style="padding:12px"><code>${t.receiptNumber}</code></td>
@@ -5702,7 +5701,7 @@
                           </td>
                         </tr>
                       `;
-                    }).join('')}
+            }).join('')}
                   </tbody>
                 </table>
               </div>
@@ -5743,6 +5742,9 @@
                 </button>
                 <button class="btn btn-secondary" onclick="showPOSTransactionHistory()" title="Riwayat Transaksi">
                   <i class="fas fa-history"></i>
+                </button>
+                <button class="btn btn-info" onclick="openVisitModal()" title="Visit Harian">
+                  <i class="fas fa-walking"></i> Visit Harian
                 </button>
               </div>
               <div id="posCategories" class="pos-categories">
@@ -6199,7 +6201,7 @@
                 </div>
               `;
               document.body.appendChild(resultDiv);
-              
+
               document.getElementById('btnPosWA').onclick = () => {
                 sendPOSReceiptToWA(res.trxId, payload);
                 document.body.removeChild(resultDiv);
@@ -6405,9 +6407,9 @@
         _renderPackageTable(__packagesCache);
         return;
       }
-      const filtered = __packagesCache.filter(p => 
-        (p['Nama Paket'] || '').toLowerCase().includes(q) || 
-        (p['ID Paket'] || '').toLowerCase().includes(q) || 
+      const filtered = __packagesCache.filter(p =>
+        (p['Nama Paket'] || '').toLowerCase().includes(q) ||
+        (p['ID Paket'] || '').toLowerCase().includes(q) ||
         (p['Tipe Paket'] || '').toLowerCase().includes(q)
       );
       _renderPackageTable(filtered);
@@ -6464,9 +6466,9 @@
         _renderProductTable(__productsCache);
         return;
       }
-      const filtered = __productsCache.filter(p => 
-        (p.name || '').toLowerCase().includes(q) || 
-        (p.id || '').toLowerCase().includes(q) || 
+      const filtered = __productsCache.filter(p =>
+        (p.name || '').toLowerCase().includes(q) ||
+        (p.id || '').toLowerCase().includes(q) ||
         (p.barcode || '').toLowerCase().includes(q) ||
         (p.category || '').toLowerCase().includes(q)
       );
@@ -8256,11 +8258,11 @@
           btn.disabled = false;
           showToast('Error: ' + err.message, 'error');
         })
-        .processVisitCheckIn({ 
-          visitType: type, 
-          qty: qty, 
-          paymentMethod: payment, 
-          gym: currentBranch 
+        .processVisitCheckIn({
+          visitType: type,
+          qty: qty,
+          paymentMethod: payment,
+          gym: currentBranch
         }, currentUser?.name || 'Admin');
     }
 
@@ -8530,20 +8532,20 @@
 
     function sendPTWhatsApp(receipt, name, pkg, total, payment) {
       const text = `*KWITANSI PEMBAYARAN PT*\n` +
-                 `--------------------------------\n` +
-                 `No: ${receipt}\n` +
-                 `Nama: ${name}\n` +
-                 `Paket: ${pkg}\n` +
-                 `Total: ${formatCurrency(total)}\n` +
-                 `Metode: ${payment}\n` +
-                 `--------------------------------\n` +
-                 `Terima kasih telah berlangganan PT di ${currentBranchName}.\n\n` +
-                 `_Pesan otomatis dari System ${currentBranchName}_`;
-      
+        `--------------------------------\n` +
+        `No: ${receipt}\n` +
+        `Nama: ${name}\n` +
+        `Paket: ${pkg}\n` +
+        `Total: ${formatCurrency(total)}\n` +
+        `Metode: ${payment}\n` +
+        `--------------------------------\n` +
+        `Terima kasih telah berlangganan PT di ${currentBranchName}.\n\n` +
+        `_Pesan otomatis dari System ${currentBranchName}_`;
+
       // Try to find phone from appData if possible
       const member = appData.members.find(m => m.fullName === name);
       const phone = member ? member.phone : '';
-      
+
       shareToWhatsApp(phone, text);
     }
 
@@ -10366,26 +10368,26 @@
                   <thead>
                     <tr>
                       ${res.headers.map(h => {
-                        let style = '';
-                        if (['Qty', 'Transfer/Bank', 'Cash/Tunai', 'Total', 'Jumlah', 'Total Modal'].includes(h)) {
-                          style = 'text-align:right;';
-                        }
-                        return `<th style="${style}">${h}</th>`;
-                      }).join('')}
+              let style = '';
+              if (['Qty', 'Transfer/Bank', 'Cash/Tunai', 'Total', 'Jumlah', 'Total Modal'].includes(h)) {
+                style = 'text-align:right;';
+              }
+              return `<th style="${style}">${h}</th>`;
+            }).join('')}
                     </tr>
                   </thead>
                   <tbody>
                     ${res.data.map(row => `
                       <tr>
                         ${row.map((cell, idx) => {
-                          const h = res.headers[idx];
-                          let style = '';
-                          if (h === 'Face ID') style = 'font-weight:bold;color:#475569;';
-                          if (['Qty', 'Transfer/Bank', 'Cash/Tunai', 'Total', 'Jumlah', 'Total Modal'].includes(h)) {
-                            style += 'text-align:right; font-weight:500;';
-                          }
-                          return `<td style="${style}">${cell}</td>`;
-                        }).join('')}
+              const h = res.headers[idx];
+              let style = '';
+              if (h === 'Face ID') style = 'font-weight:bold;color:#475569;';
+              if (['Qty', 'Transfer/Bank', 'Cash/Tunai', 'Total', 'Jumlah', 'Total Modal'].includes(h)) {
+                style += 'text-align:right; font-weight:500;';
+              }
+              return `<td style="${style}">${cell}</td>`;
+            }).join('')}
                       </tr>
                     `).join('')}
                   </tbody>
@@ -10393,13 +10395,13 @@
                   <tfoot style="border-top:2px solid #e2e8f0">
                     <tr style="background:#f8fafc; font-weight:700">
                       ${res.footer.map((cell, idx) => {
-                        const h = res.headers[idx];
-                        let style = 'padding:12px 8px;';
-                        if (['Qty', 'Transfer/Bank', 'Cash/Tunai', 'Total', 'Jumlah', 'Total Modal'].includes(h)) {
-                          style += 'text-align:right;';
-                        }
-                        return `<td style="${style}">${cell}</td>`;
-                      }).join('')}
+              const h = res.headers[idx];
+              let style = 'padding:12px 8px;';
+              if (['Qty', 'Transfer/Bank', 'Cash/Tunai', 'Total', 'Jumlah', 'Total Modal'].includes(h)) {
+                style += 'text-align:right;';
+              }
+              return `<td style="${style}">${cell}</td>`;
+            }).join('')}
                     </tr>
                   </tfoot>
                   ` : ''}
@@ -10934,13 +10936,13 @@
       const modal = document.getElementById('dailyReportModal');
       const content = document.getElementById('dailyReportContent');
       const title = modal.querySelector('h3');
-      
+
       const dashStart = document.getElementById('dash_start_date')?.value;
       const dashEnd = document.getElementById('dash_end_date')?.value;
       const isPeriod = !!(dashStart && dashEnd);
 
       if (title) title.textContent = isPeriod ? 'Laporan Periodik Kasir' : 'Laporan Harian Kasir';
-      
+
       modal.style.display = 'flex';
       content.innerHTML = `<div style="text-align:center;padding:40px"><i class="fas fa-spinner fa-spin fa-2x"></i><p style="margin-top:10px">Menyiapkan ${isPeriod ? 'laporan periodik' : 'laporan harian'}...</p></div>`;
 
