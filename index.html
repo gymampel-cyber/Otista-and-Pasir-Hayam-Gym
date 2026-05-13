@@ -3996,6 +3996,17 @@
       if (document.getElementById('statPOSNetProfit')) document.getElementById('statPOSNetProfit').textContent = formatCurrency(s.posNetProfit || 0);
       if (document.getElementById('statNetProfit')) document.getElementById('statNetProfit').textContent = formatCurrency(s.netProfit || 0);
 
+      // Dashboard Period Banner
+      const periodBanner = document.getElementById('dashboardPeriod');
+      const periodVal = document.getElementById('periodValue');
+      if (periodBanner && periodVal) {
+        if (s.isFiltered || s.stats?.isFiltered) {
+          periodBanner.style.display = 'flex';
+          periodVal.textContent = s.period || s.stats?.period || 'Filtered';
+        } else {
+          periodBanner.style.display = 'none';
+        }
+      }
 
       // Low Stock Widget
       const lsEl = document.getElementById('lowStockWidget');
@@ -10484,6 +10495,9 @@
       const indicator = document.getElementById('liveIndicator');
       if (indicator) indicator.style.display = 'block';
 
+      const start = document.getElementById('dash_start_date')?.value || null;
+      const end = document.getElementById('dash_end_date')?.value || null;
+
       google.script.run
         .withSuccessHandler(function (res) {
           if (res.success) {
@@ -10495,22 +10509,24 @@
         .withFailureHandler(function (err) {
           console.warn('Realtime sync failed (background):', err.message);
         })
-        .getDashboardStats(null, null, currentBranch, currentUser.role === 'Admin' ? 'All' : currentUser.name);
+        .getDashboardStats(start, end, currentBranch, currentUser.role === 'Admin' ? 'All' : currentUser.name);
     }
 
     function updateDashboardCounters(stats) {
       if (!stats) return;
-      // Gently update counters without full refresh
-      const map = {
-        'totalMembers': stats.total,
-        'activeMembers': stats.active,
-        'expiredMembers': stats.expired,
-        'expiringMembers': stats.expiring
-      };
-      for (const [id, val] of Object.entries(map)) {
-        const el = document.getElementById(id);
-        if (el) el.textContent = val;
-      }
+      
+      // Update main dashboard cards
+      if (document.getElementById('statTotal')) document.getElementById('statTotal').textContent = stats.total || 0;
+      if (document.getElementById('statAktif')) document.getElementById('statAktif').textContent = stats.active || 0;
+      if (document.getElementById('statExpiring')) document.getElementById('statExpiring').textContent = stats.expiring || 0;
+      if (document.getElementById('statExpired')) document.getElementById('statExpired').textContent = stats.expired || 0;
+      if (document.getElementById('statCheckin')) document.getElementById('statCheckin').textContent = stats.checkins || 0;
+      if (document.getElementById('statPending')) document.getElementById('statPending').textContent = stats.pendingApprovals || 0;
+      
+      // Financials
+      if (document.getElementById('statFitnessRevenue')) document.getElementById('statFitnessRevenue').textContent = formatCurrency(stats.fitnessRevenue || 0);
+      if (document.getElementById('statPOSRevenue')) document.getElementById('statPOSRevenue').textContent = formatCurrency(stats.posRevenue || 0);
+      if (document.getElementById('statNetProfit')) document.getElementById('statNetProfit').textContent = formatCurrency(stats.netProfit || 0);
 
       // Update pending approvals badge
       const badge = document.getElementById('approvalBadge');
