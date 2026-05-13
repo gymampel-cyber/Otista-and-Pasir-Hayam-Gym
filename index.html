@@ -10532,6 +10532,12 @@
       if (document.getElementById('statPOSRevenue')) document.getElementById('statPOSRevenue').textContent = formatCurrency(stats.posRevenue || 0);
       if (document.getElementById('statNetProfit')) document.getElementById('statNetProfit').textContent = formatCurrency(stats.netProfit || 0);
 
+      // SINKRONISASI TABEL
+      if (stats.filteredTransactions) renderRecentTransactions(stats.filteredTransactions);
+      if (stats.filteredPOS) renderRecentPOS(stats.filteredPOS);
+      if (stats.filteredExpenses) renderRecentExpenses(stats.filteredExpenses);
+      if (stats.todayCheckinList) renderCheckinList(stats.todayCheckinList);
+
       // Update pending approvals badge
       const badge = document.getElementById('approvalBadge');
       if (badge && stats.pendingApprovals !== undefined) {
