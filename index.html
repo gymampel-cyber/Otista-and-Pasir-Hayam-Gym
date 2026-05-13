@@ -3978,7 +3978,7 @@
       if (document.getElementById('statExpired')) document.getElementById('statExpired').textContent = s.expired || s.stats?.expired || 0;
       if (document.getElementById('statCheckin')) document.getElementById('statCheckin').textContent = s.checkins || s.stats?.checkins || 0;
       if (document.getElementById('statPending')) document.getElementById('statPending').textContent = s.pendingApprovals || s.stats?.pendingApprovals || 0;
-      if (document.getElementById('statFitnessRevenue')) document.getElementById('statFitnessRevenue').textContent = formatCurrency(s.revenue || s.stats?.revenue || 0);
+      if (document.getElementById('statFitnessRevenue')) document.getElementById('statFitnessRevenue').textContent = formatCurrency(s.fitnessRevenue || s.revenue || s.stats?.revenue || 0);
 
       // Period Info
       const titleEl = document.getElementById('checkinTableTitle');
