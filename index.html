@@ -4175,6 +4175,9 @@
               <button class="btn btn-success btn-sm" onclick="loadMemberForm()">
                 <i class="fas fa-user-plus"></i> Registrasi Baru
               </button>
+              <button class="btn btn-info btn-sm" onclick="openVisitModal()">
+                <i class="fas fa-walking"></i> Visit Harian
+              </button>
             ` : ''}
             <div class="stat-card" style="padding:8px 16px; flex-direction:row; align-items:center; gap:12px; margin-bottom:0">
               <i class="fas fa-search" style="color:var(--text-secondary)"></i>
@@ -7520,9 +7523,6 @@
                   </div>
                 </div>
                 <p style="font-size:13px;color:#64748b;margin-bottom:12px">Setelah data dipilih, detail member akan muncul untuk konfirmasi.</p>
-                <button class="btn btn-info btn-block" onclick="openVisitModal()">
-                  <i class="fas fa-walking"></i> Visit Harian
-                </button>
               </div>
             </div>
             <div id="todayCheckinWidget" style="margin-top:24px">
