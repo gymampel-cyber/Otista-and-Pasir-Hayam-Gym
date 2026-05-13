@@ -3515,7 +3515,7 @@
               <i class="fas fa-user-circle"></i> Username Access
             </label>
             <input id="loginUser" class="form-input" placeholder="Username" 
-                   autocomplete="username" onkeypress="if(event.key==='Enter') doLogin()" 
+                   autocomplete="username" onkeydown="if(event.key==='Enter') doLogin()" 
                    style="text-align: center; background: #f2f2f7; border: none; border-radius: 16px; padding: 16px;">
           </div>
           
@@ -3524,7 +3524,7 @@
               <i class="fas fa-shield-alt"></i> Security Key
             </label>
             <input id="loginPass" type="password" class="form-input" placeholder="••••••••" 
-                   autocomplete="current-password" onkeypress="if(event.key==='Enter') doLogin()" 
+                   autocomplete="current-password" onkeydown="if(event.key==='Enter') doLogin()" 
                    style="text-align: center; background: #f2f2f7; border: none; border-radius: 16px; padding: 16px;">
           </div>
           
