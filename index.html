@@ -2490,6 +2490,14 @@
           <input type="text" id="editPhone" class="form-input" placeholder="08xxxxxxxxxx">
         </div>
         <div class="form-group">
+          <label class="form-label">Jenis Kelamin</label>
+          <select id="editGender" class="form-input">
+            <option value="-">Pilih Jenis Kelamin</option>
+            <option value="Laki-laki">Laki-laki</option>
+            <option value="Perempuan">Perempuan</option>
+          </select>
+        </div>
+        <div class="form-group">
           <label class="form-label">Nama Face ID</label>
           <input type="text" id="editFaceIdName" class="form-input" placeholder="Nama yang terdaftar di mesin Face ID">
         </div>
@@ -2808,9 +2816,6 @@
         </div>
         <div class="menu-item" data-view="expenses" onclick="showView('expenses')">
           <i class="fas fa-file-invoice-dollar"></i><span>Pengeluaran Toko</span>
-        </div>
-        <div class="menu-item" data-view="birthdays" onclick="showView('birthdays')">
-          <i class="fas fa-birthday-cake"></i><span>Ulang Tahun Member</span>
         </div>
         <div class="menu-item" data-view="analytics" onclick="showView('analytics')">
           <i class="fas fa-chart-pie"></i><span>Laporan Analitik</span>
@@ -3489,14 +3494,51 @@
     function initApp() {
       try {
         console.log('Initializing App...');
+        
+        // Restore session if exists
+        const savedUser = localStorage.getItem('gym_current_user');
+        if (savedUser) {
+          try {
+            currentUser = JSON.parse(savedUser);
+            console.log('Session restored for:', currentUser.name);
+            
+            document.getElementById('authView').style.display = 'none';
+            document.getElementById('dashboardView').style.display = 'flex';
+            
+            applyRolePermissions();
+            initMultiGym();
+            fetchInitialAppData();
+            showView('dashboard');
+            loadApprovalCount();
+            loadAndApplyBranding();
+            return; // Skip login form
+          } catch (e) {
+            console.error('Failed to restore session:', e);
+            localStorage.removeItem('gym_current_user');
+          }
+        }
+
         renderLoginForm();
         loadAndApplyBranding(); // Load branding even before login
         console.log('Login form rendered.');
       } catch (e) {
         console.error('Init error:', e);
-        // Fallback render if branding fails
         renderLoginForm();
       }
+    }
+
+    function getCurrentStaffIdentifier() {
+      if (!currentUser) return 'Admin';
+      return `${currentUser.name} [${currentUser.id || 'N/A'}]`;
+    }
+
+    function validateSession() {
+      if (!currentUser) {
+        showToast('Sesi Anda telah berakhir. Silakan login kembali.', 'error');
+        logout(true); // Forced logout without confirm
+        return false;
+      }
+      return true;
     }
 
 
@@ -3640,6 +3682,8 @@
 
           if (res && res.success) {
             currentUser = res.user;
+            localStorage.setItem('gym_current_user', JSON.stringify(currentUser));
+            
             document.getElementById('authView').style.display = 'none';
             document.getElementById('dashboardView').style.display = 'flex';
 
@@ -3660,15 +3704,23 @@
         .authenticateUser(user, pass);
     }
 
-    function logout() {
-      showConfirm('Yakin ingin keluar dari sistem?', function (ok) {
-        if (!ok) return;
+    function logout(force = false) {
+      const performLogout = function() {
         currentUser = null;
+        localStorage.removeItem('gym_current_user');
         stopScanner();
         document.getElementById('dashboardView').style.display = 'none';
         document.getElementById('authView').style.display = 'flex';
         renderLoginForm();
-      });
+      };
+
+      if (force) {
+        performLogout();
+      } else {
+        showConfirm('Yakin ingin keluar dari sistem?', function (ok) {
+          if (ok) performLogout();
+        });
+      }
     }
 
     // ================ NAVIGATION ================
@@ -3691,8 +3743,7 @@
         pos: 'POS / Kantin',
         catalog: 'Katalog & Inventori',
         expenses: 'Pengeluaran Toko',
-        analytics: 'Laporan Analitik & Grafik',
-        birthdays: 'Ulang Tahun Member'
+        analytics: 'Analitik Performa'
       };
 
       document.getElementById('pageTitle').textContent = titles[view] || view;
@@ -3713,7 +3764,6 @@
         case 'catalog': loadCatalogView(); break;
         case 'expenses': loadExpensesView(); break;
         case 'analytics': loadAnalyticsView(); break;
-        case 'birthdays': loadBirthdaysView(); break;
       }
     }
 
@@ -3765,7 +3815,10 @@
               <div class="stat-icon" style="background:#f1f5f9; color:#64748b"><i class="fas fa-users"></i></div>
             </div>
             <div class="stat-value" id="statTotal">0</div>
-            <div class="stat-label">Database Terdaftar</div>
+            <div class="stat-label">
+              <span title="Laki-laki" style="color:#3b82f6"><i class="fas fa-mars"></i> <span id="statMale">0</span></span> | 
+              <span title="Perempuan" style="color:#ec4899"><i class="fas fa-venus"></i> <span id="statFemale">0</span></span>
+            </div>
           </div>
           <div class="stat-card stat-card-clickable" id="cardMemberAktif" style="border-top-color:#22c55e" onclick="showDashboardDetail('active_member')">
             <div class="stat-header">
@@ -3782,14 +3835,6 @@
             </div>
             <div class="stat-value" id="statGallery">0</div>
             <div class="stat-label">Member Berfoto</div>
-          </div>
-          <div class="stat-card stat-card-clickable" id="cardBirthday" style="border-top-color:#fbbf24" onclick="showView('birthdays')">
-            <div class="stat-header">
-              <span class="stat-label">Ulang Tahun</span>
-              <div class="stat-icon" style="background:#fffbeb; color:#d97706"><i class="fas fa-birthday-cake"></i></div>
-            </div>
-            <div class="stat-value" id="statBirthday">0</div>
-            <div class="stat-label">Hari Ini</div>
           </div>
           <div class="stat-card stat-card-clickable" style="border-top-color:#3b82f6" onclick="showDashboardDetail('checkins')">
             <div class="stat-header">
@@ -3976,12 +4021,15 @@
       if (document.getElementById('statTotal')) document.getElementById('statTotal').textContent = s.total || 0;
       if (document.getElementById('statAktif')) document.getElementById('statAktif').textContent = s.active || 0;
       if (document.getElementById('statGallery')) document.getElementById('statGallery').textContent = s.galleryCount || 0;
-      if (document.getElementById('statBirthday')) document.getElementById('statBirthday').textContent = s.birthdayCount || 0;
       if (document.getElementById('statExpiring')) document.getElementById('statExpiring').textContent = s.expiring || 0;
       if (document.getElementById('statExpired')) document.getElementById('statExpired').textContent = s.expired || 0;
       if (document.getElementById('statCheckin')) document.getElementById('statCheckin').textContent = s.checkins || 0;
       if (document.getElementById('statPending')) document.getElementById('statPending').textContent = s.pendingApprovals || 0;
       if (document.getElementById('statFitnessRevenue')) document.getElementById('statFitnessRevenue').textContent = formatCurrency(s.fitnessRevenue || 0);
+      
+      // Gender Stats
+      if (document.getElementById('statMale')) document.getElementById('statMale').textContent = s.genderStats?.Male || 0;
+      if (document.getElementById('statFemale')) document.getElementById('statFemale').textContent = s.genderStats?.Female || 0;
 
       // Period Info
       const titleEl = document.getElementById('checkinTableTitle');
@@ -4440,6 +4488,14 @@
                     <label class="form-label">Email</label>
                     <input id="reg_email" type="email" class="form-input" placeholder="contoh@email.com">
                   </div>
+                  <div class="form-group">
+                    <label class="form-label">Jenis Kelamin *</label>
+                    <select id="reg_gender" class="form-input">
+                      <option value="" disabled selected>Pilih Jenis Kelamin</option>
+                      <option value="Laki-laki">Laki-laki</option>
+                      <option value="Perempuan">Perempuan</option>
+                    </select>
+                  </div>
                 </div>
                 <div class="form-group">
                   <label class="form-label">Pilih Paket *</label>
@@ -4737,9 +4793,12 @@
     }
 
     function registerMemberSubmit() {
+      if (!validateSession()) return;
+      
       const name = document.getElementById('reg_name')?.value?.trim();
       const phone = document.getElementById('reg_phone')?.value?.trim();
       const email = document.getElementById('reg_email')?.value?.trim();
+      const gender = document.getElementById('reg_gender')?.value;
       const dob = '';
       const pay = document.getElementById('reg_payment')?.value;
       const notes = document.getElementById('reg_notes')?.value?.trim();
@@ -4747,6 +4806,10 @@
 
       if (!name || name.length < 3) {
         showToast('Nama lengkap minimal 3 karakter', 'warning');
+        return;
+      }
+      if (!gender) {
+        showToast('Pilih jenis kelamin', 'warning');
         return;
       }
       if (!phone || !/^0[0-9]{9,13}$/.test(phone)) {
@@ -5006,13 +5069,14 @@
               fullName: name,
               phone: phone,
               email: email,
+              gender: gender,
               dob: dob,
               packageId: pkg.id,
               paymentMethod: pay,
               notes: notes,
               memberPhoto: adminMemberPhotoBase64 || null,
               gym: currentBranch
-            }, currentUser ? `${currentUser.name} [${currentUser.id}]` : 'Admin');
+            }, getCurrentStaffIdentifier());
         }
       );
     }
@@ -5472,6 +5536,8 @@
     }
 
     function processTransactionSubmit() {
+      if (!validateSession()) return;
+      
       if (!selectedMember) {
         showToast('Pilih member terlebih dahulu', 'warning');
         return;
@@ -5658,7 +5724,7 @@
               packageId: pkgEl.value,
               paymentMethod: payEl.value,
               gym: currentBranch
-            }, currentUser ? `${currentUser.name} [${currentUser.id}]` : 'Admin');
+            }, getCurrentStaffIdentifier());
         }
       );
     }
@@ -6143,6 +6209,8 @@
     }
 
     function checkoutPOS() {
+      if (!validateSession()) return;
+      
       if (posCart.length === 0) {
         showToast('Keranjang masih kosong', 'warning');
         return;
@@ -6170,7 +6238,7 @@
           paymentMethod: payment,
           memberId: posSelectedMember ? posSelectedMember.id : '',
           customerName: posSelectedMember ? posSelectedMember.name : 'Guest',
-          cashier: currentUser ? `${currentUser.name} [${currentUser.id}]` : 'Admin',
+          cashier: getCurrentStaffIdentifier(),
           whatsapp: document.getElementById('pos_wa_number').value.trim(),
           notes: '',
           gym: currentBranch
@@ -7925,10 +7993,11 @@
           }
           showToast('Error: ' + err.message, 'error');
         })
-        .processCheckIn({ memberId: mid, gym: currentBranch }, currentUser ? `${currentUser.name} [${currentUser.id}]` : 'Admin');
+        .processCheckIn({ memberId: mid, gym: currentBranch }, getCurrentStaffIdentifier());
     }
 
     function doCheckinWithPT(forcedMid) {
+      if (!validateSession()) return;
       if (showOfflineMessage()) return;
 
       const mid = forcedMid || (document.getElementById('ci_memberId')?.value || '').trim().toUpperCase();
@@ -8133,7 +8202,7 @@
           memberId: mid,
           usePT: usePT,
           gym: currentBranch
-        }, currentUser ? `${currentUser.name} [${currentUser.id}]` : 'Admin');
+        }, getCurrentStaffIdentifier());
     }
 
     function openVisitModal() {
@@ -8279,7 +8348,7 @@
           paymentMethod: payment,
           gym: currentBranch,
           unitPrice: (window.appData && appData.catalogue) ? (appData.catalogue.find(p => (p.name || '') === type)?.price || 0) : 0
-        }, currentUser ? `${currentUser.name} [${currentUser.id}]` : 'Admin');
+        }, getCurrentStaffIdentifier());
     }
 
     // ================ QR SCANNER ================
@@ -9014,8 +9083,9 @@
               trainerName: trainer,
               totalSessions: sessions,
               pricePerSession: price,
-              paymentMethod: payment
-            }, currentUser ? `${currentUser.name} [${currentUser.id}]` : 'Admin');
+              paymentMethod: payment,
+              currentBranch: currentBranch
+            }, getCurrentStaffIdentifier());
         }
       );
     }
@@ -9216,6 +9286,7 @@
     }
 
     function approveRequest(id, type) {
+      if (!validateSession()) return;
       showConfirm(
         `APPROVE PERMINTAAN\n\n` +
         `ID    : ${id}\n` +
@@ -9260,12 +9331,13 @@
             .withFailureHandler(function (err) {
               hideLoading();
               showToast('Error: ' + err.message, 'error');
-            })[fn](id, currentUser ? `${currentUser.name} [${currentUser.id}]` : 'Admin');
+            })[fn](id, getCurrentStaffIdentifier());
         }
       );
     }
 
     function rejectRequest(id) {
+      if (!validateSession()) return;
       const reason = prompt('Alasan penolakan (wajib):');
       if (reason === null) return;
       if (!reason.trim()) {
@@ -9297,7 +9369,7 @@
               hideLoading();
               showToast('Error: ' + err.message, 'error');
             })
-            .rejectApproval(id, reason.trim(), currentUser ? `${currentUser.name} [${currentUser.id}]` : 'Admin');
+            .rejectApproval(id, reason.trim(), getCurrentStaffIdentifier());
         }
       );
     }
@@ -9676,6 +9748,7 @@
     }
 
     function createUserAccount() {
+      if (!validateSession()) return;
       const name = document.getElementById('cu_name')?.value?.trim();
       const phone = document.getElementById('cu_phone')?.value?.trim();
       const username = document.getElementById('cu_username')?.value?.trim();
@@ -9734,7 +9807,7 @@
           role: role,
           email: email,
           password: password
-        }, currentUser ? `${currentUser.name} [${currentUser.id}]` : 'Admin');
+        }, getCurrentStaffIdentifier());
     }
 
     function showDuplicateCleanupDialog() {
@@ -10187,6 +10260,8 @@
     }
 
     function submitExpenseForm() {
+      if (!validateSession()) return;
+      
       const payload = {
         id: 'TEMP_' + Date.now(), // Temporary ID for optimistic UI
         date: document.getElementById('exp_date').value,
@@ -10194,7 +10269,7 @@
         description: document.getElementById('exp_description').value,
         amount: Number(document.getElementById('exp_amount').value),
         paymentMethod: document.getElementById('exp_payment').value,
-        user: currentUser ? `${currentUser.name} [${currentUser.id}]` : 'Admin'
+        user: getCurrentStaffIdentifier()
       };
 
       if (!payload.category || !payload.amount || !payload.description) {
@@ -10300,7 +10375,7 @@
         let visible = true;
 
         if (role === 'Staff' || role === 'Kasir') {
-          const staffViews = ['dashboard', 'members', 'transactions', 'checkin', 'pt', 'pos', 'approvals', 'expenses', 'birthdays', 'gallery', 'analytics'];
+          const staffViews = ['dashboard', 'members', 'transactions', 'checkin', 'pt', 'pos', 'approvals', 'expenses', 'gallery', 'analytics'];
           if (!staffViews.includes(view)) visible = false;
 
           // Sembunyikan kartu dashboard -> Gallery SEKARANG DIIJINKAN
@@ -10312,7 +10387,7 @@
             visible = true;
           } else {
             // Branch-specific Admin (limited views)
-            const branchAdminViews = ['dashboard', 'members', 'transactions', 'checkin', 'pt', 'pos', 'approvals', 'expenses', 'birthdays', 'gallery', 'catalogue', 'products', 'admin', 'memberAdmin'];
+            const branchAdminViews = ['dashboard', 'members', 'transactions', 'checkin', 'pt', 'pos', 'approvals', 'expenses', 'gallery', 'catalogue', 'products', 'admin', 'memberAdmin'];
             if (!branchAdminViews.includes(view)) visible = false;
           }
         }
@@ -10877,6 +10952,16 @@
               <canvas id="financeChart"></canvas>
             </div>
           </div>
+
+          <!-- GENDER CHART -->
+          <div class="stat-card" style="border-top-color: #3b82f6">
+            <div class="stat-header">
+              <h4 style="color:#1e293b"><i class="fas fa-venus-mars"></i> Komposisi Gender</h4>
+            </div>
+            <div style="height:300px; position:relative">
+              <canvas id="genderChart"></canvas>
+            </div>
+          </div>
         </div>
       `;
 
@@ -10955,6 +11040,26 @@
           }]
         },
         options: { responsive: true, maintainAspectRatio: false }
+      });
+
+      // 5. GENDER CHART
+      const genCtx = document.getElementById('genderChart').getContext('2d');
+      new Chart(genCtx, {
+        type: 'doughnut',
+        data: {
+          labels: Object.keys(data.genderStats || {}),
+          datasets: [{
+            data: Object.values(data.genderStats || {}),
+            backgroundColor: ['#3b82f6', '#ec4899', '#94a3b8']
+          }]
+        },
+        options: { 
+          responsive: true, 
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { position: 'bottom' }
+          }
+        }
       });
     }
 
@@ -11389,8 +11494,9 @@
       }
 
       document.getElementById('editMemberId').value = memberId;
-      document.getElementById('editFullName').value = member.fullName || '';
+      document.getElementById('editFullName').value = member.name || '';
       document.getElementById('editPhone').value = member.phone || '';
+      document.getElementById('editGender').value = member.gender || '-';
       document.getElementById('editFaceIdName').value = member.faceIdName || '';
       document.getElementById('editFaceIdCode').value = member.faceIdCode || '';
 
@@ -11405,6 +11511,7 @@
       const memberId = document.getElementById('editMemberId').value;
       const fullName = document.getElementById('editFullName').value.trim();
       const phone = document.getElementById('editPhone').value.trim();
+      const gender = document.getElementById('editGender').value;
       const faceIdName = document.getElementById('editFaceIdName').value.trim();
       const faceIdCode = document.getElementById('editFaceIdCode').value.trim();
 
@@ -11434,166 +11541,11 @@
           memberId: memberId,
           fullName: fullName,
           phone: phone,
+          gender: gender,
           faceIdName: faceIdName,
           faceIdCode: faceIdCode
         });
     }
-
-    // ================ BIRTHDAYS VIEW ================
-    function loadBirthdaysView() {
-      const container = document.getElementById('contentArea');
-      container.innerHTML = `
-        <div class="view-header">
-          <h2 class="view-title">Ulang Tahun Member</h2>
-          <button class="btn btn-primary" onclick="refreshBirthdays()">
-            <i class="fas fa-sync-alt"></i> Refresh Data
-          </button>
-        </div>
-        
-        <div class="row">
-          <!-- List Kolom Kiri -->
-          <div class="col-12 col-md-8">
-            <div class="card">
-              <div class="card-header">
-                <h3 class="card-title">Daftar Ulang Tahun (1 Bulan Kedepan)</h3>
-              </div>
-              <div class="card-body">
-                <div id="birthdaysListContainer" style="min-height:300px; max-height: 600px; overflow-y: auto;">
-                  <div style="text-align:center;padding:20px;color:#94a3b8"><i class="fas fa-spinner fa-spin"></i> Memuat data...</div>
-                </div>
-              </div>
-            </div>
-          </div>
-          
-          <!-- Editor Template Kolom Kanan -->
-          <div class="col-12 col-md-4">
-            <div class="card">
-              <div class="card-header">
-                <h3 class="card-title">Pesan WhatsApp (Template)</h3>
-              </div>
-              <div class="card-body">
-                <p style="font-size:13px;color:#64748b;margin-bottom:12px;line-height:1.5">
-                  Gunakan parameter berikut dalam pesan:<br>
-                  <code style="background:#f1f5f9;padding:2px 4px;border-radius:4px">{name}</code> : Nama Member<br>
-                  <code style="background:#f1f5f9;padding:2px 4px;border-radius:4px">{age}</code> : Usia yang dirayakan
-                </p>
-                <textarea id="bdayTemplateInput" class="form-input" style="height:200px;resize:vertical;font-size:14px" placeholder="Ketik pesan ulang tahun..."></textarea>
-                <button class="btn btn-primary" style="width:100%;margin-top:16px" onclick="saveBdayTemplate()" id="btnSaveTemplate">
-                  <i class="fas fa-save"></i> Simpan Template
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      `;
-
-      refreshBirthdays();
-    }
-
-    let currentBdayTemplate = "";
-
-    function refreshBirthdays() {
-      const container = document.getElementById('birthdaysListContainer');
-      container.innerHTML = '<div style="text-align:center;padding:20px;color:#94a3b8"><i class="fas fa-spinner fa-spin"></i> Memuat data...</div>';
-
-      google.script.run
-        .withSuccessHandler(function (res) {
-          if (!res || !res.success) {
-            container.innerHTML = `<div class="alert alert-error">Gagal memuat: ${res ? res.message : 'Error tidak diketahui'}</div>`;
-            return;
-          }
-
-          // Set template
-          currentBdayTemplate = res.template;
-          const templateInput = document.getElementById('bdayTemplateInput');
-          if (templateInput) templateInput.value = res.template;
-
-          if (!res.birthdays || res.birthdays.length === 0) {
-            container.innerHTML = `
-              <div style="text-align:center;padding:40px 20px">
-                <div style="font-size:40px;color:#cbd5e1;margin-bottom:16px"><i class="fas fa-birthday-cake"></i></div>
-                <h3 style="color:#64748b;margin:0 0 8px">Tidak ada Ulang Tahun</h3>
-                <p style="color:#94a3b8;font-size:14px;margin:0">Tidak ada member aktif yang berulang tahun dalam 1 bulan ke depan.</p>
-              </div>
-            `;
-            return;
-          }
-
-          let html = `<div class="list-container">`;
-          const todayStr = new Date().toDateString();
-
-          res.birthdays.forEach(b => {
-            const isToday = new Date(b.nextBirthday).toDateString() === todayStr;
-            const bdayDate = new Date(b.nextBirthday).toLocaleDateString('id-ID', { day: 'numeric', month: 'long' });
-
-            html += `
-              <div class="list-item" style="${isToday ? 'border-left: 4px solid #d4af37; background: #fffcf0;' : ''}">
-                <div class="list-item-content">
-                  <div class="list-item-title">${escapeHtml(b.name)}</div>
-                  <div class="list-item-subtitle" style="margin-top:4px">
-                    <span class="badge ${isToday ? 'badge-primary' : 'badge-info'}" style="margin-right:8px">
-                      <i class="fas fa-birthday-cake"></i> ${isToday ? 'HARI INI!' : bdayDate}
-                    </span>
-                    <i class="fas fa-calendar-alt"></i> Ke-${b.age} • <i class="fas fa-phone"></i> ${b.phone}
-                  </div>
-                </div>
-                <div class="list-item-action">
-                  <button class="btn ${isToday ? 'btn-primary' : 'btn-outline'} btn-sm" onclick="sendBdayWA('${b.name}', ${b.age}, '${b.phone}')">
-                    <i class="fab fa-whatsapp"></i> ${isToday ? 'Kirim Ucapan' : 'Pesan'}
-                  </button>
-                </div>
-              </div>
-            `;
-          });
-          html += `</div>`;
-          container.innerHTML = html;
-        })
-        .withFailureHandler(function (err) {
-          container.innerHTML = `<div class="alert alert-error">Koneksi gagal: ${err.message}</div>`;
-        })
-        .getUpcomingBirthdays();
-    }
-
-    function sendBdayWA(name, age, phone) {
-      if (!currentBdayTemplate) {
-        showToast('Template belum dimuat', 'warning');
-        return;
-      }
-
-      let message = currentBdayTemplate
-        .replace(/{name}/gi, name)
-        .replace(/{age}/gi, age);
-
-      shareToWhatsApp(phone, message);
-    }
-
-    function saveBdayTemplate() {
-      const template = document.getElementById('bdayTemplateInput').value;
-      const btn = document.getElementById('btnSaveTemplate');
-      const originalText = btn.innerHTML;
-
-      btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Menyimpan...';
-      btn.disabled = true;
-
-      google.script.run
-        .withSuccessHandler(function (res) {
-          btn.innerHTML = originalText;
-          btn.disabled = false;
-          if (res && res.success) {
-            currentBdayTemplate = template;
-            showToast('Template ucapan berhasil disimpan!', 'success');
-          } else {
-            showToast('Gagal: ' + (res ? res.message : ''), 'error');
-          }
-        })
-        .withFailureHandler(function (err) {
-          btn.innerHTML = originalText;
-          btn.disabled = false;
-          showToast('Error: ' + err.message, 'error');
-        })
-        .saveBirthdayTemplate(template);
-    }
-
 
     // ================ CHANGE PHOTO LOGIC ================
     let changePhotoMemberId = null;
