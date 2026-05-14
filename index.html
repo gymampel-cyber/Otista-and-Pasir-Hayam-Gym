@@ -10972,9 +10972,9 @@
       modal.style.display = 'flex';
       content.innerHTML = `<div style="text-align:center;padding:40px"><i class="fas fa-spinner fa-spin fa-2x"></i><p style="margin-top:10px">Menyiapkan ${isPeriod ? 'laporan periodik' : 'laporan harian'}...</p></div>`;
 
-      // Auto-filter for staff
+      // Auto-filter for staff: Admin gets 'All' or specific, Staff gets their own ID
       const isAdmin = currentUser.role === 'Admin' || currentUser.role === 'Super Admin';
-      const filterStaff = isAdmin ? (staffName || 'All') : currentUser.name;
+      const filterStaff = isAdmin ? (staffName || 'All') : currentUser.id;
 
       google.script.run
         .withSuccessHandler(function (res) {
@@ -11007,7 +11007,7 @@
             <div style="display:flex; gap:8px">
               <select id="reportStaffFilter" class="form-input" style="font-size:12px; padding:4px 8px; width:150px" onchange="showDailyReportModal(this.value)">
                 <option value="All" ${currentFilterStaff === 'All' ? 'selected' : ''}>-- Semua Staff --</option>
-                <option value="${currentUser.name}" ${currentFilterStaff === currentUser.name ? 'selected' : ''}>${currentUser.name} (Saya)</option>
+                <option value="${currentUser.id}" ${currentFilterStaff === currentUser.id ? 'selected' : ''}>${currentUser.name} (Saya)</option>
                 <!-- Opsi staff lain akan dimuat dinamis jika perlu, sementara manual atau biarkan All -->
               </select>
             </div>
