@@ -10608,11 +10608,15 @@
       if (document.getElementById('statPOSRevenue')) document.getElementById('statPOSRevenue').textContent = formatCurrency(stats.posRevenue || 0);
       if (document.getElementById('statNetProfit')) document.getElementById('statNetProfit').textContent = formatCurrency(stats.netProfit || 0);
 
-      // SINKRONISASI TABEL
-      if (stats.filteredTransactions) renderRecentTransactions(stats.filteredTransactions);
-      if (stats.filteredPOS) renderRecentPOS(stats.filteredPOS);
-      if (stats.filteredExpenses) renderRecentExpenses(stats.filteredExpenses);
-      if (stats.todayCheckinList) renderCheckinList(stats.todayCheckinList);
+      // SINKRONISASI TABEL (Safe Check)
+      if (stats.todayCheckinList && typeof renderTodayCheckins === 'function') {
+        renderTodayCheckins(stats.todayCheckinList);
+      }
+      
+      // Update Detail UI if active
+      if (typeof renderDashboardDetailUI === 'function' && stats.type) {
+        renderDashboardDetailUI(stats);
+      }
 
       // Update pending approvals badge
       const badge = document.getElementById('approvalBadge');
