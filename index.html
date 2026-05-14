@@ -8277,7 +8277,8 @@
           visitType: type,
           qty: qty,
           paymentMethod: payment,
-          gym: currentBranch
+          gym: currentBranch,
+          unitPrice: (window.appData && appData.catalogue) ? (appData.catalogue.find(p => (p.name || '') === type)?.price || 0) : 0
         }, currentUser ? `${currentUser.name} [${currentUser.id}]` : 'Admin');
     }
 
