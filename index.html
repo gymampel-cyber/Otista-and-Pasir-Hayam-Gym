@@ -10995,24 +10995,35 @@
     function renderDailyReport(report, currentFilterStaff) {
       const content = document.getElementById('dailyReportContent');
       const isAdmin = currentUser.role === 'Admin' || currentUser.role === 'Super Admin';
+      
+      // Resolve display name: if ID matches currentUser, use their name. Otherwise use the ID/Name from report.
+      let displayStaff = report.staff || 'Semua Staff';
+      if (currentFilterStaff === currentUser.id) {
+        displayStaff = currentUser.name;
+      } else if (currentFilterStaff === 'All') {
+        displayStaff = 'Semua Staff (Global)';
+      }
 
       let html = `
-        <div style="margin-bottom:20px; border-bottom:1px solid #e2e8f0; padding-bottom:15px; display:flex; justify-content:space-between; align-items:flex-start">
-          <div>
-            <h4 style="color:#6b46c1; margin-bottom:5px">${report.isRange ? 'Laporan Periodik' : 'Laporan Harian'} - ${report.dateFormatted}</h4>
-            <p style="font-size:12px; color:#64748b">
-              Staff: <b>${report.staff}</b> | Cabang: <b>${report.branch}</b>
-            </p>
-          </div>
-          ${isAdmin ? `
-            <div style="display:flex; gap:8px">
-              <select id="reportStaffFilter" class="form-input" style="font-size:12px; padding:4px 8px; width:150px" onchange="showDailyReportModal(this.value)">
-                <option value="All" ${currentFilterStaff === 'All' ? 'selected' : ''}>-- Semua Staff --</option>
-                <option value="${currentUser.id}" ${currentFilterStaff === currentUser.id ? 'selected' : ''}>${currentUser.name} (Saya)</option>
-                <!-- Opsi staff lain akan dimuat dinamis jika perlu, sementara manual atau biarkan All -->
-              </select>
+        <div class="report-header" style="background:#f8fafc; padding:20px; border-radius:12px; margin-bottom:20px; border:1px solid #e2e8f0">
+          <div style="display:flex; justify-content:space-between; align-items:flex-start">
+            <div>
+              <h4 style="margin:0; color:#1e293b; font-size:18px">${report.isRange ? 'Laporan Periodik' : 'Laporan Harian'}</h4>
+              <p style="margin:4px 0 0 0; color:#64748b; font-size:14px">${report.dateFormatted}</p>
+              <div style="margin-top:12px; display:flex; align-items:center; gap:8px">
+                <span class="badge badge-primary" style="font-size:12px; padding:4px 10px"><i class="fas fa-user"></i> ${displayStaff}</span>
+                <span class="badge badge-outline" style="font-size:12px; padding:4px 10px"><i class="fas fa-map-marker-alt"></i> ${report.branch}</span>
+              </div>
             </div>
-          ` : ''}
+            ${isAdmin ? `
+              <div style="display:flex; gap:8px">
+                <select id="reportStaffFilter" class="form-input" style="font-size:12px; padding:4px 8px; width:150px" onchange="showDailyReportModal(this.value)">
+                  <option value="All" ${currentFilterStaff === 'All' ? 'selected' : ''}>-- Semua Staff --</option>
+                  <option value="${currentUser.id}" ${currentFilterStaff === currentUser.id ? 'selected' : ''}>${currentUser.name} (Saya)</option>
+                </select>
+              </div>
+            ` : ''}
+          </div>
         </div>
 
         <div class="stats-grid" style="grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap:12px; margin-bottom:24px">
@@ -11214,7 +11225,7 @@
       const dashEnd = document.getElementById('dash_end_date')?.value;
       const isPeriod = !!(dashStart && dashEnd);
       const isAdmin = currentUser.role === 'Admin' || currentUser.role === 'Super Admin';
-      const staffFilter = isAdmin ? (document.getElementById('reportStaffFilter')?.value || 'All') : currentUser.name;
+      const staffFilter = isAdmin ? (document.getElementById('reportStaffFilter')?.value || 'All') : currentUser.id;
 
       google.script.run
         .withSuccessHandler(function (res) {
