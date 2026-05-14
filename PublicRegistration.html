@@ -765,8 +765,18 @@
                 <label class="form-label">
                   Nama Lengkap <span style="color:#ef4444">*</span>
                 </label>
-                <input id="fullName" class="form-input" placeholder="Contoh: Budi Santoso">
+                <input id="name" class="form-input" placeholder="Contoh: Budi Santoso">
                 <small style="color:#94a3b8;margin-top:4px;display:block">Minimal 3 karakter</small>
+              </div>
+              <div class="form-group">
+                <label class="form-label">
+                  Jenis Kelamin <span style="color:#ef4444">*</span>
+                </label>
+                <select id="gender" class="form-input">
+                  <option value="" disabled selected>Pilih Jenis Kelamin</option>
+                  <option value="Laki-laki">Laki-laki</option>
+                  <option value="Perempuan">Perempuan</option>
+                </select>
               </div>
             </div>
             <div class="form-row">
@@ -967,7 +977,7 @@
     var paymentProofBase64 = null;
     var packages = [];
     var formData = {
-      fullName: '',
+      name: '',
       phone: '',
       email: ''
     };
@@ -1179,12 +1189,17 @@
 
     function nextToPackage() {
       // Validate personal data
-      formData.fullName = document.getElementById('fullName').value.trim();
+      formData.name = document.getElementById('name').value.trim();
+      formData.gender   = document.getElementById('gender').value;
       formData.phone    = document.getElementById('phone').value.trim();
       formData.email    = document.getElementById('email').value.trim();
 
-      if (!formData.fullName || formData.fullName.length < 3) {
+      if (!formData.name || formData.name.length < 3) {
         showAlert('Nama lengkap minimal 3 karakter', 'warning');
+        return;
+      }
+      if (!formData.gender) {
+        showAlert('Pilih jenis kelamin', 'warning');
         return;
       }
       if (!formData.phone || !validatePhone(formData.phone)) {
@@ -1229,7 +1244,7 @@
       }
 
       // Update payment summary
-      document.getElementById('summaryName').textContent = formData.fullName;
+      document.getElementById('summaryName').textContent = formData.name;
       document.getElementById('summaryPackage').textContent = selectedPackage.name;
       document.getElementById('summaryPackagePrice').textContent = formatCurrency(selectedPackage.price);
       
@@ -1393,10 +1408,10 @@
       showLoading();
 
       const registrationData = {
-        fullName: formData.fullName,
+        name: formData.name,
+        gender: formData.gender,
         phone: formData.phone,
         email: formData.email,
-        dob: '',
         gym: document.getElementById('gymLocation').value,
         packageId: selectedPackage.id,
         paymentMethod: paymentMethod,
@@ -1418,7 +1433,7 @@
             showAlert(
               `✅ PENDAFTARAN BERHASIL DIKIRIM!\n\n` +
               `Registration ID : ${res.registrationId || '-'}\n` +
-              `Nama            : ${formData.fullName}\n` +
+              `Nama            : ${formData.name}\n` +
               `Paket           : ${selectedPackage.name}\n` +
               `Metode Bayar    : ${paymentMethod}\n` +
               `Harga Paket     : ${formatCurrency(selectedPackage.price)}\n` +
