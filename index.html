@@ -7840,22 +7840,6 @@
         .getMemberDetail(mid);
     }
 
-    function doCheckin() {
-      const mid = (document.getElementById('ci_memberId')?.value || '').trim().toUpperCase();
-      if (!mid) {
-        showToast('Masukkan Member ID', 'warning');
-        return;
-      }
-
-            const errorType = res?.type || 'error';
-            const errorMessage = res?.message || 'Check-In Gagal';
-            const errorDetails = res?.details || '';
-            const memberInfo = res?.memberName ? `Member: ${res.memberName}` : '';
-
-            let bgColor, borderColor, iconColor, icon;
-            if (errorType === 'already_checked_in') {
-              bgColor = '#fef3c7';
-
     function doCheckinWithPT(forcedMid) {
       if (!validateSession()) return;
       if (showOfflineMessage()) return;
