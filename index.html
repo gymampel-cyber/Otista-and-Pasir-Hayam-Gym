@@ -3831,7 +3831,10 @@
               <div class="stat-icon" style="background:#dcfce7; color:#166534"><i class="fas fa-user-check"></i></div>
             </div>
             <div class="stat-value" id="statAktif">0</div>
-            <div class="stat-label">Sesuai Masa Aktif</div>
+            <div class="stat-label">
+              <span title="Laki-laki" style="color:#3b82f6"><i class="fas fa-mars"></i> <span id="statAktifMale">0</span></span> | 
+              <span title="Perempuan" style="color:#ec4899"><i class="fas fa-venus"></i> <span id="statAktifFemale">0</span></span>
+            </div>
           </div>
           <div class="stat-card stat-card-clickable" id="cardGallery" style="border-top-color:#f472b6" onclick="showView('gallery')">
             <div class="stat-header">
@@ -3927,14 +3930,26 @@
             <div style="display:flex; flex-direction:column; gap:12px; margin-bottom:24px">
               <div class="stat-card stat-card-clickable" style="padding:16px; border-top:none; border-left:4px solid #f59e0b" onclick="showDashboardDetail('expiring_member')">
                 <div style="display:flex; justify-content:space-between; align-items:center">
-                  <span style="font-size:13px; font-weight:600">Member Akan Expire</span>
-                  <span class="badge badge-warning" id="statExpiring">0</span>
+                  <div style="display:flex; flex-direction:column">
+                    <span style="font-size:13px; font-weight:600">Member Akan Expire</span>
+                    <div style="font-size:11px; margin-top:2px; color:#64748b">
+                      <span style="color:#3b82f6"><i class="fas fa-mars"></i> <span id="statExpiringMale">0</span></span> | 
+                      <span style="color:#ec4899"><i class="fas fa-venus"></i> <span id="statExpiringFemale">0</span></span>
+                    </div>
+                  </div>
+                  <span class="badge badge-warning" id="statExpiring" style="font-size:14px; padding:4px 10px">0</span>
                 </div>
               </div>
               <div class="stat-card stat-card-clickable" style="padding:16px; border-top:none; border-left:4px solid #ef4444" onclick="showDashboardDetail('expired_member')">
                 <div style="display:flex; justify-content:space-between; align-items:center">
-                  <span style="font-size:13px; font-weight:600">Member Expired</span>
-                  <span class="badge badge-danger" id="statExpired">0</span>
+                  <div style="display:flex; flex-direction:column">
+                    <span style="font-size:13px; font-weight:600">Member Expired</span>
+                    <div style="font-size:11px; margin-top:2px; color:#64748b">
+                      <span style="color:#3b82f6"><i class="fas fa-mars"></i> <span id="statExpiredMale">0</span></span> | 
+                      <span style="color:#ec4899"><i class="fas fa-venus"></i> <span id="statExpiredFemale">0</span></span>
+                    </div>
+                  </div>
+                  <span class="badge badge-danger" id="statExpired" style="font-size:14px; padding:4px 10px">0</span>
                 </div>
               </div>
               <div class="stat-card stat-card-clickable" style="padding:16px; border-top:none; border-left:4px solid #8b5cf6" onclick="showDashboardDetail('pending_approvals')">
@@ -4033,8 +4048,24 @@
       if (document.getElementById('statFitnessRevenue')) document.getElementById('statFitnessRevenue').textContent = formatCurrency(s.fitnessRevenue || 0);
       
       // Gender Stats
-      if (document.getElementById('statMale')) document.getElementById('statMale').textContent = s.genderStats?.Male || 0;
-      if (document.getElementById('statFemale')) document.getElementById('statFemale').textContent = s.genderStats?.Female || 0;
+      if (s.genderStats) {
+        const gs = s.genderStats;
+        // Total (Backward compatibility check for old cache)
+        if (document.getElementById('statMale')) document.getElementById('statMale').textContent = (gs.total ? gs.total.Male : gs.Male) || 0;
+        if (document.getElementById('statFemale')) document.getElementById('statFemale').textContent = (gs.total ? gs.total.Female : gs.Female) || 0;
+        
+        // Active
+        if (document.getElementById('statAktifMale')) document.getElementById('statAktifMale').textContent = gs.active?.Male || 0;
+        if (document.getElementById('statAktifFemale')) document.getElementById('statAktifFemale').textContent = gs.active?.Female || 0;
+        
+        // Expiring
+        if (document.getElementById('statExpiringMale')) document.getElementById('statExpiringMale').textContent = gs.expiring?.Male || 0;
+        if (document.getElementById('statExpiringFemale')) document.getElementById('statExpiringFemale').textContent = gs.expiring?.Female || 0;
+        
+        // Expired
+        if (document.getElementById('statExpiredMale')) document.getElementById('statExpiredMale').textContent = gs.expired?.Male || 0;
+        if (document.getElementById('statExpiredFemale')) document.getElementById('statExpiredFemale').textContent = gs.expired?.Female || 0;
+      }
 
       // Period Info
       const titleEl = document.getElementById('checkinTableTitle');
