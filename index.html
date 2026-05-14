@@ -2490,6 +2490,14 @@
           <input type="text" id="editPhone" class="form-input" placeholder="08xxxxxxxxxx">
         </div>
         <div class="form-group">
+          <label class="form-label">Jenis Kelamin</label>
+          <select id="editGender" class="form-input">
+            <option value="-">Pilih Jenis Kelamin</option>
+            <option value="Laki-laki">Laki-laki</option>
+            <option value="Perempuan">Perempuan</option>
+          </select>
+        </div>
+        <div class="form-group">
           <label class="form-label">Nama Face ID</label>
           <input type="text" id="editFaceIdName" class="form-input" placeholder="Nama yang terdaftar di mesin Face ID">
         </div>
@@ -3812,7 +3820,10 @@
               <div class="stat-icon" style="background:#f1f5f9; color:#64748b"><i class="fas fa-users"></i></div>
             </div>
             <div class="stat-value" id="statTotal">0</div>
-            <div class="stat-label">Database Terdaftar</div>
+            <div class="stat-label">
+              <span title="Laki-laki" style="color:#3b82f6"><i class="fas fa-mars"></i> <span id="statMale">0</span></span> | 
+              <span title="Perempuan" style="color:#ec4899"><i class="fas fa-venus"></i> <span id="statFemale">0</span></span>
+            </div>
           </div>
           <div class="stat-card stat-card-clickable" id="cardMemberAktif" style="border-top-color:#22c55e" onclick="showDashboardDetail('active_member')">
             <div class="stat-header">
@@ -4029,6 +4040,10 @@
       if (document.getElementById('statCheckin')) document.getElementById('statCheckin').textContent = s.checkins || 0;
       if (document.getElementById('statPending')) document.getElementById('statPending').textContent = s.pendingApprovals || 0;
       if (document.getElementById('statFitnessRevenue')) document.getElementById('statFitnessRevenue').textContent = formatCurrency(s.fitnessRevenue || 0);
+      
+      // Gender Stats
+      if (document.getElementById('statMale')) document.getElementById('statMale').textContent = s.genderStats?.Male || 0;
+      if (document.getElementById('statFemale')) document.getElementById('statFemale').textContent = s.genderStats?.Female || 0;
 
       // Period Info
       const titleEl = document.getElementById('checkinTableTitle');
@@ -4487,6 +4502,14 @@
                     <label class="form-label">Email</label>
                     <input id="reg_email" type="email" class="form-input" placeholder="contoh@email.com">
                   </div>
+                  <div class="form-group">
+                    <label class="form-label">Jenis Kelamin *</label>
+                    <select id="reg_gender" class="form-input">
+                      <option value="" disabled selected>Pilih Jenis Kelamin</option>
+                      <option value="Laki-laki">Laki-laki</option>
+                      <option value="Perempuan">Perempuan</option>
+                    </select>
+                  </div>
                 </div>
                 <div class="form-group">
                   <label class="form-label">Pilih Paket *</label>
@@ -4789,6 +4812,7 @@
       const name = document.getElementById('reg_name')?.value?.trim();
       const phone = document.getElementById('reg_phone')?.value?.trim();
       const email = document.getElementById('reg_email')?.value?.trim();
+      const gender = document.getElementById('reg_gender')?.value;
       const dob = '';
       const pay = document.getElementById('reg_payment')?.value;
       const notes = document.getElementById('reg_notes')?.value?.trim();
@@ -4796,6 +4820,10 @@
 
       if (!name || name.length < 3) {
         showToast('Nama lengkap minimal 3 karakter', 'warning');
+        return;
+      }
+      if (!gender) {
+        showToast('Pilih jenis kelamin', 'warning');
         return;
       }
       if (!phone || !/^0[0-9]{9,13}$/.test(phone)) {
@@ -5055,6 +5083,7 @@
               fullName: name,
               phone: phone,
               email: email,
+              gender: gender,
               dob: dob,
               packageId: pkg.id,
               paymentMethod: pay,
@@ -10937,6 +10966,16 @@
               <canvas id="financeChart"></canvas>
             </div>
           </div>
+
+          <!-- GENDER CHART -->
+          <div class="stat-card" style="border-top-color: #3b82f6">
+            <div class="stat-header">
+              <h4 style="color:#1e293b"><i class="fas fa-venus-mars"></i> Komposisi Gender</h4>
+            </div>
+            <div style="height:300px; position:relative">
+              <canvas id="genderChart"></canvas>
+            </div>
+          </div>
         </div>
       `;
 
@@ -11015,6 +11054,26 @@
           }]
         },
         options: { responsive: true, maintainAspectRatio: false }
+      });
+
+      // 5. GENDER CHART
+      const genCtx = document.getElementById('genderChart').getContext('2d');
+      new Chart(genCtx, {
+        type: 'doughnut',
+        data: {
+          labels: Object.keys(data.genderStats || {}),
+          datasets: [{
+            data: Object.values(data.genderStats || {}),
+            backgroundColor: ['#3b82f6', '#ec4899', '#94a3b8']
+          }]
+        },
+        options: { 
+          responsive: true, 
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { position: 'bottom' }
+          }
+        }
       });
     }
 
@@ -11449,8 +11508,9 @@
       }
 
       document.getElementById('editMemberId').value = memberId;
-      document.getElementById('editFullName').value = member.fullName || '';
+      document.getElementById('editFullName').value = member.name || '';
       document.getElementById('editPhone').value = member.phone || '';
+      document.getElementById('editGender').value = member.gender || '-';
       document.getElementById('editFaceIdName').value = member.faceIdName || '';
       document.getElementById('editFaceIdCode').value = member.faceIdCode || '';
 
@@ -11465,6 +11525,7 @@
       const memberId = document.getElementById('editMemberId').value;
       const fullName = document.getElementById('editFullName').value.trim();
       const phone = document.getElementById('editPhone').value.trim();
+      const gender = document.getElementById('editGender').value;
       const faceIdName = document.getElementById('editFaceIdName').value.trim();
       const faceIdCode = document.getElementById('editFaceIdCode').value.trim();
 
@@ -11494,6 +11555,7 @@
           memberId: memberId,
           fullName: fullName,
           phone: phone,
+          gender: gender,
           faceIdName: faceIdName,
           faceIdCode: faceIdCode
         });
