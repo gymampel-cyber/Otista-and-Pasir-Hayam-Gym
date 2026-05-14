@@ -5012,7 +5012,7 @@
               notes: notes,
               memberPhoto: adminMemberPhotoBase64 || null,
               gym: currentBranch
-            }, currentUser?.name || 'Admin');
+            }, currentUser ? `${currentUser.name} [${currentUser.id}]` : 'Admin');
         }
       );
     }
@@ -5658,7 +5658,7 @@
               packageId: pkgEl.value,
               paymentMethod: payEl.value,
               gym: currentBranch
-            }, currentUser?.name || 'Admin');
+            }, currentUser ? `${currentUser.name} [${currentUser.id}]` : 'Admin');
         }
       );
     }
@@ -9015,7 +9015,7 @@
               totalSessions: sessions,
               pricePerSession: price,
               paymentMethod: payment
-            }, currentUser?.name || 'Admin');
+            }, currentUser ? `${currentUser.name} [${currentUser.id}]` : 'Admin');
         }
       );
     }
@@ -9297,7 +9297,7 @@
               hideLoading();
               showToast('Error: ' + err.message, 'error');
             })
-            .rejectApproval(id, reason.trim(), currentUser?.name || 'Admin');
+            .rejectApproval(id, reason.trim(), currentUser ? `${currentUser.name} [${currentUser.id}]` : 'Admin');
         }
       );
     }
@@ -9734,7 +9734,7 @@
           role: role,
           email: email,
           password: password
-        }, currentUser?.name || 'Admin');
+        }, currentUser ? `${currentUser.name} [${currentUser.id}]` : 'Admin');
     }
 
     function showDuplicateCleanupDialog() {
