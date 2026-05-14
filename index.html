@@ -2490,14 +2490,6 @@
           <input type="text" id="editPhone" class="form-input" placeholder="08xxxxxxxxxx">
         </div>
         <div class="form-group">
-          <label class="form-label">Jenis Kelamin</label>
-          <select id="editGender" class="form-input">
-            <option value="-">Pilih Jenis Kelamin</option>
-            <option value="Laki-laki">Laki-laki</option>
-            <option value="Perempuan">Perempuan</option>
-          </select>
-        </div>
-        <div class="form-group">
           <label class="form-label">Nama Face ID</label>
           <input type="text" id="editFaceIdName" class="form-input" placeholder="Nama yang terdaftar di mesin Face ID">
         </div>
@@ -3497,51 +3489,14 @@
     function initApp() {
       try {
         console.log('Initializing App...');
-        
-        // Restore session if exists
-        const savedUser = localStorage.getItem('gym_current_user');
-        if (savedUser) {
-          try {
-            currentUser = JSON.parse(savedUser);
-            console.log('Session restored for:', currentUser.name);
-            
-            document.getElementById('authView').style.display = 'none';
-            document.getElementById('dashboardView').style.display = 'flex';
-            
-            applyRolePermissions();
-            initMultiGym();
-            fetchInitialAppData();
-            showView('dashboard');
-            loadApprovalCount();
-            loadAndApplyBranding();
-            return; // Skip login form
-          } catch (e) {
-            console.error('Failed to restore session:', e);
-            localStorage.removeItem('gym_current_user');
-          }
-        }
-
         renderLoginForm();
         loadAndApplyBranding(); // Load branding even before login
         console.log('Login form rendered.');
       } catch (e) {
         console.error('Init error:', e);
+        // Fallback render if branding fails
         renderLoginForm();
       }
-    }
-
-    function getCurrentStaffIdentifier() {
-      if (!currentUser) return 'Admin';
-      return `${currentUser.name} [${currentUser.id || 'N/A'}]`;
-    }
-
-    function validateSession() {
-      if (!currentUser) {
-        showToast('Sesi Anda telah berakhir. Silakan login kembali.', 'error');
-        logout(true); // Forced logout without confirm
-        return false;
-      }
-      return true;
     }
 
 
@@ -3685,8 +3640,6 @@
 
           if (res && res.success) {
             currentUser = res.user;
-            localStorage.setItem('gym_current_user', JSON.stringify(currentUser));
-            
             document.getElementById('authView').style.display = 'none';
             document.getElementById('dashboardView').style.display = 'flex';
 
@@ -3707,23 +3660,15 @@
         .authenticateUser(user, pass);
     }
 
-    function logout(force = false) {
-      const performLogout = function() {
+    function logout() {
+      showConfirm('Yakin ingin keluar dari sistem?', function (ok) {
+        if (!ok) return;
         currentUser = null;
-        localStorage.removeItem('gym_current_user');
         stopScanner();
         document.getElementById('dashboardView').style.display = 'none';
         document.getElementById('authView').style.display = 'flex';
         renderLoginForm();
-      };
-
-      if (force) {
-        performLogout();
-      } else {
-        showConfirm('Yakin ingin keluar dari sistem?', function (ok) {
-          if (ok) performLogout();
-        });
-      }
+      });
     }
 
     // ================ NAVIGATION ================
@@ -3820,10 +3765,7 @@
               <div class="stat-icon" style="background:#f1f5f9; color:#64748b"><i class="fas fa-users"></i></div>
             </div>
             <div class="stat-value" id="statTotal">0</div>
-            <div class="stat-label">
-              <span title="Laki-laki" style="color:#3b82f6"><i class="fas fa-mars"></i> <span id="statMale">0</span></span> | 
-              <span title="Perempuan" style="color:#ec4899"><i class="fas fa-venus"></i> <span id="statFemale">0</span></span>
-            </div>
+            <div class="stat-label">Database Terdaftar</div>
           </div>
           <div class="stat-card stat-card-clickable" id="cardMemberAktif" style="border-top-color:#22c55e" onclick="showDashboardDetail('active_member')">
             <div class="stat-header">
@@ -4040,10 +3982,6 @@
       if (document.getElementById('statCheckin')) document.getElementById('statCheckin').textContent = s.checkins || 0;
       if (document.getElementById('statPending')) document.getElementById('statPending').textContent = s.pendingApprovals || 0;
       if (document.getElementById('statFitnessRevenue')) document.getElementById('statFitnessRevenue').textContent = formatCurrency(s.fitnessRevenue || 0);
-      
-      // Gender Stats
-      if (document.getElementById('statMale')) document.getElementById('statMale').textContent = s.genderStats?.Male || 0;
-      if (document.getElementById('statFemale')) document.getElementById('statFemale').textContent = s.genderStats?.Female || 0;
 
       // Period Info
       const titleEl = document.getElementById('checkinTableTitle');
@@ -4502,14 +4440,6 @@
                     <label class="form-label">Email</label>
                     <input id="reg_email" type="email" class="form-input" placeholder="contoh@email.com">
                   </div>
-                  <div class="form-group">
-                    <label class="form-label">Jenis Kelamin *</label>
-                    <select id="reg_gender" class="form-input">
-                      <option value="" disabled selected>Pilih Jenis Kelamin</option>
-                      <option value="Laki-laki">Laki-laki</option>
-                      <option value="Perempuan">Perempuan</option>
-                    </select>
-                  </div>
                 </div>
                 <div class="form-group">
                   <label class="form-label">Pilih Paket *</label>
@@ -4807,12 +4737,9 @@
     }
 
     function registerMemberSubmit() {
-      if (!validateSession()) return;
-      
       const name = document.getElementById('reg_name')?.value?.trim();
       const phone = document.getElementById('reg_phone')?.value?.trim();
       const email = document.getElementById('reg_email')?.value?.trim();
-      const gender = document.getElementById('reg_gender')?.value;
       const dob = '';
       const pay = document.getElementById('reg_payment')?.value;
       const notes = document.getElementById('reg_notes')?.value?.trim();
@@ -4820,10 +4747,6 @@
 
       if (!name || name.length < 3) {
         showToast('Nama lengkap minimal 3 karakter', 'warning');
-        return;
-      }
-      if (!gender) {
-        showToast('Pilih jenis kelamin', 'warning');
         return;
       }
       if (!phone || !/^0[0-9]{9,13}$/.test(phone)) {
@@ -5083,14 +5006,13 @@
               fullName: name,
               phone: phone,
               email: email,
-              gender: gender,
               dob: dob,
               packageId: pkg.id,
               paymentMethod: pay,
               notes: notes,
               memberPhoto: adminMemberPhotoBase64 || null,
               gym: currentBranch
-            }, getCurrentStaffIdentifier());
+            }, currentUser ? `${currentUser.name} [${currentUser.id}]` : 'Admin');
         }
       );
     }
@@ -5550,8 +5472,6 @@
     }
 
     function processTransactionSubmit() {
-      if (!validateSession()) return;
-      
       if (!selectedMember) {
         showToast('Pilih member terlebih dahulu', 'warning');
         return;
@@ -5738,7 +5658,7 @@
               packageId: pkgEl.value,
               paymentMethod: payEl.value,
               gym: currentBranch
-            }, getCurrentStaffIdentifier());
+            }, currentUser ? `${currentUser.name} [${currentUser.id}]` : 'Admin');
         }
       );
     }
@@ -6223,8 +6143,6 @@
     }
 
     function checkoutPOS() {
-      if (!validateSession()) return;
-      
       if (posCart.length === 0) {
         showToast('Keranjang masih kosong', 'warning');
         return;
@@ -6252,7 +6170,7 @@
           paymentMethod: payment,
           memberId: posSelectedMember ? posSelectedMember.id : '',
           customerName: posSelectedMember ? posSelectedMember.name : 'Guest',
-          cashier: getCurrentStaffIdentifier(),
+          cashier: currentUser ? `${currentUser.name} [${currentUser.id}]` : 'Admin',
           whatsapp: document.getElementById('pos_wa_number').value.trim(),
           notes: '',
           gym: currentBranch
@@ -8007,11 +7925,10 @@
           }
           showToast('Error: ' + err.message, 'error');
         })
-        .processCheckIn({ memberId: mid, gym: currentBranch }, getCurrentStaffIdentifier());
+        .processCheckIn({ memberId: mid, gym: currentBranch }, currentUser ? `${currentUser.name} [${currentUser.id}]` : 'Admin');
     }
 
     function doCheckinWithPT(forcedMid) {
-      if (!validateSession()) return;
       if (showOfflineMessage()) return;
 
       const mid = forcedMid || (document.getElementById('ci_memberId')?.value || '').trim().toUpperCase();
@@ -8216,7 +8133,7 @@
           memberId: mid,
           usePT: usePT,
           gym: currentBranch
-        }, getCurrentStaffIdentifier());
+        }, currentUser ? `${currentUser.name} [${currentUser.id}]` : 'Admin');
     }
 
     function openVisitModal() {
@@ -8362,7 +8279,7 @@
           paymentMethod: payment,
           gym: currentBranch,
           unitPrice: (window.appData && appData.catalogue) ? (appData.catalogue.find(p => (p.name || '') === type)?.price || 0) : 0
-        }, getCurrentStaffIdentifier());
+        }, currentUser ? `${currentUser.name} [${currentUser.id}]` : 'Admin');
     }
 
     // ================ QR SCANNER ================
@@ -9097,9 +9014,8 @@
               trainerName: trainer,
               totalSessions: sessions,
               pricePerSession: price,
-              paymentMethod: payment,
-              currentBranch: currentBranch
-            }, getCurrentStaffIdentifier());
+              paymentMethod: payment
+            }, currentUser ? `${currentUser.name} [${currentUser.id}]` : 'Admin');
         }
       );
     }
@@ -9300,7 +9216,6 @@
     }
 
     function approveRequest(id, type) {
-      if (!validateSession()) return;
       showConfirm(
         `APPROVE PERMINTAAN\n\n` +
         `ID    : ${id}\n` +
@@ -9345,13 +9260,12 @@
             .withFailureHandler(function (err) {
               hideLoading();
               showToast('Error: ' + err.message, 'error');
-            })[fn](id, getCurrentStaffIdentifier());
+            })[fn](id, currentUser ? `${currentUser.name} [${currentUser.id}]` : 'Admin');
         }
       );
     }
 
     function rejectRequest(id) {
-      if (!validateSession()) return;
       const reason = prompt('Alasan penolakan (wajib):');
       if (reason === null) return;
       if (!reason.trim()) {
@@ -9383,7 +9297,7 @@
               hideLoading();
               showToast('Error: ' + err.message, 'error');
             })
-            .rejectApproval(id, reason.trim(), getCurrentStaffIdentifier());
+            .rejectApproval(id, reason.trim(), currentUser ? `${currentUser.name} [${currentUser.id}]` : 'Admin');
         }
       );
     }
@@ -9762,7 +9676,6 @@
     }
 
     function createUserAccount() {
-      if (!validateSession()) return;
       const name = document.getElementById('cu_name')?.value?.trim();
       const phone = document.getElementById('cu_phone')?.value?.trim();
       const username = document.getElementById('cu_username')?.value?.trim();
@@ -9821,7 +9734,7 @@
           role: role,
           email: email,
           password: password
-        }, getCurrentStaffIdentifier());
+        }, currentUser ? `${currentUser.name} [${currentUser.id}]` : 'Admin');
     }
 
     function showDuplicateCleanupDialog() {
@@ -10274,8 +10187,6 @@
     }
 
     function submitExpenseForm() {
-      if (!validateSession()) return;
-      
       const payload = {
         id: 'TEMP_' + Date.now(), // Temporary ID for optimistic UI
         date: document.getElementById('exp_date').value,
@@ -10283,7 +10194,7 @@
         description: document.getElementById('exp_description').value,
         amount: Number(document.getElementById('exp_amount').value),
         paymentMethod: document.getElementById('exp_payment').value,
-        user: getCurrentStaffIdentifier()
+        user: currentUser ? `${currentUser.name} [${currentUser.id}]` : 'Admin'
       };
 
       if (!payload.category || !payload.amount || !payload.description) {
@@ -10966,16 +10877,6 @@
               <canvas id="financeChart"></canvas>
             </div>
           </div>
-
-          <!-- GENDER CHART -->
-          <div class="stat-card" style="border-top-color: #3b82f6">
-            <div class="stat-header">
-              <h4 style="color:#1e293b"><i class="fas fa-venus-mars"></i> Komposisi Gender</h4>
-            </div>
-            <div style="height:300px; position:relative">
-              <canvas id="genderChart"></canvas>
-            </div>
-          </div>
         </div>
       `;
 
@@ -11054,26 +10955,6 @@
           }]
         },
         options: { responsive: true, maintainAspectRatio: false }
-      });
-
-      // 5. GENDER CHART
-      const genCtx = document.getElementById('genderChart').getContext('2d');
-      new Chart(genCtx, {
-        type: 'doughnut',
-        data: {
-          labels: Object.keys(data.genderStats || {}),
-          datasets: [{
-            data: Object.values(data.genderStats || {}),
-            backgroundColor: ['#3b82f6', '#ec4899', '#94a3b8']
-          }]
-        },
-        options: { 
-          responsive: true, 
-          maintainAspectRatio: false,
-          plugins: {
-            legend: { position: 'bottom' }
-          }
-        }
       });
     }
 
@@ -11508,9 +11389,8 @@
       }
 
       document.getElementById('editMemberId').value = memberId;
-      document.getElementById('editFullName').value = member.name || '';
+      document.getElementById('editFullName').value = member.fullName || '';
       document.getElementById('editPhone').value = member.phone || '';
-      document.getElementById('editGender').value = member.gender || '-';
       document.getElementById('editFaceIdName').value = member.faceIdName || '';
       document.getElementById('editFaceIdCode').value = member.faceIdCode || '';
 
@@ -11525,7 +11405,6 @@
       const memberId = document.getElementById('editMemberId').value;
       const fullName = document.getElementById('editFullName').value.trim();
       const phone = document.getElementById('editPhone').value.trim();
-      const gender = document.getElementById('editGender').value;
       const faceIdName = document.getElementById('editFaceIdName').value.trim();
       const faceIdCode = document.getElementById('editFaceIdCode').value.trim();
 
@@ -11555,7 +11434,6 @@
           memberId: memberId,
           fullName: fullName,
           phone: phone,
-          gender: gender,
           faceIdName: faceIdName,
           faceIdCode: faceIdCode
         });
