@@ -138,7 +138,7 @@
             const memberData = args[0] || {};
             appData.todayCheckinList.unshift({
               memberId: memberData.memberId || '...',
-              memberName: memberData.fullName || 'Member',
+              memberName: memberData.name || 'Member',
               type: action === 'processVisitCheckIn' ? 'VISIT' : 'MEMBER',
               status: 'Optimistic',
               checkInTime: new Date().toISOString()
@@ -150,7 +150,7 @@
           const memberData = args[0];
           appData.members.unshift({
             memberId: 'PENDING',
-            fullName: memberData.fullName || memberData.name,
+            name: memberData.name || memberData.name,
             status: 'Pending',
             ...memberData
           });
@@ -168,7 +168,7 @@
           const profileData = args[0];
           const m = appData.members.find(member => member.memberId === profileData.memberId);
           if (m) {
-            m.fullName = profileData.fullName;
+            m.name = profileData.name;
             m.faceIdName = profileData.faceIdName;
             m.faceIdCode = profileData.faceIdCode;
           }
@@ -2480,10 +2480,15 @@
         <button class="btn-close" onclick="closeEditProfileModal()">&times;</button>
       </div>
       <div class="modal-body">
+        <div id="editMemberHeader" style="margin-bottom:20px; padding:15px; background:#f8fafc; border-radius:12px; border-left:4px solid var(--primary)">
+          <div style="font-size:12px; color:#64748b; font-weight:600; text-transform:uppercase; letter-spacing:1px">Profil Member</div>
+          <div id="displayEditName" style="font-size:20px; font-weight:800; color:#1e293b; margin-top:4px">-</div>
+          <div id="displayEditId" style="font-size:13px; color:#64748b; margin-top:2px">ID: -</div>
+        </div>
         <input type="hidden" id="editMemberId">
         <div class="form-group">
           <label class="form-label">Nama Lengkap</label>
-          <input type="text" id="editFullName" class="form-input" placeholder="Nama Lengkap">
+          <input type="text" id="editName" class="form-input" placeholder="Nama Lengkap">
         </div>
         <div class="form-group">
           <label class="form-label">No. HP</label>
@@ -4242,57 +4247,112 @@
                 <i class="fas fa-user-plus"></i> Registrasi Baru
               </button>
             ` : ''}
-            <div class="stat-card" style="padding:8px 16px; flex-direction:row; align-items:center; gap:12px; margin-bottom:0">
-              <i class="fas fa-search" style="color:var(--text-secondary)"></i>
-              <input type="text" id="gallerySearch" placeholder="Cari nama atau ID..." style="background:none; border:none; color:var(--text-main); outline:none; font-size:14px; width:180px">
+            <div class="stat-card" style="padding:8px 16px; flex-direction:row; align-items:center; gap:12px; margin-bottom:0; background:white; border-radius:14px">
+              <i class="fas fa-search" style="color:#94a3b8"></i>
+              <input type="text" id="gallerySearch" placeholder="Cari nama atau ID..." style="background:none; border:none; color:#1e293b; outline:none; font-size:14px; width:180px">
             </div>
           </div>
         </div>
-        <div id="galleryGrid" style="display:grid; grid-template-columns:repeat(auto-fill, minmax(220px, 1fr)); gap:24px; margin-top:24px">
-          ${members.map(m => `
-            <div class="stat-card gallery-item" style="padding:20px; align-items:center; text-align:center; animation: fadeIn 0.4s ease forwards">
-              <div style="width:140px; height:140px; border-radius:50%; overflow:hidden; margin-bottom:16px; border:4px solid var(--primary-light); background:var(--bg-light); display:flex; align-items:center; justify-content:center; box-shadow:0 4px 12px rgba(0,0,0,0.1)">
-                ${m.photoUrl ? `<img src="${getDirectLink(m.photoUrl)}" style="width:100%; height:100%; object-fit:cover">` : `<i class="fas fa-user fa-4x" style="color:var(--text-secondary)"></i>`}
-              </div>
-              <div style="font-weight:700; color:var(--text-main); margin-bottom:4px; font-size:16px">${escapeHtml(m.fullName)}</div>
-              <div style="font-size:12px; color:var(--text-secondary); margin-bottom:8px; font-family:monospace; background:var(--bg-light); padding:4px 8px; border-radius:6px">ID: ${escapeHtml(m.memberId)}</div>
-              
-              <div style="background:#f1f5f9; border-radius:8px; padding:8px; margin-bottom:16px; text-align:left; font-size:11px; color:#475569">
-                <div style="display:flex; align-items:center; gap:6px; margin-bottom:4px">
-                  <i class="fas fa-fingerprint" style="color:#3b82f6; width:14px"></i>
-                  <span>FaceID: <b>${escapeHtml(m.faceIdCode || '-')}</b></span>
-                </div>
-                <div style="display:flex; align-items:center; gap:6px">
-                  <i class="fas fa-id-badge" style="color:#10b981; width:14px"></i>
-                  <span>Name: <b>${escapeHtml(m.faceIdName || '-')}</b></span>
+        <div id="galleryGrid" style="display:grid; grid-template-columns:repeat(auto-fill, minmax(280px, 1fr)); gap:24px; margin-top:24px">
+          ${members.map(m => {
+            const isActive = m.status === 'Aktif';
+            const statusColor = isActive ? '#10b981' : '#ef4444';
+            const genderIcon = m.gender === 'Perempuan' ? 'venus' : 'mars';
+            const genderColor = m.gender === 'Perempuan' ? '#ec4899' : '#3b82f6';
+            
+            return `
+            <div class="gallery-item-premium" style="background:white; border-radius:24px; overflow:hidden; position:relative; box-shadow:0 10px 25px rgba(0,0,0,0.05); border:1px solid #f1f5f9; transition:all 0.3s ease; display:flex; flex-direction:column; animation: fadeIn 0.4s ease forwards">
+              <!-- Header Gradient -->
+              <div style="height:80px; background:linear-gradient(135deg, ${isActive ? '#10b981, #059669' : '#ef4444, #dc2626'}); position:relative">
+                <div class="badge" style="position:absolute; top:12px; right:12px; background:rgba(255,255,255,0.2); backdrop-filter:blur(10px); color:white; border:1px solid rgba(255,255,255,0.3); font-size:10px; padding:4px 10px">
+                  <i class="fas fa-${genderIcon}"></i> ${m.gender || '-'}
                 </div>
               </div>
-
-              ${m.photoUrl ? `<a href="${getDirectLink(m.photoUrl)}" target="_blank" class="btn btn-outline" style="padding:8px 16px; font-size:12px; width:100%; border-radius:10px">Buka Foto <i class="fas fa-external-link-alt"></i></a>` : `<button class="btn btn-secondary" style="padding:8px 16px; font-size:12px; width:100%; border-radius:10px" disabled>Tidak Ada Foto</button>`}
               
-              ${currentUser.role === 'Admin' ? `
-                <button class="btn btn-primary" style="padding:8px 16px; font-size:12px; width:100%; border-radius:10px; margin-top:8px" onclick="openChangePhotoModal('${m.memberId}', '${m.photoUrl ? getDirectLink(m.photoUrl) : ''}')"><i class="fas fa-camera"></i> Ganti Foto</button>
-                <button class="btn btn-secondary" style="padding:8px 16px; font-size:12px; width:100%; border-radius:10px; margin-top:8px" onclick="openEditProfileModal('${m.memberId}')"><i class="fas fa-edit"></i> Edit Profil</button>
-              ` : ''}
+              <!-- Avatar -->
+              <div style="margin:-45px auto 12px; position:relative; z-index:2">
+                <div style="width:100px; height:100px; border-radius:30px; overflow:hidden; border:4px solid white; box-shadow:0 8px 20px rgba(0,0,0,0.1); background:#f8fafc; display:flex; align-items:center; justify-content:center">
+                  ${m.photoUrl ? `<img src="${getDirectLink(m.photoUrl)}" style="width:100%; height:100%; object-fit:cover">` : `<i class="fas fa-user fa-3x" style="color:#cbd5e1"></i>`}
+                </div>
+                <div style="position:absolute; bottom:0; right:0; width:24px; height:24px; background:${statusColor}; border:3px solid white; border-radius:50%; box-shadow:0 2px 6px rgba(0,0,0,0.2)"></div>
+              </div>
 
-              <div style="display:flex; gap:8px; margin-top:12px; width:100%">
-                <button class="btn btn-info" style="flex:1; padding:8px; font-size:11px; border-radius:10px" onclick="viewMemberFullDetails('${m.memberId}')">
-                  <i class="fas fa-history"></i> Riwayat
-                </button>
-                ${currentUser.role === 'Admin' ? `
-                  <button class="btn btn-danger" style="flex:1; padding:8px; font-size:11px; border-radius:10px" onclick="confirmDeleteMember('${m.memberId}', '${escapeHtml(m.fullName)}')">
-                    <i class="fas fa-trash"></i> Hapus
+              <!-- Content -->
+              <div style="padding:0 24px 20px; text-align:center; flex:1">
+                <div style="font-weight:800; color:#1e293b; font-size:18px; line-height:1.2; margin-bottom:4px">${escapeHtml(m.name)}</div>
+                <div style="font-size:12px; color:#64748b; margin-bottom:12px; font-weight:600; letter-spacing:0.5px">ID: ${escapeHtml(m.memberId)}</div>
+                
+                <div style="display:flex; justify-content:center; gap:8px; margin-bottom:16px">
+                  <span class="badge" style="background:${isActive ? '#ecfdf5' : '#fef2f2'}; color:${statusColor}; border:1px solid ${isActive ? '#d1fae5' : '#fee2e2'}; font-weight:700">
+                    ${m.status.toUpperCase()}
+                  </span>
+                  <span class="badge" style="background:#f1f5f9; color:#475569; border:1px solid #e2e8f0; font-weight:600">
+                    ${m.currentPackage || '-'}
+                  </span>
+                </div>
+
+                <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:auto">
+                  <button class="btn btn-outline btn-sm" style="border-radius:12px; padding:10px" onclick="viewMemberFullDetails('${m.memberId}')">
+                    <i class="fas fa-history"></i> Riwayat
                   </button>
-                ` : ''}
+                  <button class="btn btn-primary btn-sm" style="border-radius:12px; padding:10px" onclick="openEditProfileModal('${m.memberId}')">
+                    <i class="fas fa-user-edit"></i> Edit
+                  </button>
+                </div>
               </div>
+
+              <!-- Action Bar (Admin Only) -->
+              ${currentUser.role === 'Admin' ? `
+                <div style="padding:12px 20px; background:#f8fafc; border-top:1px solid #f1f5f9; display:flex; justify-content:space-between; align-items:center">
+                  <div style="display:flex; gap:10px">
+                    <button class="btn-icon" style="color:#3b82f6" onclick="openChangePhotoModal('${m.memberId}', '${m.photoUrl ? getDirectLink(m.photoUrl) : ''}')" title="Ganti Foto">
+                      <i class="fas fa-camera"></i>
+                    </button>
+                    <button class="btn-icon" style="color:#10b981" onclick="window.open('https://wa.me/${formatWhatsAppNumber(m.phone)}', '_blank')" title="WhatsApp">
+                      <i class="fab fa-whatsapp"></i>
+                    </button>
+                  </div>
+                  <button class="btn-icon" style="color:#ef4444" onclick="confirmDeleteMember('${m.memberId}', '${escapeHtml(m.name)}')" title="Hapus Member">
+                    <i class="fas fa-trash-alt"></i>
+                  </button>
+                </div>
+              ` : ''}
             </div>
-          `).join('')}
+          `;}).join('')}
         </div>
       `;
 
+      // CSS for Hover Effect
+      const style = document.createElement('style');
+      style.innerHTML = `
+        .gallery-item-premium:hover {
+          transform: translateY(-8px);
+          box-shadow: 0 20px 40px rgba(0,0,0,0.08);
+          border-color: var(--primary);
+        }
+        .btn-icon {
+          background: white;
+          border: 1px solid #e2e8f0;
+          width: 36px;
+          height: 36px;
+          border-radius: 10px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          cursor: pointer;
+          transition: 0.2s;
+        }
+        .btn-icon:hover {
+          transform: scale(1.1);
+          border-color: currentColor;
+          background: #f1f5f9;
+        }
+      `;
+      document.head.appendChild(style);
+
       document.getElementById('gallerySearch').addEventListener('input', function (e) {
         const q = e.target.value.toLowerCase();
-        document.querySelectorAll('.gallery-item').forEach(item => {
+        document.querySelectorAll('.gallery-item-premium').forEach(item => {
           const text = item.textContent.toLowerCase();
           const matches = text.includes(q);
           item.style.display = matches ? 'flex' : 'none';
@@ -4642,7 +4702,7 @@
     }
 
     function clearMemberForm(keepResult = false) {
-      ['reg_name', 'reg_dob', 'reg_phone', 'reg_email', 'reg_notes'].forEach(id => {
+      ['reg_name', 'reg_phone', 'reg_email', 'reg_notes'].forEach(id => {
         const el = document.getElementById(id);
         if (el) el.value = '';
       });
@@ -4799,7 +4859,6 @@
       const phone = document.getElementById('reg_phone')?.value?.trim();
       const email = document.getElementById('reg_email')?.value?.trim();
       const gender = document.getElementById('reg_gender')?.value;
-      const dob = '';
       const pay = document.getElementById('reg_payment')?.value;
       const notes = document.getElementById('reg_notes')?.value?.trim();
       const pkg = getSelectedPkg();
@@ -5066,11 +5125,10 @@
               showToast('Error: ' + (err.message || 'Koneksi gagal'), 'error');
             })
             .registerMember({
-              fullName: name,
+              name: name,
               phone: phone,
               email: email,
               gender: gender,
-              dob: dob,
               packageId: pkg.id,
               paymentMethod: pay,
               notes: notes,
@@ -5079,6 +5137,60 @@
             }, getCurrentStaffIdentifier());
         }
       );
+    }
+
+    function doCheckin() {
+      const mid = (document.getElementById('ci_memberId')?.value || '').trim().toUpperCase();
+      if (!mid) { showToast('Masukkan Member ID', 'warning'); return; }
+
+      const member = (window.appData && appData.members) ? appData.members.find(m => m.memberId === mid) : null;
+      const requestId = 'REQ_CIN_' + Date.now() + '_' + Math.floor(Math.random() * 1000);
+
+      // 1. INSTANT UI
+      const el = document.getElementById('checkinResult');
+      if (el && member) {
+        const checkinTime = new Date();
+        const daysLeft = member.expiryDate ? Math.max(0, Math.ceil((new Date(member.expiryDate) - new Date()) / 86400000)) : 0;
+        
+        el.innerHTML = `
+          <div class="checkin-success-card animate__animated animate__fadeInUp" style="background:white; border-radius:24px; padding:24px; box-shadow:0 15px 35px rgba(0,0,0,0.1)">
+            <div style="display:flex;align-items:center;gap:16px;margin-bottom:20px">
+              <div style="background:#10b981;color:white;width:60px;height:60px;border-radius:20px;display:flex;align-items:center;justify-content:center;font-size:24px;box-shadow:0 8px 15px rgba(16,185,129,0.3)">
+                <i class="fas fa-check"></i>
+              </div>
+              <div>
+                <h3 style="color:#1e293b;margin:0 0 4px 0; font-weight:800">Check-In Berhasil</h3>
+                <p style="color:#64748b;margin:0;font-size:13px"><i class="far fa-clock"></i> ${formatTime(checkinTime)}</p>
+              </div>
+            </div>
+            <div class="info-box" style="background:#f8fafc; border-radius:16px; padding:20px; border:1px solid #e2e8f0">
+              <div style="font-size:20px; font-weight:900; color:#1e293b; margin-bottom:12px">${escapeHtml(member.name)}</div>
+              <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px; text-align:left">
+                <div><small style="color:#94a3b8">PAKET</small><div style="font-weight:700; color:#475569">${member.currentPackage || '-'}</div></div>
+                <div><small style="color:#94a3b8">MASA AKTIF</small><div style="font-weight:700; color:${daysLeft <= 7 ? '#ef4444' : '#10b981'}">${daysLeft} HARI LAGI</div></div>
+              </div>
+            </div>
+            <div id="sync_${requestId}" style="margin-top:16px; text-align:center; font-size:11px; color:#94a3b8">
+              <i class="fas fa-sync fa-spin"></i> Menyinkronkan...
+            </div>
+          </div>
+        `;
+        document.getElementById('ci_memberId').value = '';
+      }
+
+      // 2. BACKGROUND SYNC
+      google.script.run
+        .withSuccessHandler(function (res) {
+          const syncEl = document.getElementById('sync_' + requestId);
+          if (res.success) {
+            if (syncEl) syncEl.innerHTML = '✅ Sinkron';
+            fetchDashboardData();
+            loadTodayCheckins();
+          } else {
+            if (syncEl) syncEl.innerHTML = '❌ Gagal: ' + res.message;
+          }
+        })
+        .processCheckIn({ memberId: mid, requestId: requestId }, getCurrentStaffIdentifier());
     }
 
     function printMemberCard(memberId) {
@@ -5107,7 +5219,6 @@
                       width: 350px; height: 210px; background: #000; color: white; border-radius: 12px; position: relative; overflow: hidden; 
                       box-shadow: none; border: 1px solid #222; -webkit-print-color-adjust: exact;
                     }
-                    /* Decorative background elements */
                     .card::before {
                       content: ''; position: absolute; top: -50px; right: -50px; width: 150px; height: 150px;
                       background: linear-gradient(135deg, rgba(124, 58, 237, 0.2), transparent); border-radius: 50%; z-index: 1;
@@ -5119,31 +5230,25 @@
                     .card-content { position: relative; z-index: 2; padding: 15px; display: flex; height: 100%; box-sizing: border-box; }
                     .card-left { flex: 0 0 100px; display: flex; flex-direction: column; align-items: center; }
                     .card-right { flex: 1; padding-left: 18px; display: flex; flex-direction: column; justify-content: space-between; border-left: 1px solid rgba(255,255,255,0.1); }
-                    
                     .photo-container { 
                       width: 90px; height: 110px; border: 2px solid #7c3aed; border-radius: 8px; overflow: hidden; background: #111; 
                       box-shadow: 0 4px 10px rgba(0,0,0,0.5); margin-bottom: 10px;
                     }
                     .photo-container img { width: 100%; height: 100%; object-fit: cover; }
-                    
                     .qr-container { 
                       width: 65px; height: 65px; background: white; padding: 4px; border-radius: 6px; 
                       box-shadow: 0 2px 8px rgba(0,0,0,0.3);
                     }
                     .qr-container img { width: 100%; height: 100%; }
-                    
                     .header { margin-bottom: 12px; }
                     .gym-name { font-family: 'Orbitron', sans-serif; font-size: 20px; font-weight: 700; color: #facc15; letter-spacing: 2px; text-shadow: 0 2px 4px rgba(0,0,0,0.5); }
                     .tagline { font-size: 8px; color: #a78bfa; text-transform: uppercase; letter-spacing: 1px; margin-top: -4px; }
-                    
                     .member-info { margin-bottom: 10px; }
                     .member-name { font-size: 17px; font-weight: 700; color: #fff; text-transform: uppercase; margin: 0; line-height: 1.2; word-break: break-word; }
                     .member-id { font-family: monospace; font-size: 14px; color: #7c3aed; font-weight: bold; margin-top: 2px; }
-                    
                     .details { display: grid; grid-template-columns: 1fr; gap: 4px; }
                     .info-row { font-size: 10px; display: flex; align-items: center; gap: 8px; color: #94a3b8; }
                     .info-row b { color: #facc15; font-size: 11px; }
-                    
                     .footer-tag { 
                       position: absolute; bottom: 0; right: 0; padding: 5px 15px; background: #7c3aed; color: white; 
                       font-size: 10px; font-weight: 700; border-top-left-radius: 12px; letter-spacing: 1px;
@@ -5184,8 +5289,7 @@
                     </div>
                     <div class="footer-tag">VIP MEMBER</div>
                   </div>
-                
-</body>
+                </body>
               </html>
             `);
             printWindow.document.close();
@@ -5334,7 +5438,7 @@
                     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
                       <div>
                         <i class="fas fa-user-circle" style="color:#667eea;margin-right:4px"></i>
-                        <b>${escapeHtml(m.fullName)}</b>
+                        <b>${escapeHtml(m.name)}</b>
                       </div>
                       <span class="badge badge-${statusClass}">${escapeHtml(m.status || 'Non Aktif')}</span>
                     </div>
@@ -5394,7 +5498,7 @@
                 html += `
                   <div onclick="selectMemberForPOS('${memberJson}')" 
                        style="padding:10px;background:white;border-bottom:1px solid #f1f5f9;cursor:pointer;font-size:12px">
-                    <b>${escapeHtml(m.fullName)}</b> (${m.memberId})
+                    <b>${escapeHtml(m.name)}</b> (${m.memberId})
                     <div style="color:#64748b;font-size:11px">${m.phone}</div>
                   </div>
                 `;
@@ -5446,7 +5550,7 @@
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
               <div>
                 <i class="fas fa-user-circle" style="color:#667eea;margin-right:4px"></i>
-                <b style="font-size:15px">${escapeHtml(member.fullName)}</b>
+                <b style="font-size:15px">${escapeHtml(member.name)}</b>
               </div>
               <span class="badge badge-${statusClass}">${escapeHtml(member.status)}</span>
             </div>
@@ -5494,7 +5598,7 @@
       summaryEl.innerHTML = `
         <div class="payment-row">
           <span>Member</span>
-          <span><b>${escapeHtml(selectedMember.fullName)}</b> (${escapeHtml(selectedMember.memberId)})</span>
+          <span><b>${escapeHtml(selectedMember.name)}</b> (${escapeHtml(selectedMember.memberId)})</span>
         </div>
         <div class="payment-row">
           <span>Paket Perpanjangan</span>
@@ -5562,7 +5666,7 @@
 
       showConfirm(
         `KONFIRMASI PERPANJANGAN MEMBER\n\n` +
-        `Member       : ${selectedMember.fullName}\n` +
+        `Member       : ${selectedMember.name}\n` +
         `ID           : ${selectedMember.memberId}\n` +
         `Paket        : ${pkgName}\n` +
         `Durasi       : ${duration}\n` +
@@ -5618,7 +5722,7 @@
                       </div>
                       <div>
                         <span style="color:#64748b">Nama</span><br>
-                        <b>${escapeHtml(r.memberName || selectedMember.fullName)}</b>
+                        <b>${escapeHtml(r.memberName || selectedMember.name)}</b>
                       </div>
                       <div>
                         <span style="color:#64748b">Paket Baru</span><br>
@@ -5666,10 +5770,10 @@
                   ` : ''}
                   
                   <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:16px;flex-wrap:wrap">
-                    <button class="btn btn-sm btn-outline" onclick="printReceipt('extension', { memberId:'${r.memberId || selectedMember.memberId}', name:'${r.memberName || selectedMember.fullName}', package:'${r.packageName || pkgName}', expiry:'${r.newExpiry}', receipt:'${r.number}', total:${r.total || price}, payment:'${payEl.value}' })">
+                    <button class="btn btn-sm btn-outline" onclick="printReceipt('extension', { memberId:'${r.memberId || selectedMember.memberId}', name:'${r.memberName || selectedMember.name}', package:'${r.packageName || pkgName}', expiry:'${r.newExpiry}', receipt:'${r.number}', total:${r.total || price}, payment:'${payEl.value}' })">
                       <i class="fas fa-print"></i> Cetak Struk
                     </button>
-                    <button class="btn btn-info btn-sm" onclick="const txt = generateReceiptText('extension', { memberId:'${r.memberId || selectedMember.memberId}', name:'${r.memberName || selectedMember.fullName}', package:'${r.packageName || pkgName}', expiry:'${r.newExpiry}', receipt:'${r.number}', total:${r.total || price}, payment:'${payEl.value}' }); shareToWhatsApp('${selectedMember.phone}', txt)">
+                    <button class="btn btn-info btn-sm" onclick="const txt = generateReceiptText('extension', { memberId:'${r.memberId || selectedMember.memberId}', name:'${r.memberName || selectedMember.name}', package:'${r.packageName || pkgName}', expiry:'${r.newExpiry}', receipt:'${r.number}', total:${r.total || price}, payment:'${payEl.value}' }); shareToWhatsApp('${selectedMember.phone}', txt)">
                       <i class="fab fa-whatsapp"></i> Kirim WA
                     </button>
                     <button class="btn btn-primary btn-sm" onclick="isResultActive=false; refreshPage()">
@@ -6210,130 +6314,62 @@
 
     function checkoutPOS() {
       if (!validateSession()) return;
-      
-      if (posCart.length === 0) {
-        showToast('Keranjang masih kosong', 'warning');
-        return;
-      }
+      if (posCart.length === 0) { showToast('Keranjang masih kosong', 'warning'); return; }
 
       const subtotal = posCart.reduce((acc, item) => acc + (item.price * item.qty), 0);
       const discPercent = parseFloat(document.getElementById('pos_discount').value) || 0;
       const total = subtotal - (subtotal * discPercent / 100);
       const payment = document.getElementById('pos_payment').value;
+      const whatsapp = document.getElementById('pos_wa_number').value.trim();
+
+      const requestId = 'REQ_POS_' + Date.now() + '_' + Math.floor(Math.random() * 1000);
 
       showConfirm(`Proses transaksi POS senilai ${formatCurrency(total)}?`, function (ok) {
         if (!ok) return;
 
-        const btn = document.querySelector('.pos-checkout-area .btn-primary');
-        const originalHtml = btn.innerHTML;
-        btn.disabled = true;
-        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+        const resultDiv = document.createElement('div');
+        resultDiv.style = "position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:9999";
+        resultDiv.innerHTML = `
+          <div class="form-card animate__animated animate__zoomIn" style="width:90%;max-width:400px;text-align:center; border-radius:24px">
+            <div class="form-card-header" style="background:#f0fdf4; color:#16a34a"><h3><i class="fas fa-check-circle"></i> Berhasil (Offline)</h3></div>
+            <div class="form-card-body" style="padding:24px">
+              <div style="font-size:28px; font-weight:800; color:#1e293b; margin-bottom:8px">${formatCurrency(total)}</div>
+              <p style="color:#64748b; margin-bottom:24px">Sinkronisasi berjalan di latar belakang...</p>
+              <div style="display:flex;flex-direction:column;gap:10px">
+                <button class="btn btn-primary" id="btnPosDoneNow">Selesai</button>
+              </div>
+            </div>
+          </div>
+        `;
+        document.body.appendChild(resultDiv);
 
-        showLoading();
-        const payload = {
-          items: posCart,
-          subtotal: subtotal,
-          discount: discPercent,
-          total: total,
-          paymentMethod: payment,
-          memberId: posSelectedMember ? posSelectedMember.id : '',
-          customerName: posSelectedMember ? posSelectedMember.name : 'Guest',
-          cashier: getCurrentStaffIdentifier(),
-          whatsapp: document.getElementById('pos_wa_number').value.trim(),
-          notes: '',
-          gym: currentBranch
-        };
-
-        // ROLLBACK PREPARATION
         const previousCart = [...posCart];
-        const cacheKey = `dashboard_stats_all_all_${currentBranch}`;
-        const previousStats = getFromCache(cacheKey);
-
+        posCart = [];
+        updateCartUI();
+        
         google.script.run
           .withSuccessHandler(function (res) {
-            hideLoading();
-            btn.disabled = false;
-            btn.innerHTML = originalHtml;
             if (res.success) {
-              showToast('Transaksi Berhasil!', 'success');
-
-              // BACKGROUND REVALIDATION
-              fetchDashboardData(null, null, true); // Force refresh cache
-              CACHE.clearStats(); // Clear all stats cache
-
-              // Print receipt option
-              showConfirm('Transaksi Berhasil! Pilih Aksi:', (ok) => {
-                // Default behavior handles the selection via multiple buttons if we had a better modal
-                // For now, let's just use a simple flow or a custom modal
-              }, 'Kirim WA', 'Batal'); // Standard showConfirm might not be enough for 3 options
-
-              // Re-implementing with a custom UI for POS success
-              const resultDiv = document.createElement('div');
-              resultDiv.style = "position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:9999";
-              resultDiv.innerHTML = `
-                <div class="form-card" style="width:90%;max-width:400px;text-align:center">
-                  <div class="form-card-header"><h3>✅ Transaksi Berhasil</h3></div>
-                  <div class="form-card-body">
-                    <p style="margin-bottom:20px">Pilih aksi untuk struk pembayaran:</p>
-                    <div style="display:flex;flex-direction:column;gap:10px">
-                      <button class="btn btn-info" id="btnPosWA"><i class="fab fa-whatsapp"></i> Kirim ke WhatsApp</button>
-                      <button class="btn btn-outline" id="btnPosPrint"><i class="fas fa-print"></i> Cetak Struk Lokal</button>
-                      <button class="btn btn-primary" id="btnPosDone">Selesai</button>
-                    </div>
-                  </div>
-                </div>
-              `;
-              document.body.appendChild(resultDiv);
-
-              document.getElementById('btnPosWA').onclick = () => {
-                sendPOSReceiptToWA(res.trxId, payload);
-                document.body.removeChild(resultDiv);
-                resetPOS();
-                refreshPage();
-              };
-              document.getElementById('btnPosPrint').onclick = () => {
-                printReceipt('pos', {
-                  receipt: res.trxId,
-                  name: payload.customerName,
-                  items: payload.items,
-                  subtotal: payload.subtotal,
-                  discount: payload.discount,
-                  total: payload.total,
-                  payment: payload.paymentMethod
-                });
-                document.body.removeChild(resultDiv);
-                resetPOS();
-                refreshPage();
-              };
-              document.getElementById('btnPosDone').onclick = () => {
-                document.body.removeChild(resultDiv);
-                resetPOS();
-                refreshPage();
-              };
-
+              showToast('✅ Transaksi POS berhasil disinkronkan', 'success');
+              fetchDashboardData();
+              loadTodayPOSTransactions();
             } else {
-              // ROLLBACK LOGIC
-              posCart = previousCart;
-              updateCartUI();
-              if (previousStats) saveToCache(cacheKey, previousStats);
-
-              showToast('Gagal: ' + res.message, 'error');
+              showToast('❌ Gagal sinkron: ' + res.message, 'error');
             }
           })
-          .withFailureHandler(function (err) {
-            hideLoading();
-            btn.disabled = false;
-            btn.innerHTML = originalHtml;
-            // ROLLBACK LOGIC
-            posCart = previousCart;
-            updateCartUI();
-            if (previousStats) saveToCache(cacheKey, previousStats);
-            showToast('Error: ' + err.message, 'error');
-          })
-          .processPOSTransaction(payload);
+          .processPOSTransaction({
+            requestId: requestId,
+            items: previousCart,
+            total: total,
+            paymentMethod: payment,
+            memberId: posSelectedMember ? posSelectedMember.memberId : '',
+            customerName: posSelectedMember ? posSelectedMember.name : 'Guest',
+            cashier: getCurrentStaffIdentifier(),
+            whatsapp: whatsapp,
+            gym: currentBranch
+          });
 
-        // OPTIMISTIC UPDATE: Clear cart immediately to feel fast
-        resetPOS();
+        document.getElementById('btnPosDoneNow').onclick = () => document.body.removeChild(resultDiv);
       });
     }
 
@@ -6997,7 +7033,7 @@
       const payload = {
         productId: document.getElementById('restock_prod_id').value,
         addedQty: parseInt(document.getElementById('restock_qty').value),
-        user: currentUser ? currentUser.name : 'System',
+        user: getCurrentStaffIdentifier(),
         gym: currentBranch
       };
 
@@ -7805,125 +7841,12 @@
     }
 
     function doCheckin() {
-      if (showOfflineMessage()) return;
-
       const mid = (document.getElementById('ci_memberId')?.value || '').trim().toUpperCase();
       if (!mid) {
         showToast('Masukkan Member ID', 'warning');
         return;
       }
 
-      const btn = document.getElementById('btnCheckin');
-      const originalText = btn.innerHTML;
-
-      // OPTIMISTIC UPDATE: Change button state and show immediate feedback
-      btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Memproses...';
-      btn.disabled = true;
-      showLoading();
-
-      // ROLLBACK PREPARATION: Store current dashboard state from cache
-      const cacheKey = `dashboard_stats_all_all_${currentBranch}`;
-      const previousStats = getFromCache(cacheKey);
-
-      const timeoutId = setTimeout(() => {
-        hideLoading();
-        btn.innerHTML = originalText;
-        btn.disabled = false;
-        showToast('Request timeout. Silakan coba lagi.', 'error');
-      }, 30000);
-
-      google.script.run
-        .withSuccessHandler(function (res) {
-          clearTimeout(timeoutId);
-          hideLoading();
-          btn.innerHTML = originalText;
-          btn.disabled = false;
-
-          console.log('Check-in response from server:', res);
-
-          const el = document.getElementById('checkinResult');
-          if (!el) return;
-
-          if (res && res.success === true) {
-            // BACKGROUND REVALIDATION: Update dashboard stats and today's table
-            fetchDashboardData();
-            loadTodayCheckins();
-
-            let checkinTime = res.checkinTime ? new Date(res.checkinTime) : new Date();
-            let daysLeft = res.daysLeft || 0;
-            let memberName = res.memberName || mid;
-            let expiryDate = res.expiryDate;
-            let currentPackage = res.currentPackage;
-
-            // FALLBACK: If local response (Offline-First), use cached appData for details
-            if (res.local && window.appData && window.appData.members) {
-              const m = window.appData.members.find(member => member.memberId === mid);
-              if (m) {
-                expiryDate = m.expiry || m.expiryDate || expiryDate;
-                currentPackage = m.package || m.currentPackage || currentPackage;
-                daysLeft = m.daysLeft || daysLeft;
-                memberName = m.fullName || m.name || memberName;
-              }
-            }
-
-            let warningHtml = '';
-            if (res.warning) {
-              warningHtml = `
-                <div style="margin-top:16px;padding:12px;background:#fef3c7;border-left:4px solid #f59e0b;border-radius:8px;color:#92400e">
-                  <i class="fas fa-exclamation-triangle"></i> ${escapeHtml(res.warning)}
-                </div>
-              `;
-            }
-
-            let ptHtml = '';
-            if (res.remainingPTSessions > 0) {
-              ptHtml = `<div style="margin-top:8px"><i class="fas fa-dumbbell" style="color:#8b5cf6"></i> Sesi PT tersisa: <b>${res.remainingPTSessions}</b></div>`;
-            }
-
-            el.innerHTML = `
-              <div class="checkin-success-card">
-                <div style="display:flex;align-items:center;gap:16px;margin-bottom:16px">
-                  <div style="background:#22c55e;color:white;width:56px;height:56px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:24px">
-                    <i class="fas fa-check"></i>
-                  </div>
-                  <div>
-                    <h3 style="color:#166534;margin:0 0 4px 0">✅ ${escapeHtml(res.message || 'Check-In Berhasil')}</h3>
-                    <p style="color:#166534;opacity:0.8;margin:0;font-size:13px">${formatDateTime(checkinTime)}</p>
-                  </div>
-                </div>
-                
-                <div class="info-box" style="background:white;border-radius:10px;padding:16px;margin:12px 0">
-                  <div style="font-size:16px;margin-bottom:8px"><b>${escapeHtml(memberName)}</b></div>
-                  <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;font-size:14px">
-                    <div>
-                      <span style="color:#64748b">ID Member</span><br>
-                      <code style="background:#f1f5f9;padding:4px 8px;border-radius:4px">${escapeHtml(res.memberId || mid)}</code>
-                    </div>
-                    <div>
-                      <span style="color:#64748b">Paket</span><br>
-                      <b>${escapeHtml(currentPackage || '-')}</b>
-                    </div>
-                    <div>
-                      <span style="color:#64748b">Berlaku s/d</span><br>
-                      <b>${formatDate(expiryDate)}</b>
-                    </div>
-                    <div>
-                      <span style="color:#64748b">Sisa Hari</span><br>
-                      <b style="color:${daysLeft <= 3 ? '#ef4444' : '#166534'}">${daysLeft} Hari</b>
-                    </div>
-                  </div>
-                  ${ptHtml}
-                </div>
-
-                <div style="margin-top:12px;text-align:right;color:#64748b;font-size:12px">
-                  <i class="far fa-clock"></i> Check-in: ${formatTime(checkinTime)}
-                </div>
-              </div>
-            `;
-
-            document.getElementById('ci_memberId').value = '';
-            loadTodayCheckins();
-          } else {
             const errorType = res?.type || 'error';
             const errorMessage = res?.message || 'Check-In Gagal';
             const errorDetails = res?.details || '';
@@ -7932,69 +7855,6 @@
             let bgColor, borderColor, iconColor, icon;
             if (errorType === 'already_checked_in') {
               bgColor = '#fef3c7';
-              borderColor = '#f59e0b';
-              iconColor = '#f59e0b';
-              icon = 'fa-clock';
-            } else if (errorType === 'inactive' || errorType === 'expired') {
-              bgColor = '#fee2e2';
-              borderColor = '#ef4444';
-              iconColor = '#ef4444';
-              icon = 'fa-user-slash';
-            } else {
-              bgColor = '#fee2e2';
-              borderColor = '#ef4444';
-              iconColor = '#ef4444';
-              icon = 'fa-times-circle';
-            }
-
-            el.innerHTML = `
-              <div class="checkin-error-card" style="background:${bgColor};border-left:6px solid ${borderColor};border-radius:12px;padding:20px;margin-bottom:20px">
-                <div style="display:flex;align-items:center;gap:16px;margin-bottom:12px">
-                  <div style="background:${iconColor};color:white;width:56px;height:56px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:24px">
-                    <i class="fas ${icon}"></i>
-                  </div>
-                  <div>
-                    <h3 style="color:#991b1b;margin:0 0 4px 0">❌ ${escapeHtml(errorMessage)}</h3>
-                    <p style="color:#991b1b;opacity:0.8;margin:0;font-size:13px">${formatDateTime(new Date())}</p>
-                  </div>
-                </div>
-                
-                <div class="info-box" style="background:white;border-radius:10px;padding:16px;margin:12px 0">
-                  <p style="margin:0 0 8px 0"><i class="fas fa-info-circle" style="color:#64748b"></i> ${escapeHtml(errorDetails)}</p>
-                  ${memberInfo ? `<p style="margin:0"><i class="fas fa-user" style="color:#64748b"></i> ${escapeHtml(memberInfo)}</p>` : ''}
-                </div>
-                
-                ${errorType === 'inactive' || errorType === 'expired' ? `
-                  <div style="margin-top:12px">
-                    <button class="btn btn-warning btn-sm" onclick="showView('transactions')">
-                      <i class="fas fa-sync-alt"></i> Perpanjang Sekarang
-                    </button>
-                  </div>
-                ` : ''}
-              </div>
-            `;
-
-          }
-        })
-        .withFailureHandler(function (err) {
-          clearTimeout(timeoutId);
-          hideLoading();
-          btn.innerHTML = originalText;
-          btn.disabled = false;
-
-          const el = document.getElementById('checkinResult');
-          if (el) {
-            el.innerHTML = `
-              <div class="checkin-error-card" style="background:#fee2e2;border-left:6px solid #ef4444;border-radius:12px;padding:20px">
-                <h3 style="color:#991b1b">❌ Error Sistem</h3>
-                <p style="margin-top:8px">${escapeHtml(err.message)}</p>
-              </div>
-            `;
-          }
-          showToast('Error: ' + err.message, 'error');
-        })
-        .processCheckIn({ memberId: mid, gym: currentBranch }, getCurrentStaffIdentifier());
-    }
 
     function doCheckinWithPT(forcedMid) {
       if (!validateSession()) return;
@@ -8053,7 +7913,7 @@
                 expiryDate = m.expiry || m.expiryDate || expiryDate;
                 currentPackage = m.package || m.currentPackage || currentPackage;
                 daysLeft = m.daysLeft || daysLeft;
-                memberName = m.fullName || m.name || memberName;
+                memberName = m.name || memberName;
               }
             }
 
@@ -8628,7 +8488,7 @@
         `_Pesan otomatis dari System ${currentBranchName}_`;
 
       // Try to find phone from appData if possible
-      const member = appData.members.find(m => m.fullName === name);
+      const member = appData.members.find(m => m.name === name);
       const phone = member ? member.phone : '';
 
       shareToWhatsApp(phone, text);
@@ -8760,7 +8620,7 @@
                     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
                       <div>
                         <i class="fas fa-user-circle" style="color:#667eea;margin-right:4px"></i>
-                        <b>${escapeHtml(m.fullName)}</b>
+                        <b>${escapeHtml(m.name)}</b>
                       </div>
                       <span class="badge badge-${statusClass}">${escapeHtml(statusText)}</span>
                     </div>
@@ -8849,7 +8709,7 @@
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
               <div>
                 <i class="fas fa-user-circle" style="color:#667eea;margin-right:4px"></i>
-                <b style="font-size:15px">${escapeHtml(member.fullName)}</b>
+                <b style="font-size:15px">${escapeHtml(member.name)}</b>
               </div>
               <span class="badge badge-${statusClass}">${escapeHtml(member.status)}</span>
             </div>
@@ -8889,7 +8749,7 @@
           }
         }
 
-        showToast(`Member ${member.fullName} dipilih`, 'success');
+        showToast(`Member ${member.name} dipilih`, 'success');
 
       } catch (e) {
         console.error('Error in selectMemberForPT:', e);
@@ -8929,7 +8789,7 @@
 
       showConfirm(
         `KONFIRMASI REGISTRASI PT\n\n` +
-        `Member      : ${ptSelectedMember.fullName}\n` +
+        `Member      : ${ptSelectedMember.name}\n` +
         `ID          : ${ptSelectedMember.memberId}\n` +
         `Trainer     : ${trainer}\n` +
         `Jumlah Sesi : ${sessions}\n` +
@@ -8975,7 +8835,7 @@
                     <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;font-size:14px">
                       <div>
                         <span style="color:#64748b">Member</span><br>
-                        <b>${escapeHtml(ptSelectedMember.fullName)}</b>
+                        <b>${escapeHtml(ptSelectedMember.name)}</b>
                       </div>
                       <div>
                         <span style="color:#64748b">Trainer</span><br>
@@ -9017,10 +8877,10 @@
                   </div>
                   
                   <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:16px;flex-wrap:wrap">
-                    <button class="btn btn-sm btn-outline" onclick="printReceipt('pt', { name:'${escapeJs(ptSelectedMember.fullName)}', trainer:'${escapeJs(trainer)}', sessions:${sessions}, expiry:'${res.expiryDate}', receipt:'${res.receiptNumber}', total:${res.totalAmount || total}, payment:'${payment}' })">
+                    <button class="btn btn-sm btn-outline" onclick="printReceipt('pt', { name:'${escapeJs(ptSelectedMember.name)}', trainer:'${escapeJs(trainer)}', sessions:${sessions}, expiry:'${res.expiryDate}', receipt:'${res.receiptNumber}', total:${res.totalAmount || total}, payment:'${payment}' })">
                       <i class="fas fa-print"></i> Cetak Struk
                     </button>
-                    <button class="btn btn-info btn-sm" onclick="const txt = generateReceiptText('pt', { name:'${escapeJs(ptSelectedMember.fullName)}', trainer:'${escapeJs(trainer)}', sessions:${sessions}, expiry:'${res.expiryDate}', receipt:'${res.receiptNumber}', total:${res.totalAmount || total}, payment:'${payment}' }); shareToWhatsApp('${ptSelectedMember.phone}', txt)">
+                    <button class="btn btn-info btn-sm" onclick="const txt = generateReceiptText('pt', { name:'${escapeJs(ptSelectedMember.name)}', trainer:'${escapeJs(trainer)}', sessions:${sessions}, expiry:'${res.expiryDate}', receipt:'${res.receiptNumber}', total:${res.totalAmount || total}, payment:'${payment}' }); shareToWhatsApp('${ptSelectedMember.phone}', txt)">
                       <i class="fab fa-whatsapp"></i> Kirim WA
                     </button>
                     <button class="btn btn-primary btn-sm" onclick="refreshPage()">
@@ -9631,7 +9491,7 @@
                     ${list.map(m => `
                       <tr>
                         <td><code>${escapeHtml(m.memberId || '-')}</code></td>
-                        <td><b>${escapeHtml(m.fullName || '-')}</b></td>
+                        <td><b>${escapeHtml(m.name || '-')}</b></td>
                         <td>${escapeHtml(m.phone || '-')}</td>
                         <td>${escapeHtml(m.email || '-')}</td>
                         <td>${escapeHtml(m.currentPackage || '-')}</td>
@@ -9801,7 +9661,7 @@
           showAlert('createUserAlert', 'Error: ' + err.message, 'error');
         })
         .createUser({
-          fullName: name,
+          name: name,
           phone: phone,
           username: username,
           role: role,
@@ -10015,7 +9875,7 @@
           }
         })
         .updateUserAccount(id, {
-          fullName: name,
+          name: name,
           phone: phone,
           email: email,
           role: role,
@@ -11368,7 +11228,7 @@
             showToast('Laporan berhasil dikirim!', 'success');
           } else {
             showToast('Gagal: ' + res.message, 'error');
-            alert('Gagal menghasilkan laporan: ' + res.message);
+            showToast('Gagal menghasilkan laporan: ' + res.message, 'error');
           }
         })
         .withFailureHandler(function (err) {
@@ -11498,7 +11358,10 @@
       }
 
       document.getElementById('editMemberId').value = memberId;
-      document.getElementById('editFullName').value = member.name || '';
+      document.getElementById('displayEditName').textContent = member.name || '-';
+      document.getElementById('displayEditId').textContent = 'ID: ' + memberId;
+      
+      document.getElementById('editName').value = member.name || '';
       document.getElementById('editPhone').value = member.phone || '';
       document.getElementById('editGender').value = member.gender || '-';
       document.getElementById('editFaceIdName').value = member.faceIdName || '';
@@ -11513,37 +11376,57 @@
 
     function submitEditProfile() {
       const memberId = document.getElementById('editMemberId').value;
-      const fullName = document.getElementById('editFullName').value.trim();
+      const name = document.getElementById('editName').value.trim();
       const phone = document.getElementById('editPhone').value.trim();
       const gender = document.getElementById('editGender').value;
       const faceIdName = document.getElementById('editFaceIdName').value.trim();
       const faceIdCode = document.getElementById('editFaceIdCode').value.trim();
 
-      if (!fullName) {
+      if (!name) {
         showToast('Nama Lengkap tidak boleh kosong', 'warning');
         return;
       }
 
-      const btn = document.getElementById('btnSubmitEditProfile');
-      const origText = btn.innerHTML;
-      btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Menyimpan...';
-      btn.disabled = true;
+      // 1. INSTANT WRITE (OPTIMISTIC UI)
+      // Update local cache immediately so the user sees the change instantly
+      if (window.appData && appData.members) {
+        const idx = appData.members.findIndex(m => m.memberId === memberId);
+        if (idx !== -1) {
+          appData.members[idx].name = name;
+          appData.members[idx].phone = phone;
+          appData.members[idx].gender = gender;
+          appData.members[idx].faceIdName = faceIdName;
+          appData.members[idx].faceIdCode = faceIdCode;
+          
+          // Save updated cache to localStorage
+          localStorage.setItem('gym_app_data', JSON.stringify(appData));
+          
+          // Re-render views if they are active
+          const activeView = document.querySelector('.menu-item.active')?.dataset.view;
+          if (activeView === 'gallery') loadGalleryView();
+          if (activeView === 'memberAdmin') loadMemberAdminView();
+        }
+      }
 
+      // 2. IMMEDIATE FEEDBACK
+      showToast('Menyimpan perubahan...', 'info');
+      closeEditProfileModal();
+
+      // 3. BACKGROUND SYNC
       google.script.run
         .withSuccessHandler(function (res) {
-          btn.innerHTML = origText;
-          btn.disabled = false;
           if (res && res.success) {
-            showToast('Profil berhasil diperbarui', 'success');
-            closeEditProfileModal();
-            if (typeof loadGalleryView === 'function') loadGalleryView();
+            showToast('✅ Profil ' + name + ' berhasil disinkronkan', 'success');
           } else {
-            showToast('Gagal: ' + (res ? res.message : 'Unknown'), 'error');
+            showToast('❌ Gagal sinkron ke server: ' + (res ? res.message : 'Unknown'), 'error');
           }
+        })
+        .withFailureHandler(function (err) {
+          showToast('❌ Gangguan koneksi: Perubahan tersimpan secara lokal saja', 'warning');
         })
         .updateMemberProfile({
           memberId: memberId,
-          fullName: fullName,
+          name: name,
           phone: phone,
           gender: gender,
           faceIdName: faceIdName,
