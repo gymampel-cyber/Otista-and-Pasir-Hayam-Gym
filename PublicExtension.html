@@ -609,7 +609,8 @@
       if (cached) {
         packages = cached.filter(p => {
           const type = p.type ? p.type.toLowerCase() : '';
-          return type.includes('regular') || type.includes('member');
+          const matchBranch = !p.branch || p.branch === currentBranch || p.branch === 'All';
+          return (type.includes('regular') || type.includes('member')) && matchBranch;
         });
         renderPackages();
       }
@@ -620,7 +621,8 @@
             saveToCache(cacheKey, res.packages);
             packages = res.packages.filter(p => {
               const type = p.type ? p.type.toLowerCase() : '';
-              return type.includes('regular') || type.includes('member');
+              const matchBranch = !p.branch || p.branch === currentBranch || p.branch === 'All';
+              return (type.includes('regular') || type.includes('member')) && matchBranch;
             });
             renderPackages();
           }
