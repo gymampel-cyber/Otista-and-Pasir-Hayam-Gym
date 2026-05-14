@@ -3489,14 +3489,51 @@
     function initApp() {
       try {
         console.log('Initializing App...');
+        
+        // Restore session if exists
+        const savedUser = localStorage.getItem('gym_current_user');
+        if (savedUser) {
+          try {
+            currentUser = JSON.parse(savedUser);
+            console.log('Session restored for:', currentUser.name);
+            
+            document.getElementById('authView').style.display = 'none';
+            document.getElementById('dashboardView').style.display = 'flex';
+            
+            applyRolePermissions();
+            initMultiGym();
+            fetchInitialAppData();
+            showView('dashboard');
+            loadApprovalCount();
+            loadAndApplyBranding();
+            return; // Skip login form
+          } catch (e) {
+            console.error('Failed to restore session:', e);
+            localStorage.removeItem('gym_current_user');
+          }
+        }
+
         renderLoginForm();
         loadAndApplyBranding(); // Load branding even before login
         console.log('Login form rendered.');
       } catch (e) {
         console.error('Init error:', e);
-        // Fallback render if branding fails
         renderLoginForm();
       }
+    }
+
+    function getCurrentStaffIdentifier() {
+      if (!currentUser) return 'Admin';
+      return `${currentUser.name} [${currentUser.id || 'N/A'}]`;
+    }
+
+    function validateSession() {
+      if (!currentUser) {
+        showToast('Sesi Anda telah berakhir. Silakan login kembali.', 'error');
+        logout(true); // Forced logout without confirm
+        return false;
+      }
+      return true;
     }
 
 
@@ -3640,6 +3677,8 @@
 
           if (res && res.success) {
             currentUser = res.user;
+            localStorage.setItem('gym_current_user', JSON.stringify(currentUser));
+            
             document.getElementById('authView').style.display = 'none';
             document.getElementById('dashboardView').style.display = 'flex';
 
@@ -3660,15 +3699,23 @@
         .authenticateUser(user, pass);
     }
 
-    function logout() {
-      showConfirm('Yakin ingin keluar dari sistem?', function (ok) {
-        if (!ok) return;
+    function logout(force = false) {
+      const performLogout = function() {
         currentUser = null;
+        localStorage.removeItem('gym_current_user');
         stopScanner();
         document.getElementById('dashboardView').style.display = 'none';
         document.getElementById('authView').style.display = 'flex';
         renderLoginForm();
-      });
+      };
+
+      if (force) {
+        performLogout();
+      } else {
+        showConfirm('Yakin ingin keluar dari sistem?', function (ok) {
+          if (ok) performLogout();
+        });
+      }
     }
 
     // ================ NAVIGATION ================
@@ -4737,6 +4784,8 @@
     }
 
     function registerMemberSubmit() {
+      if (!validateSession()) return;
+      
       const name = document.getElementById('reg_name')?.value?.trim();
       const phone = document.getElementById('reg_phone')?.value?.trim();
       const email = document.getElementById('reg_email')?.value?.trim();
@@ -5012,7 +5061,7 @@
               notes: notes,
               memberPhoto: adminMemberPhotoBase64 || null,
               gym: currentBranch
-            }, currentUser ? `${currentUser.name} [${currentUser.id}]` : 'Admin');
+            }, getCurrentStaffIdentifier());
         }
       );
     }
@@ -5472,6 +5521,8 @@
     }
 
     function processTransactionSubmit() {
+      if (!validateSession()) return;
+      
       if (!selectedMember) {
         showToast('Pilih member terlebih dahulu', 'warning');
         return;
@@ -5658,7 +5709,7 @@
               packageId: pkgEl.value,
               paymentMethod: payEl.value,
               gym: currentBranch
-            }, currentUser ? `${currentUser.name} [${currentUser.id}]` : 'Admin');
+            }, getCurrentStaffIdentifier());
         }
       );
     }
@@ -6143,6 +6194,8 @@
     }
 
     function checkoutPOS() {
+      if (!validateSession()) return;
+      
       if (posCart.length === 0) {
         showToast('Keranjang masih kosong', 'warning');
         return;
@@ -6170,7 +6223,7 @@
           paymentMethod: payment,
           memberId: posSelectedMember ? posSelectedMember.id : '',
           customerName: posSelectedMember ? posSelectedMember.name : 'Guest',
-          cashier: currentUser ? `${currentUser.name} [${currentUser.id}]` : 'Admin',
+          cashier: getCurrentStaffIdentifier(),
           whatsapp: document.getElementById('pos_wa_number').value.trim(),
           notes: '',
           gym: currentBranch
@@ -7925,10 +7978,11 @@
           }
           showToast('Error: ' + err.message, 'error');
         })
-        .processCheckIn({ memberId: mid, gym: currentBranch }, currentUser ? `${currentUser.name} [${currentUser.id}]` : 'Admin');
+        .processCheckIn({ memberId: mid, gym: currentBranch }, getCurrentStaffIdentifier());
     }
 
     function doCheckinWithPT(forcedMid) {
+      if (!validateSession()) return;
       if (showOfflineMessage()) return;
 
       const mid = forcedMid || (document.getElementById('ci_memberId')?.value || '').trim().toUpperCase();
@@ -8133,7 +8187,7 @@
           memberId: mid,
           usePT: usePT,
           gym: currentBranch
-        }, currentUser ? `${currentUser.name} [${currentUser.id}]` : 'Admin');
+        }, getCurrentStaffIdentifier());
     }
 
     function openVisitModal() {
@@ -8279,7 +8333,7 @@
           paymentMethod: payment,
           gym: currentBranch,
           unitPrice: (window.appData && appData.catalogue) ? (appData.catalogue.find(p => (p.name || '') === type)?.price || 0) : 0
-        }, currentUser ? `${currentUser.name} [${currentUser.id}]` : 'Admin');
+        }, getCurrentStaffIdentifier());
     }
 
     // ================ QR SCANNER ================
@@ -9014,8 +9068,9 @@
               trainerName: trainer,
               totalSessions: sessions,
               pricePerSession: price,
-              paymentMethod: payment
-            }, currentUser ? `${currentUser.name} [${currentUser.id}]` : 'Admin');
+              paymentMethod: payment,
+              currentBranch: currentBranch
+            }, getCurrentStaffIdentifier());
         }
       );
     }
@@ -9216,6 +9271,7 @@
     }
 
     function approveRequest(id, type) {
+      if (!validateSession()) return;
       showConfirm(
         `APPROVE PERMINTAAN\n\n` +
         `ID    : ${id}\n` +
@@ -9260,12 +9316,13 @@
             .withFailureHandler(function (err) {
               hideLoading();
               showToast('Error: ' + err.message, 'error');
-            })[fn](id, currentUser ? `${currentUser.name} [${currentUser.id}]` : 'Admin');
+            })[fn](id, getCurrentStaffIdentifier());
         }
       );
     }
 
     function rejectRequest(id) {
+      if (!validateSession()) return;
       const reason = prompt('Alasan penolakan (wajib):');
       if (reason === null) return;
       if (!reason.trim()) {
@@ -9297,7 +9354,7 @@
               hideLoading();
               showToast('Error: ' + err.message, 'error');
             })
-            .rejectApproval(id, reason.trim(), currentUser ? `${currentUser.name} [${currentUser.id}]` : 'Admin');
+            .rejectApproval(id, reason.trim(), getCurrentStaffIdentifier());
         }
       );
     }
@@ -9676,6 +9733,7 @@
     }
 
     function createUserAccount() {
+      if (!validateSession()) return;
       const name = document.getElementById('cu_name')?.value?.trim();
       const phone = document.getElementById('cu_phone')?.value?.trim();
       const username = document.getElementById('cu_username')?.value?.trim();
@@ -9734,7 +9792,7 @@
           role: role,
           email: email,
           password: password
-        }, currentUser ? `${currentUser.name} [${currentUser.id}]` : 'Admin');
+        }, getCurrentStaffIdentifier());
     }
 
     function showDuplicateCleanupDialog() {
@@ -10187,6 +10245,8 @@
     }
 
     function submitExpenseForm() {
+      if (!validateSession()) return;
+      
       const payload = {
         id: 'TEMP_' + Date.now(), // Temporary ID for optimistic UI
         date: document.getElementById('exp_date').value,
@@ -10194,7 +10254,7 @@
         description: document.getElementById('exp_description').value,
         amount: Number(document.getElementById('exp_amount').value),
         paymentMethod: document.getElementById('exp_payment').value,
-        user: currentUser ? `${currentUser.name} [${currentUser.id}]` : 'Admin'
+        user: getCurrentStaffIdentifier()
       };
 
       if (!payload.category || !payload.amount || !payload.description) {
