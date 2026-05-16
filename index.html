@@ -1934,10 +1934,10 @@
     /* POS Specific - Professional Layout */
     .pos-container {
       display: grid;
-      grid-template-columns: minmax(0, 1fr) 400px;
+      grid-template-columns: 400px minmax(0, 1fr);
       gap: 24px;
       min-height: calc(100vh - 120px);
-      align-items: stretch;
+      align-items: start;
     }
 
     .pos-left-area {
@@ -5972,47 +5972,8 @@
 
     function loadPOSView() {
       document.getElementById('contentArea').innerHTML = `
-        <div class="pos-container" style="grid-template-columns: 1fr;">
-          <div class="pos-left-area" style="display:flex; flex-direction:column; gap:24px; max-width: 1200px; margin: 0 auto; width: 100%;">
-            <div id="posMainArea" class="pos-products">
-              <div class="pos-header">
-                <div class="form-group" style="flex:1; margin-bottom:0">
-                  <div style="display:flex; gap:8px">
-                    <div style="position:relative; flex:1">
-                      <i class="fas fa-search" style="position:absolute; left:12px; top:12px; color:#94a3b8"></i>
-                      <input type="text" id="posSearch" class="form-input" style="padding-left:36px" placeholder="Cari produk atau scan barcode..." oninput="filterPOSProducts()">
-                    </div>
-                    <button class="btn btn-info" onclick="startBarcodeScannerForPOS()" title="Scan Barcode">
-                      <i class="fas fa-barcode"></i>
-                    </button>
-                  </div>
-                </div>
-                <button class="btn btn-primary" onclick="loadPOSProducts()">
-                  <i class="fas fa-sync-alt"></i>
-                </button>
-                <button class="btn btn-secondary" onclick="showPOSTransactionHistory()" title="Riwayat Transaksi">
-                  <i class="fas fa-history"></i>
-                </button>
-                <button class="btn btn-info" onclick="openVisitModal()" title="Visit Harian">
-                  <i class="fas fa-walking"></i> Visit Harian
-                </button>
-              </div>
-              <div id="posCategories" class="pos-categories">
-                <div class="category-pill active" onclick="filterPOSByCategory('All')">All Items</div>
-              </div>
-              <div id="posProductGrid" class="product-grid">
-                <div style="text-align:center; padding:40px; color:#94a3b8; grid-column: 1/-1">
-                  <i class="fas fa-spinner fa-spin fa-2x"></i>
-                  <p>Memuat produk...</p>
-                </div>
-              </div>
-            </div>
-            
-            <div id="posHistoryArea" class="pos-history-card" style="display:none">
-               <!-- Riwayat Transaksi POS akan muncul di sini -->
-            </div>
-
-            <!-- CART MOVED HERE -->
+        <div class="pos-container">
+            <!-- LEFT COLUMN: CART -->
             <div class="pos-cart" style="height:auto; min-height:400px">
               <div class="cart-header">
                 <h4 style="margin:0"><i class="fas fa-shopping-basket"></i> Keranjang Belanja</h4>
@@ -6074,6 +6035,46 @@
                   </button>
                 </div>
               </div>
+            </div>
+
+          <!-- RIGHT COLUMN: PRODUCTS & HISTORY -->
+          <div class="pos-left-area" style="display:flex; flex-direction:column; gap:24px; width: 100%;">
+            <div id="posMainArea" class="pos-products">
+              <div class="pos-header">
+                <div class="form-group" style="flex:1; margin-bottom:0">
+                  <div style="display:flex; gap:8px">
+                    <div style="position:relative; flex:1">
+                      <i class="fas fa-search" style="position:absolute; left:12px; top:12px; color:#94a3b8"></i>
+                      <input type="text" id="posSearch" class="form-input" style="padding-left:36px" placeholder="Cari produk atau scan barcode..." oninput="filterPOSProducts()">
+                    </div>
+                    <button class="btn btn-info" onclick="startBarcodeScannerForPOS()" title="Scan Barcode">
+                      <i class="fas fa-barcode"></i>
+                    </button>
+                  </div>
+                </div>
+                <button class="btn btn-primary" onclick="loadPOSProducts()">
+                  <i class="fas fa-sync-alt"></i>
+                </button>
+                <button class="btn btn-secondary" onclick="showPOSTransactionHistory()" title="Riwayat Transaksi">
+                  <i class="fas fa-history"></i>
+                </button>
+                <button class="btn btn-info" onclick="openVisitModal()" title="Visit Harian">
+                  <i class="fas fa-walking"></i> Visit Harian
+                </button>
+              </div>
+              <div id="posCategories" class="pos-categories">
+                <div class="category-pill active" onclick="filterPOSByCategory('All')">All Items</div>
+              </div>
+              <div id="posProductGrid" class="product-grid">
+                <div style="text-align:center; padding:40px; color:#94a3b8; grid-column: 1/-1">
+                  <i class="fas fa-spinner fa-spin fa-2x"></i>
+                  <p>Memuat produk...</p>
+                </div>
+              </div>
+            </div>
+            
+            <div id="posHistoryArea" class="pos-history-card" style="display:none">
+               <!-- Riwayat Transaksi POS akan muncul di sini -->
             </div>
 
             <div class="form-card" style="margin-top:0">
