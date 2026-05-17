@@ -1971,7 +1971,13 @@
       top: 80px;
     }
 
-    @media (max-width: 1024px) {
+    @media (max-width: 1024px) and (min-width: 768px) {
+      .pos-container {
+        grid-template-columns: 320px minmax(0, 1fr); /* Kurangi lebar keranjang di tablet */
+      }
+    }
+
+    @media (max-width: 767px) {
       .pos-container {
         grid-template-columns: 1fr;
         height: auto;
