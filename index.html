@@ -6138,7 +6138,7 @@
                             <button class="btn btn-ghost btn-xs" onclick="event.stopPropagation(); printReceipt('pos', { receipt: '${t.id}', name: decodeURIComponent('${encodeURIComponent(t.customer)}'), items: JSON.parse(decodeURIComponent('${encodeURIComponent(t.rawItems || '[]')}')), total: ${t.total}, payment: '${t.paymentMethod}' })" title="Cetak Struk">
                               <i class="fas fa-print"></i>
                             </button>
-                            <button class="btn btn-ghost btn-xs" style="color:#22c55e" onclick="event.stopPropagation(); sendPOSWhatsApp('${t.id}', getMemberPhone('${t.memberId}'), decodeURIComponent('${encodeURIComponent(t.customer)}'), ${t.subtotal || t.total}, ${t.discount || 0}, ${t.total}, '${t.paymentMethod}', decodeURIComponent('${encodeURIComponent(t.rawItems || '[]')}'))" title="Kirim WA">
+                            <button class="btn btn-ghost btn-xs" style="color:#22c55e" onclick="event.stopPropagation(); sendPOSWhatsApp('${t.id}', '${t.whatsapp}' || getMemberPhone('${t.memberId}'), decodeURIComponent('${encodeURIComponent(t.customer)}'), ${t.subtotal || t.total}, ${t.discount || 0}, ${t.total}, '${t.paymentMethod}', decodeURIComponent('${encodeURIComponent(t.rawItems || '[]')}'))" title="Kirim WA">
                               <i class="fab fa-whatsapp"></i>
                             </button>
                             ${currentUser.role === 'Admin' ? `
@@ -6387,27 +6387,34 @@
       const total = subtotal - (subtotal * discPercent / 100);
       const payment = document.getElementById('pos_payment').value;
       const whatsapp = document.getElementById('pos_wa_number').value.trim();
+      const customerName = posSelectedMember ? posSelectedMember.name : 'Guest';
 
       const requestId = 'REQ_POS_' + Date.now() + '_' + Math.floor(Math.random() * 1000);
 
       showConfirm(`Proses transaksi POS senilai ${formatCurrency(total)}?`, function (ok) {
         if (!ok) return;
 
+        let isClosed = false;
         const resultDiv = document.createElement('div');
         resultDiv.style = "position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:9999";
         resultDiv.innerHTML = `
           <div class="form-card animate__animated animate__zoomIn" style="width:90%;max-width:400px;text-align:center; border-radius:24px">
-            <div class="form-card-header" style="background:#f0fdf4; color:#16a34a"><h3><i class="fas fa-check-circle"></i> Berhasil (Offline)</h3></div>
+            <div class="form-card-header" style="background:#f0fdf4; color:#16a34a"><h3 id="posModalTitle"><i class="fas fa-spinner fa-spin"></i> Memproses...</h3></div>
             <div class="form-card-body" style="padding:24px">
               <div style="font-size:28px; font-weight:800; color:#1e293b; margin-bottom:8px">${formatCurrency(total)}</div>
-              <p style="color:#64748b; margin-bottom:24px">Sinkronisasi berjalan di latar belakang...</p>
-              <div style="display:flex;flex-direction:column;gap:10px">
-                <button class="btn btn-primary" id="btnPosDoneNow">Selesai</button>
+              <p id="posModalDesc" style="color:#64748b; margin-bottom:24px">Sinkronisasi berjalan di latar belakang...</p>
+              <div id="posModalActions" style="display:flex;flex-direction:column;gap:10px">
+                <button class="btn btn-primary" id="btnPosDoneNow">Tutup & Selesai</button>
               </div>
             </div>
           </div>
         `;
         document.body.appendChild(resultDiv);
+
+        document.getElementById('btnPosDoneNow').onclick = () => {
+          isClosed = true;
+          document.body.removeChild(resultDiv);
+        };
 
         const previousCart = [...posCart];
         posCart = [];
@@ -6419,23 +6426,56 @@
               showToast('✅ Transaksi POS berhasil disinkronkan', 'success');
               fetchDashboardData();
               loadTodayPOSTransactions();
+              
+              if (!isClosed) {
+                document.getElementById('posModalTitle').innerHTML = '<i class="fas fa-check-circle"></i> Transaksi Berhasil';
+                document.getElementById('posModalDesc').innerHTML = `No. Transaksi: <code>${res.trxId}</code>`;
+                
+                const actionsDiv = document.getElementById('posModalActions');
+                actionsDiv.innerHTML = `
+                  <button class="btn btn-success" id="btnPosWA"><i class="fab fa-whatsapp"></i> Kirim Struk WA</button>
+                  <button class="btn btn-outline" id="btnPosPrint"><i class="fas fa-print"></i> Cetak Struk</button>
+                  <button class="btn btn-primary" id="btnPosDoneNow2">Selesai</button>
+                `;
+                
+                document.getElementById('btnPosDoneNow2').onclick = () => {
+                  isClosed = true;
+                  document.body.removeChild(resultDiv);
+                };
+                
+                document.getElementById('btnPosPrint').onclick = () => {
+                  printReceipt('pos', {
+                    receipt: res.trxId,
+                    name: customerName,
+                    items: previousCart,
+                    total: total,
+                    payment: payment
+                  });
+                };
+
+                document.getElementById('btnPosWA').onclick = () => {
+                  const phoneToSend = whatsapp || (posSelectedMember ? posSelectedMember.phone : '');
+                  sendPOSWhatsApp(res.trxId, phoneToSend, customerName, subtotal, discPercent, total, payment, JSON.stringify(previousCart));
+                };
+              }
             } else {
+              if (!isClosed) document.body.removeChild(resultDiv);
               showToast('❌ Gagal sinkron: ' + res.message, 'error');
             }
           })
           .processPOSTransaction({
             requestId: requestId,
             items: previousCart,
+            subtotal: subtotal,
+            discount: discPercent,
             total: total,
             paymentMethod: payment,
             memberId: posSelectedMember ? posSelectedMember.memberId : '',
-            customerName: posSelectedMember ? posSelectedMember.name : 'Guest',
+            customerName: customerName,
             cashier: getCurrentStaffIdentifier(),
             whatsapp: whatsapp,
             gym: currentBranch
           });
-
-        document.getElementById('btnPosDoneNow').onclick = () => document.body.removeChild(resultDiv);
       });
     }
 
@@ -9377,6 +9417,12 @@
                   <button class="btn btn-secondary" onclick="loadUserList()" style="background:#4b5563; color:white">
                     <i class="fas fa-users-cog"></i> Lihat Daftar User
                   </button>
+                  <button class="btn btn-success" onclick="syncVisitTransactions()" style="background:#10b981; color:white">
+                    <i class="fas fa-history"></i> Sinkron Visit Harian ke Transaksi
+                  </button>
+                  <button class="btn btn-success" onclick="syncPOSWhatsApp()" style="background:#10b981; color:white">
+                    <i class="fab fa-whatsapp"></i> Tarik No. WA untuk POS Lama
+                  </button>
                   <button class="btn btn-secondary" onclick="triggerSetupLeveling()" style="background:#8b5cf6; color:white">
                     <i class="fas fa-user-shield"></i> Setup Role Leveling (Akun Baru)
                   </button>
@@ -9414,6 +9460,50 @@
             }
           })
           .fixPackageCatalogueIds();
+      });
+    }
+
+    function syncVisitTransactions() {
+      showConfirm('Sistem akan mensinkronisasi data Visit Harian lama dari riwayat Check-In yang belum tercatat di Transaksi.\n\nLanjutkan?', function (ok) {
+        if (!ok) return;
+        showLoading();
+        google.script.run
+          .withSuccessHandler(function (res) {
+            hideLoading();
+            if (res && res.success) {
+              Swal.fire('✅ Berhasil', res.message, 'success');
+              if (typeof fetchDashboardData === 'function') fetchDashboardData(null, null, true);
+            } else {
+              showToast('❌ Gagal: ' + (res?.message || 'Error'), 'error');
+            }
+          })
+          .withFailureHandler(function (err) {
+            hideLoading();
+            showToast('Error: ' + err.message, 'error');
+          })
+          .syncMissingVisitTransactions();
+      });
+    }
+
+    function syncPOSWhatsApp() {
+      showConfirm('Sistem akan menarik nomor WhatsApp dari data Member untuk mengisi kolom WA pada transaksi POS lama yang kosong.\nCatatan: Ini tidak akan berpengaruh pada transaksi Guest yang tidak punya ID Member.\n\nLanjutkan?', function (ok) {
+        if (!ok) return;
+        showLoading();
+        google.script.run
+          .withSuccessHandler(function (res) {
+            hideLoading();
+            if (res && res.success) {
+              Swal.fire('✅ Berhasil', res.message, 'success');
+              if (typeof fetchDashboardData === 'function') fetchDashboardData(null, null, true);
+            } else {
+              showToast('❌ Gagal: ' + (res?.message || 'Error'), 'error');
+            }
+          })
+          .withFailureHandler(function (err) {
+            hideLoading();
+            showToast('Error: ' + err.message, 'error');
+          })
+          .syncOldPOSTransactionsWhatsApp();
       });
     }
 
