@@ -3149,18 +3149,25 @@
 
     // ================ WHATSAPP & PRINT UTILS ================
     function shareToWhatsApp(phone, text) {
-      if (!phone) {
+      if (!phone || phone === 'undefined' || phone === 'null') {
         showToast('Nomor HP tidak ditemukan', 'warning');
         return;
       }
       let cleanPhone = phone.toString().replace(/[^0-9]/g, '');
+      if (!cleanPhone) {
+        showToast('Nomor HP tidak valid', 'warning');
+        return;
+      }
+      
       if (cleanPhone.startsWith('0')) cleanPhone = '62' + cleanPhone.substring(1);
       else if (!cleanPhone.startsWith('62')) cleanPhone = '62' + cleanPhone;
 
-      const url = `whatsapp://send?phone=${cleanPhone}&text=${encodeURIComponent(text)}`;
+      // Gunakan api.whatsapp.com agar kompatibel dengan Desktop (WA Web) maupun Mobile
+      const url = `https://api.whatsapp.com/send?phone=${cleanPhone}&text=${encodeURIComponent(text)}`;
 
       const tempLink = document.createElement('a');
       tempLink.href = url;
+      tempLink.target = '_blank'; // Buka di tab baru untuk mencegah error navigation
       tempLink.setAttribute('data-action', 'share/whatsapp/share');
       document.body.appendChild(tempLink);
       tempLink.click();
@@ -11463,7 +11470,7 @@
                         <button class="btn btn-ghost btn-xs" onclick="event.stopPropagation(); printReceipt('pos', { receipt: '${t['ID Transaksi']}', name: decodeURIComponent('${encodeURIComponent(t['Nama Pembeli'])}'), items: JSON.parse(decodeURIComponent('${encodeURIComponent(t.rawItems || '[]')}')), total: ${t.Total}, payment: '${t['Metode Pembayaran']}' })" title="Cetak Struk">
                           <i class="fas fa-print"></i>
                         </button>
-                        <button class="btn btn-ghost btn-xs" style="color:#22c55e" onclick="event.stopPropagation(); sendPOSWhatsApp('${t['ID Transaksi']}', getMemberPhone('${t['Member ID']}'), decodeURIComponent('${encodeURIComponent(t['Nama Pembeli'])}'), ${t.Subtotal || t.Total}, ${t.Diskon || 0}, ${t.Total}, '${t['Metode Pembayaran']}', decodeURIComponent('${encodeURIComponent(t.rawItems || '[]')}'))" title="Kirim WA">
+                        <button class="btn btn-ghost btn-xs" style="color:#22c55e" onclick="event.stopPropagation(); sendPOSWhatsApp('${t['ID Transaksi']}', '${t['WhatsApp']}' || getMemberPhone('${t['Member ID']}'), decodeURIComponent('${encodeURIComponent(t['Nama Pembeli'])}'), ${t.Subtotal || t.Total}, ${t.Diskon || 0}, ${t.Total}, '${t['Metode Pembayaran']}', decodeURIComponent('${encodeURIComponent(t.rawItems || '[]')}'))" title="Kirim WA">
                           <i class="fab fa-whatsapp"></i>
                         </button>
                         ${currentUser.role === 'Admin' ? `
