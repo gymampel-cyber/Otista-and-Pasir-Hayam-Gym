@@ -3162,12 +3162,11 @@
       if (cleanPhone.startsWith('0')) cleanPhone = '62' + cleanPhone.substring(1);
       else if (!cleanPhone.startsWith('62')) cleanPhone = '62' + cleanPhone;
 
-      // Gunakan api.whatsapp.com agar kompatibel dengan Desktop (WA Web) maupun Mobile
-      const url = `https://api.whatsapp.com/send?phone=${cleanPhone}&text=${encodeURIComponent(text)}`;
+      // Menggunakan whatsapp:// agar langsung membuka aplikasi WhatsApp Desktop/Mobile
+      const url = `whatsapp://send?phone=${cleanPhone}&text=${encodeURIComponent(text)}`;
 
       const tempLink = document.createElement('a');
       tempLink.href = url;
-      tempLink.target = '_blank'; // Buka di tab baru untuk mencegah error navigation
       tempLink.setAttribute('data-action', 'share/whatsapp/share');
       document.body.appendChild(tempLink);
       tempLink.click();
