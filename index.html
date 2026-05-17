@@ -6394,6 +6394,8 @@
       const payment = document.getElementById('pos_payment').value;
       const whatsapp = document.getElementById('pos_wa_number').value.trim();
       const customerName = posSelectedMember ? posSelectedMember.name : 'Guest';
+      const capturedMemberPhone = posSelectedMember ? (posSelectedMember.phone || posSelectedMember.memberPhone || '') : '';
+      const finalPhoneToSend = whatsapp || capturedMemberPhone;
 
       const requestId = 'REQ_POS_' + Date.now() + '_' + Math.floor(Math.random() * 1000);
 
@@ -6423,8 +6425,7 @@
         };
 
         const previousCart = [...posCart];
-        posCart = [];
-        updateCartUI();
+        resetPOS(); // Reset seluruh UI termasuk identitas dan keranjang
         
         google.script.run
           .withSuccessHandler(function (res) {
@@ -6460,8 +6461,7 @@
                 };
 
                 document.getElementById('btnPosWA').onclick = () => {
-                  const phoneToSend = whatsapp || (posSelectedMember ? posSelectedMember.phone : '');
-                  sendPOSWhatsApp(res.trxId, phoneToSend, customerName, subtotal, discPercent, total, payment, JSON.stringify(previousCart));
+                  sendPOSWhatsApp(res.trxId, finalPhoneToSend, customerName, subtotal, discPercent, total, payment, JSON.stringify(previousCart));
                 };
               }
             } else {
@@ -9663,7 +9663,10 @@
     }
 
     function loadTransactionList() {
-      document.getElementById('adminDataView').innerHTML = `
+      const adminDataView = document.getElementById('adminDataView');
+      if (!adminDataView) return; // Exit if Admin Panel is not currently rendered
+
+      adminDataView.innerHTML = `
         <div style="text-align:center;padding:20px;color:#94a3b8">
           <i class="fas fa-spinner fa-spin"></i> Memuat...
         </div>
