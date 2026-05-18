@@ -6764,6 +6764,10 @@
     }
 
     function viewStockHistory(start = '', end = '') {
+      if (!start && !end) {
+        const prodEl = document.getElementById('stock_filter_product');
+        if (prodEl) prodEl.value = '';
+      }
       showLoading();
       google.script.run
         .withSuccessHandler(function (res) {
@@ -6795,10 +6799,25 @@
       const listEl = document.getElementById('stockHistoryList');
       if (!modal || !listEl) return;
 
-      if (!logs || logs.length === 0) {
+      const prodSelect = document.getElementById('stock_filter_product');
+      if (prodSelect && typeof __productsCache !== 'undefined' && __productsCache && prodSelect.options.length <= 1) {
+        let optionsHtml = '<option value="">Semua Produk</option>';
+        __productsCache.forEach(p => {
+           optionsHtml += `<option value="${p.id}">${escapeHtml(p.name).toUpperCase()} (${escapeHtml(p.id).toLowerCase()})</option>`;
+        });
+        prodSelect.innerHTML = optionsHtml;
+      }
+
+      const selectedProdId = prodSelect ? prodSelect.value : '';
+      let filteredLogs = logs;
+      if (selectedProdId) {
+        filteredLogs = logs.filter(l => l['ID Produk'] === selectedProdId);
+      }
+
+      if (!filteredLogs || filteredLogs.length === 0) {
         listEl.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:20px;color:#94a3b8">Belum ada riwayat pergerakan stok</td></tr>';
       } else {
-        listEl.innerHTML = logs.map(l => `
+        listEl.innerHTML = filteredLogs.map(l => `
           <tr>
             <td><small>${formatDateTime(l.Timestamp)}</small></td>
             <td><b>${escapeHtml(l['Nama Produk'])}</b><br><small class="text-muted">${l['ID Produk']}</small></td>
@@ -10868,6 +10887,12 @@
           <div class="form-group" style="margin:0">
             <label class="form-label" style="font-size:11px">Tanggal Akhir</label>
             <input type="date" id="stock_filter_end" class="form-input" style="padding:5px 10px; width:150px">
+          </div>
+          <div class="form-group" style="margin:0">
+            <label class="form-label" style="font-size:11px">Pilih Produk</label>
+            <select id="stock_filter_product" class="form-input" style="padding:5px 10px; width:200px">
+              <option value="">Semua Produk</option>
+            </select>
           </div>
           <button class="btn btn-primary" onclick="applyStockFilter()" style="padding:8px 15px">
             <i class="fas fa-filter"></i> Filter
