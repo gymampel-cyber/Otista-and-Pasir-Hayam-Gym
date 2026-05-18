@@ -3844,6 +3844,37 @@
       if (active) showView(active.dataset.view);
     }
 
+    // ================ ARCHIVE CENTER ================
+    function openArchiveCenter() {
+      showLoading();
+      google.script.run
+        .withSuccessHandler(function(url) {
+          hideLoading();
+          if (url) {
+            Swal.fire({
+              title: 'Pusat Data Arsip',
+              text: 'Buka file Google Sheets yang berisi seluruh riwayat transaksi dan check-in lama?',
+              icon: 'info',
+              showCancelButton: true,
+              confirmButtonColor: '#3b82f6',
+              confirmButtonText: '<i class="fas fa-external-link-alt"></i> Buka Spreadsheet',
+              cancelButtonText: 'Batal'
+            }).then((result) => {
+              if (result.isConfirmed) {
+                window.open(url, '_blank');
+              }
+            });
+          } else {
+            Swal.fire('Belum Ada Arsip', 'Sistem belum memiliki data arsip (file Archive belum dibuat). Fitur ini akan otomatis aktif setelah fungsi pembersihan bulanan berjalan.', 'info');
+          }
+        })
+        .withFailureHandler(function(err) {
+          hideLoading();
+          showToast('Error: ' + err, 'error');
+        })
+        .getArchiveSpreadsheetUrl();
+    }
+
     // ================ DASHBOARD ================
     function loadDashboard() {
       const container = document.getElementById('contentArea');
@@ -3862,7 +3893,10 @@
             </div>
             <button class="btn btn-primary btn-sm" onclick="refreshDashboard()"><i class="fas fa-sync-alt"></i> Update</button>
             <button class="btn btn-success btn-sm" onclick="showDailyReportModal()">
-              <i class="fas fa-file-invoice-dollar"></i> Laporan Periodik
+              <i class="fas fa-file-invoice-dollar"></i> Laporan
+            </button>
+            <button class="btn btn-info btn-sm" onclick="openArchiveCenter()">
+              <i class="fas fa-archive"></i> Arsip
             </button>
           </div>
         </div>
