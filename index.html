@@ -5939,10 +5939,6 @@
                   </thead>
                   <tbody>
                     ${list.map(t => {
-              const memberId = t.memberId;
-              const member = (window.appData && appData.members) ? appData.members.find(m => m.memberId === memberId) : null;
-              const phone = member ? member.phone || member.memberPhone : '';
-
               return `
                         <tr style="background:var(--bg-card); box-shadow:0 2px 4px rgba(0,0,0,0.02); transition:0.2s">
                           <td style="padding:12px; border-radius:12px 0 0 12px"><div style="font-size:11px;color:#64748b">${formatDate(t.transactionDate)}</div></td>
@@ -5956,7 +5952,7 @@
                               <button class="btn btn-ghost btn-xs" onclick="printReceipt('${t.type === 'Registrasi Baru' ? 'registration' : 'extension'}', { memberId:'${t.memberId}', name:decodeURIComponent('${encodeURIComponent(t.memberName)}'), package:decodeURIComponent('${encodeURIComponent(t.packageName)}'), receipt:'${t.receiptNumber}', total:${t.totalAmount}, payment:'${t.paymentMethod}', expiry:'${t.transactionDate}', qr: '${t.qrCodeUrl || ''}' })" title="Cetak Struk">
                                 <i class="fas fa-print"></i>
                               </button>
-                              <button class="btn btn-ghost btn-xs" style="color:#22c55e" onclick="const txt = generateReceiptText('${t.type === 'Registrasi Baru' ? 'registration' : 'extension'}', { memberId:'${t.memberId}', name:decodeURIComponent('${encodeURIComponent(t.memberName)}'), package:decodeURIComponent('${encodeURIComponent(t.packageName)}'), receipt:'${t.receiptNumber}', price:${t.packagePrice || t.totalAmount}, total:${t.totalAmount}, payment:'${t.paymentMethod}', expiry:'${t.transactionDate}', qr: '${t.qrCodeUrl || ''}' }); shareToWhatsApp('${phone}', txt)" title="Kirim WA">
+                              <button class="btn btn-ghost btn-xs" style="color:#22c55e" onclick="const txt = generateReceiptText('${t.type === 'Registrasi Baru' ? 'registration' : 'extension'}', { memberId:'${t.memberId}', name:decodeURIComponent('${encodeURIComponent(t.memberName)}'), package:decodeURIComponent('${encodeURIComponent(t.packageName)}'), receipt:'${t.receiptNumber}', price:${t.packagePrice || t.totalAmount}, total:${t.totalAmount}, payment:'${t.paymentMethod}', expiry:'${t.transactionDate}', qr: '${t.qrCodeUrl || ''}' }); shareToWhatsApp(getMemberPhone('${t.memberId}'), txt)" title="Kirim WA">
                                 <i class="fab fa-whatsapp"></i>
                               </button>
                             </div>
