@@ -6763,10 +6763,16 @@
         .getFullProducts(currentBranch);
     }
 
-    function viewStockHistory(start = '', end = '') {
-      if (!start && !end) {
+    function viewStockHistory(start = '', end = '', isReset = true) {
+      if (isReset) {
         const prodEl = document.getElementById('stock_filter_product');
+        const startEl = document.getElementById('stock_filter_start');
+        const endEl = document.getElementById('stock_filter_end');
         if (prodEl) prodEl.value = '';
+        if (startEl) startEl.value = '';
+        if (endEl) endEl.value = '';
+        start = '';
+        end = '';
       }
       showLoading();
       google.script.run
@@ -6774,12 +6780,6 @@
           hideLoading();
           if (res.success) {
             _renderStockHistoryModal(res.logs);
-            if (!start && !end) {
-              const startEl = document.getElementById('stock_filter_start');
-              const endEl = document.getElementById('stock_filter_end');
-              if (startEl) startEl.value = '';
-              if (endEl) endEl.value = '';
-            }
           } else {
             showToast('Gagal memuat riwayat: ' + res.message, 'error');
           }
@@ -6791,7 +6791,7 @@
     function applyStockFilter() {
       const start = document.getElementById('stock_filter_start').value;
       const end = document.getElementById('stock_filter_end').value;
-      viewStockHistory(start, end);
+      viewStockHistory(start, end, false);
     }
 
     function _renderStockHistoryModal(logs) {
