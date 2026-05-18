@@ -303,6 +303,41 @@
       --input-bg: #2c2c2e;
     }
 
+    /* Override inline styles for Dark Mode */
+    body.dark-mode [style*="#f8fafc"],
+    body.dark-mode [style*="#f1f5f9"],
+    body.dark-mode [style*="#f0f9ff"],
+    body.dark-mode [style*="#f0fdf4"],
+    body.dark-mode [style*="#fef2f2"],
+    body.dark-mode [style*="#fffbeb"],
+    body.dark-mode [style*="#e0f2fe"],
+    body.dark-mode [style*="background:white"],
+    body.dark-mode [style*="background: white"] {
+      background-color: var(--input-bg) !important;
+      border-color: var(--border-color) !important;
+    }
+
+    body.dark-mode [style*="#e2e8f0"],
+    body.dark-mode [style*="#cbd5e1"] {
+      border-color: var(--border-color) !important;
+    }
+
+    body.dark-mode [style*="#64748b"],
+    body.dark-mode [style*="#334155"],
+    body.dark-mode [style*="#1e293b"],
+    body.dark-mode [style*="#475569"],
+    body.dark-mode [style*="#0f172a"] {
+      color: var(--text-main) !important;
+    }
+    
+    body.dark-mode [style*="color:#0369a1"],
+    body.dark-mode [style*="color:#16a34a"],
+    body.dark-mode [style*="color:#b91c1c"],
+    body.dark-mode [style*="color:#991b1b"],
+    body.dark-mode [style*="color:#b45309"] {
+      color: var(--text-main) !important;
+    }
+
     body.dark-mode .pos-products,
     body.dark-mode .pos-cart,
     body.dark-mode .pos-history-card,
