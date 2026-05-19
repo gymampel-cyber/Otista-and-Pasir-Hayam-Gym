@@ -303,41 +303,6 @@
       --input-bg: #2c2c2e;
     }
 
-    /* Override inline styles for Dark Mode */
-    body.dark-mode [style*="#f8fafc"],
-    body.dark-mode [style*="#f1f5f9"],
-    body.dark-mode [style*="#f0f9ff"],
-    body.dark-mode [style*="#f0fdf4"],
-    body.dark-mode [style*="#fef2f2"],
-    body.dark-mode [style*="#fffbeb"],
-    body.dark-mode [style*="#e0f2fe"],
-    body.dark-mode [style*="background:white"],
-    body.dark-mode [style*="background: white"] {
-      background-color: var(--input-bg) !important;
-      border-color: var(--border-color) !important;
-    }
-
-    body.dark-mode [style*="#e2e8f0"],
-    body.dark-mode [style*="#cbd5e1"] {
-      border-color: var(--border-color) !important;
-    }
-
-    body.dark-mode [style*="#64748b"],
-    body.dark-mode [style*="#334155"],
-    body.dark-mode [style*="#1e293b"],
-    body.dark-mode [style*="#475569"],
-    body.dark-mode [style*="#0f172a"] {
-      color: var(--text-main) !important;
-    }
-    
-    body.dark-mode [style*="color:#0369a1"],
-    body.dark-mode [style*="color:#16a34a"],
-    body.dark-mode [style*="color:#b91c1c"],
-    body.dark-mode [style*="color:#991b1b"],
-    body.dark-mode [style*="color:#b45309"] {
-      color: var(--text-main) !important;
-    }
-
     body.dark-mode .pos-products,
     body.dark-mode .pos-cart,
     body.dark-mode .pos-history-card,
@@ -3844,37 +3809,6 @@
       if (active) showView(active.dataset.view);
     }
 
-    // ================ ARCHIVE CENTER ================
-    function openArchiveCenter() {
-      showLoading();
-      google.script.run
-        .withSuccessHandler(function(url) {
-          hideLoading();
-          if (url) {
-            Swal.fire({
-              title: 'Pusat Data Arsip',
-              text: 'Buka file Google Sheets yang berisi seluruh riwayat transaksi dan check-in lama?',
-              icon: 'info',
-              showCancelButton: true,
-              confirmButtonColor: '#3b82f6',
-              confirmButtonText: '<i class="fas fa-external-link-alt"></i> Buka Spreadsheet',
-              cancelButtonText: 'Batal'
-            }).then((result) => {
-              if (result.isConfirmed) {
-                window.open(url, '_blank');
-              }
-            });
-          } else {
-            Swal.fire('Belum Ada Arsip', 'Sistem belum memiliki data arsip (file Archive belum dibuat). Fitur ini akan otomatis aktif setelah fungsi pembersihan bulanan berjalan.', 'info');
-          }
-        })
-        .withFailureHandler(function(err) {
-          hideLoading();
-          showToast('Error: ' + err, 'error');
-        })
-        .getArchiveSpreadsheetUrl();
-    }
-
     // ================ DASHBOARD ================
     function loadDashboard() {
       const container = document.getElementById('contentArea');
@@ -3893,10 +3827,7 @@
             </div>
             <button class="btn btn-primary btn-sm" onclick="refreshDashboard()"><i class="fas fa-sync-alt"></i> Update</button>
             <button class="btn btn-success btn-sm" onclick="showDailyReportModal()">
-              <i class="fas fa-file-invoice-dollar"></i> Laporan
-            </button>
-            <button class="btn btn-info btn-sm" onclick="openArchiveCenter()">
-              <i class="fas fa-archive"></i> Arsip
+              <i class="fas fa-file-invoice-dollar"></i> Laporan Periodik
             </button>
           </div>
         </div>
