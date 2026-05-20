@@ -3880,7 +3880,7 @@
             <div class="stat-value" id="statCheckin">0</div>
             <div class="stat-label">Kunjungan Terhitung</div>
           </div>
-          <div class="stat-card" style="border-top-color:#8b5cf6">
+          <div class="stat-card" style="border-top-color:#8b5cf6; ${currentUser.role === 'Kasir' ? 'display:none' : ''}">
             <div class="stat-header">
               <span class="stat-label">Total Laba Bersih</span>
               <div class="stat-icon" style="background:#f3e8ff; color:#6b46c1"><i class="fas fa-wallet"></i></div>
@@ -3904,7 +3904,7 @@
                     <div style="font-size:12px; color:#94a3b8">Revenue</div>
                     <div id="statFitnessRevenue" style="font-weight:700">Rp 0</div>
                   </div>
-                  <div style="text-align:right">
+                  <div style="text-align:right; ${currentUser.role === 'Kasir' ? 'display:none' : ''}">
                     <div style="font-size:12px; color:#94a3b8">Net (Gym - Ops)</div>
                     <div id="statFitnessNetProfit" style="font-weight:700; color:#4f46e5">Rp 0</div>
                   </div>
@@ -3918,7 +3918,7 @@
                     <div style="font-size:12px; color:#94a3b8">Revenue</div>
                     <div id="statPOSRevenue" style="font-weight:700">Rp 0</div>
                   </div>
-                  <div style="text-align:right">
+                  <div style="text-align:right; ${currentUser.role === 'Kasir' ? 'display:none' : ''}">
                     <div style="font-size:12px; color:#94a3b8">Net (Rev - Modal)</div>
                     <div id="statPOSNetProfit" style="font-weight:700; color:#0891b2">Rp 0</div>
                   </div>
@@ -10494,7 +10494,7 @@
                     <tr>
                       ${res.headers.map(h => {
               let style = '';
-              if (['Qty', 'Transfer/Bank', 'Cash/Tunai', 'Total', 'Jumlah', 'Total Modal'].includes(h)) {
+              if (['Qty', 'Transfer/Bank', 'Cash/Tunai', 'Total', 'Jumlah', 'Total Modal', 'Profit'].includes(h)) {
                 style = 'text-align:right;';
               }
               return `<th style="${style}">${h}</th>`;
@@ -10508,7 +10508,7 @@
               const h = res.headers[idx];
               let style = '';
               if (h === 'Face ID') style = 'font-weight:bold;color:#475569;';
-              if (['Qty', 'Transfer/Bank', 'Cash/Tunai', 'Total', 'Jumlah', 'Total Modal'].includes(h)) {
+              if (['Qty', 'Transfer/Bank', 'Cash/Tunai', 'Total', 'Jumlah', 'Total Modal', 'Profit'].includes(h)) {
                 style += 'text-align:right; font-weight:500;';
               }
               return `<td style="${style}">${cell}</td>`;
@@ -10522,7 +10522,7 @@
                       ${res.footer.map((cell, idx) => {
               const h = res.headers[idx];
               let style = 'padding:12px 8px;';
-              if (['Qty', 'Transfer/Bank', 'Cash/Tunai', 'Total', 'Jumlah', 'Total Modal'].includes(h)) {
+              if (['Qty', 'Transfer/Bank', 'Cash/Tunai', 'Total', 'Jumlah', 'Total Modal', 'Profit'].includes(h)) {
                 style += 'text-align:right;';
               }
               return `<td style="${style}">${cell}</td>`;
@@ -10538,7 +10538,7 @@
             container.innerHTML = '<div style="color:red;padding:20px">' + (res.message || 'Gagal memuat data') + '</div>';
           }
         })
-        .getDashboardDetail(type, startDate, endDate, currentBranch, currentUser.role === 'Admin' ? 'All' : (currentUser.id || 'Admin'));
+        .getDashboardDetail(type, startDate, endDate, currentBranch, currentUser.role === 'Admin' ? 'All' : (currentUser.id || 'Admin'), currentUser.role);
     }
 
     function closeDetailModal() {
