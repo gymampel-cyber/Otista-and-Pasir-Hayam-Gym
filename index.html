@@ -3153,6 +3153,12 @@
       return m ? (m.phone || m.memberPhone || '') : '';
     }
 
+    function getMemberExpiry(memberId) {
+      if (!memberId || !window.appData || !appData.members) return '';
+      const m = appData.members.find(x => x.memberId === memberId || x.id === memberId);
+      return m ? (m.expiryDate || m.expiry || '') : '';
+    }
+
     // ================ WHATSAPP & PRINT UTILS ================
     function shareToWhatsApp(phone, text) {
       if (!phone || phone === 'undefined' || phone === 'null') {
@@ -5949,10 +5955,10 @@
                           <td style="padding:12px"><span class="badge badge-info" style="font-size:10px; padding:4px 8px; border-radius:6px">${t.paymentMethod}</span></td>
                           <td style="padding:12px; border-radius:0 12px 12px 0; text-align:center">
                             <div style="display:flex;gap:6px;justify-content:center">
-                              <button class="btn btn-ghost btn-xs" onclick="printReceipt('${t.type === 'Registrasi Baru' ? 'registration' : 'extension'}', { memberId:'${t.memberId}', name:decodeURIComponent('${encodeURIComponent(t.memberName)}'), package:decodeURIComponent('${encodeURIComponent(t.packageName)}'), receipt:'${t.receiptNumber}', total:${t.totalAmount}, payment:'${t.paymentMethod}', expiry:'${t.transactionDate}', qr: '${t.qrCodeUrl || ''}' })" title="Cetak Struk">
+                              <button class="btn btn-ghost btn-xs" onclick="printReceipt('${t.type === 'Registrasi Baru' ? 'registration' : 'extension'}', { memberId:'${t.memberId}', name:decodeURIComponent('${encodeURIComponent(t.memberName)}'), package:decodeURIComponent('${encodeURIComponent(t.packageName)}'), receipt:'${t.receiptNumber}', total:${t.totalAmount}, payment:'${t.paymentMethod}', expiry:'${t.expiryDate || getMemberExpiry(t.memberId) || t.transactionDate}', qr: '${t.qrCodeUrl || ''}' })" title="Cetak Struk">
                                 <i class="fas fa-print"></i>
                               </button>
-                              <button class="btn btn-ghost btn-xs" style="color:#22c55e" onclick="const txt = generateReceiptText('${t.type === 'Registrasi Baru' ? 'registration' : 'extension'}', { memberId:'${t.memberId}', name:decodeURIComponent('${encodeURIComponent(t.memberName)}'), package:decodeURIComponent('${encodeURIComponent(t.packageName)}'), receipt:'${t.receiptNumber}', price:${t.packagePrice || t.totalAmount}, total:${t.totalAmount}, payment:'${t.paymentMethod}', expiry:'${t.transactionDate}', qr: '${t.qrCodeUrl || ''}' }); shareToWhatsApp(getMemberPhone('${t.memberId}'), txt)" title="Kirim WA">
+                              <button class="btn btn-ghost btn-xs" style="color:#22c55e" onclick="const txt = generateReceiptText('${t.type === 'Registrasi Baru' ? 'registration' : 'extension'}', { memberId:'${t.memberId}', name:decodeURIComponent('${encodeURIComponent(t.memberName)}'), package:decodeURIComponent('${encodeURIComponent(t.packageName)}'), receipt:'${t.receiptNumber}', price:${t.packagePrice || t.totalAmount}, total:${t.totalAmount}, payment:'${t.paymentMethod}', expiry:'${t.expiryDate || getMemberExpiry(t.memberId) || t.transactionDate}', qr: '${t.qrCodeUrl || ''}' }); shareToWhatsApp(getMemberPhone('${t.memberId}'), txt)" title="Kirim WA">
                                 <i class="fab fa-whatsapp"></i>
                               </button>
                             </div>
