@@ -11358,15 +11358,15 @@
               `Periode: ${res.periodFormatted || res.fileName.replace('Laporan_Kasir_', '').replace('.pdf', '').replace(/_/g, ' ')}\n` +
               `--------------------------------\n` +
               `*Ringkasan Keuangan:*\n` +
-              `- Total Revenue: ${formatCurrency(summary.totalRevenue)}\n` +
-              `  • Cash: ${formatCurrency(summary.cashIn || 0)}\n` +
-              `  • Trf: ${formatCurrency(summary.transferIn || 0)}\n` +
-              `- Total Expenses: ${formatCurrency(summary.totalExpenses)}\n` +
-              `  • Cash: ${formatCurrency(summary.cashOut || 0)}\n` +
-              `  • Trf: ${formatCurrency(summary.transferOut || 0)}\n` +
-              `- Kas Kombinasi (Net): ${formatCurrency((summary.totalRevenue || 0) - (summary.totalExpenses || 0))}\n` +
-              `  • Cash Net: ${formatCurrency(summary.netCash || 0)}\n` +
-              `  • Trf Net: ${formatCurrency(summary.netTransfer || 0)}\n` +
+              `Total Pendapatan: ${formatCurrency(summary.totalRevenue)}\n` +
+              `  • Pendapatan Tunai: ${formatCurrency(summary.cashIn || 0)}\n` +
+              `  • Pendapatan Transfer: ${formatCurrency(summary.transferIn || 0)}\n` +
+              `Total Pengeluaran: ${formatCurrency(summary.totalExpenses)}\n` +
+              `  • Pengeluaran Tunai: ${formatCurrency(summary.cashOut || 0)}\n` +
+              `  • Pengeluaran Transfer: ${formatCurrency(summary.transferOut || 0)}\n` +
+              `Kas Gabungan (Bersih): ${formatCurrency((summary.totalRevenue || 0) - (summary.totalExpenses || 0))}\n` +
+              `  • Kas Bersih Tunai: ${formatCurrency(summary.netCash || 0)}\n` +
+              `  • Kas Bersih Transfer: ${formatCurrency(summary.netTransfer || 0)}\n` +
               `--------------------------------\n` +
               `Detail Lengkap (PDF):\n` +
               `${res.url}\n\n` +
