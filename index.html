@@ -11132,15 +11132,36 @@
       const isAdmin = currentUser.role === 'Admin' || currentUser.role === 'Super Admin';
       const filterStaff = isAdmin ? (staffName || 'All') : currentUser.id;
 
-      google.script.run
-        .withSuccessHandler(function (res) {
-          if (res.success) {
-            renderDailyReport(res.report, filterStaff);
-          } else {
-            content.innerHTML = '<div class="alert alert-error">Gagal memuat laporan: ' + res.message + '</div>';
-          }
-        })
-        .getDailyCashierReport(dashStart || null, dashEnd || null, filterStaff, currentBranch);
+      if (isAdmin && !window.allUsers) {
+        google.script.run
+          .withSuccessHandler(function (userRes) {
+            if (userRes.success) {
+              window.allUsers = userRes.users;
+            } else {
+              window.allUsers = [];
+            }
+            loadReport();
+          })
+          .withFailureHandler(function () {
+            window.allUsers = [];
+            loadReport();
+          })
+          .getAllUsers();
+      } else {
+        loadReport();
+      }
+
+      function loadReport() {
+        google.script.run
+          .withSuccessHandler(function (res) {
+            if (res.success) {
+              renderDailyReport(res.report, filterStaff);
+            } else {
+              content.innerHTML = '<div class="alert alert-error">Gagal memuat laporan: ' + res.message + '</div>';
+            }
+          })
+          .getDailyCashierReport(dashStart || null, dashEnd || null, filterStaff, currentBranch);
+      }
     }
 
     function closeDailyReportModal() {
@@ -11174,7 +11195,10 @@
               <div style="display:flex; gap:8px">
                 <select id="reportStaffFilter" class="form-input" style="font-size:12px; padding:4px 8px; width:150px" onchange="showDailyReportModal(this.value)">
                   <option value="All" ${currentFilterStaff === 'All' ? 'selected' : ''}>-- Semua Staff --</option>
-                  <option value="${currentUser.id}" ${currentFilterStaff === currentUser.id ? 'selected' : ''}>${currentUser.name} (Saya)</option>
+                  ${(window.allUsers || []).map(u => {
+                    const label = u.id === currentUser.id ? `${u.name} (Saya)` : u.name;
+                    return `<option value="${u.id}" ${currentFilterStaff === u.id ? 'selected' : ''}>${label}</option>`;
+                  }).join('')}
                 </select>
               </div>
             ` : ''}
