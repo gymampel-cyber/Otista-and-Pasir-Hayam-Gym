@@ -3148,7 +3148,7 @@
 
 
     function formatCurrency(n) {
-      return 'Rp ' + (Number(n) || 0).toLocaleString('id-ID');
+      return 'Rp\u00A0' + (Number(n) || 0).toLocaleString('id-ID');
     }
 
     function formatDate(d) {
@@ -4180,16 +4180,16 @@
       // Low Stock Widget
       const lsEl = document.getElementById('lowStockWidget');
       if (lsEl) {
-        if (s.lowStock && s.lowStock.length > 0) {
+        if (s.lowStockItems && s.lowStockItems.length > 0) {
           lsEl.innerHTML = `
             <div style="display:flex; flex-direction:column; gap:8px">
-              ${s.lowStock.map(item => {
+              ${s.lowStockItems.map(item => {
             const isOutOfStock = item.stock <= 0;
             return `
                   <div style="display:flex; justify-content:space-between; align-items:center; padding:10px; background:${isOutOfStock ? '#fef2f2' : '#fffbeb'}; border-radius:10px; border-left:4px solid ${isOutOfStock ? '#ef4444' : '#f59e0b'}">
                     <div style="display:flex; flex-direction:column">
                       <span style="font-size:13px; font-weight:700; color:${isOutOfStock ? '#991b1b' : '#92400e'}">${escapeHtml(item.name)}</span>
-                      <span style="font-size:11px; color:#64748b">ID: ${item.id}</span>
+                      <span style="font-size:11px; color:#64748b">ID: ${item.id || '-'}</span>
                     </div>
                     <span class="badge ${isOutOfStock ? 'badge-danger' : 'badge-warning'}" style="font-size:11px">
                       ${isOutOfStock ? 'HABIS' : 'Sisa: ' + item.stock} ${item.unit}
