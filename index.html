@@ -11338,14 +11338,20 @@
             <thead>
               <tr>
                 <th>Kategori</th>
+                <th style="text-align:center; width:100px">Qty</th>
                 <th style="text-align:right">Total</th>
               </tr>
             </thead>
             <tbody>
-              <tr><td>Membership & Registrasi</td><td style="text-align:right">${formatCurrency(report.summary.byCategory.Membership)}</td></tr>
-              <tr><td>Personal Trainer</td><td style="text-align:right">${formatCurrency(report.summary.byCategory.PT)}</td></tr>
-              <tr><td>POS (Retail)</td><td style="text-align:right">${formatCurrency(report.summary.byCategory.POS)}</td></tr>
-              <tr><td>Visit Harian</td><td style="text-align:right">${formatCurrency(report.summary.byCategory.Visit)}</td></tr>
+              <tr><td>Membership & Registrasi</td><td style="text-align:center">${report.summary.qtyByCategory?.Membership || 0}</td><td style="text-align:right">${formatCurrency(report.summary.byCategory.Membership)}</td></tr>
+              <tr><td>Personal Trainer</td><td style="text-align:center">${report.summary.qtyByCategory?.PT || 0}</td><td style="text-align:right">${formatCurrency(report.summary.byCategory.PT)}</td></tr>
+              <tr><td>POS (Retail)</td><td style="text-align:center">${report.summary.qtyByCategory?.POS || 0}</td><td style="text-align:right">${formatCurrency(report.summary.byCategory.POS)}</td></tr>
+              <tr><td>Visit Harian</td><td style="text-align:center">${report.summary.qtyByCategory?.Visit || 0}</td><td style="text-align:right">${formatCurrency(report.summary.byCategory.Visit)}</td></tr>
+              <tr style="font-weight:bold; background:#f8fafc">
+                <td>TOTAL</td>
+                <td style="text-align:center">${(report.summary.qtyByCategory?.Membership || 0) + (report.summary.qtyByCategory?.PT || 0) + (report.summary.qtyByCategory?.POS || 0) + (report.summary.qtyByCategory?.Visit || 0)}</td>
+                <td style="text-align:right">${formatCurrency(report.summary.totalRevenue)}</td>
+              </tr>
             </tbody>
           </table>
         </div>
@@ -11388,56 +11394,80 @@
               <thead>
                 <tr>
                   <th>Kategori Pendapatan</th>
+                  <th style="text-align:center">Qty Cash</th>
                   <th style="text-align:right">Cash (Tunai)</th>
+                  <th style="text-align:center">Qty Transfer</th>
                   <th style="text-align:right">Transfer / Bank</th>
+                  <th style="text-align:center">Total Qty</th>
                   <th style="text-align:right">Total</th>
                 </tr>
               </thead>
               <tbody>
                 <tr>
                   <td>Membership & Registrasi</td>
+                  <td style="text-align:center">${report.summary.byCategoryAndPayment.Membership.qtyCash}</td>
                   <td style="text-align:right">${formatCurrency(report.summary.byCategoryAndPayment.Membership.Cash)}</td>
+                  <td style="text-align:center">${report.summary.byCategoryAndPayment.Membership.qtyTransfer}</td>
                   <td style="text-align:right">${formatCurrency(report.summary.byCategoryAndPayment.Membership.Transfer)}</td>
+                  <td style="text-align:center">${report.summary.byCategoryAndPayment.Membership.qtyCash + report.summary.byCategoryAndPayment.Membership.qtyTransfer}</td>
                   <td style="text-align:right"><b>${formatCurrency(report.summary.byCategory.Membership)}</b></td>
                 </tr>
                 <tr>
                   <td>Personal Trainer (PT)</td>
+                  <td style="text-align:center">${report.summary.byCategoryAndPayment.PT.qtyCash}</td>
                   <td style="text-align:right">${formatCurrency(report.summary.byCategoryAndPayment.PT.Cash)}</td>
+                  <td style="text-align:center">${report.summary.byCategoryAndPayment.PT.qtyTransfer}</td>
                   <td style="text-align:right">${formatCurrency(report.summary.byCategoryAndPayment.PT.Transfer)}</td>
+                  <td style="text-align:center">${report.summary.byCategoryAndPayment.PT.qtyCash + report.summary.byCategoryAndPayment.PT.qtyTransfer}</td>
                   <td style="text-align:right"><b>${formatCurrency(report.summary.byCategory.PT)}</b></td>
                 </tr>
                 <tr>
                   <td>POS (Retail/Produk)</td>
+                  <td style="text-align:center">${report.summary.byCategoryAndPayment.POS.qtyCash}</td>
                   <td style="text-align:right">${formatCurrency(report.summary.byCategoryAndPayment.POS.Cash)}</td>
+                  <td style="text-align:center">${report.summary.byCategoryAndPayment.POS.qtyTransfer}</td>
                   <td style="text-align:right">${formatCurrency(report.summary.byCategoryAndPayment.POS.Transfer)}</td>
+                  <td style="text-align:center">${report.summary.byCategoryAndPayment.POS.qtyCash + report.summary.byCategoryAndPayment.POS.qtyTransfer}</td>
                   <td style="text-align:right"><b>${formatCurrency(report.summary.byCategory.POS)}</b></td>
                 </tr>
                 <tr>
                   <td>Visit Harian</td>
+                  <td style="text-align:center">${report.summary.byCategoryAndPayment.Visit.qtyCash}</td>
                   <td style="text-align:right">${formatCurrency(report.summary.byCategoryAndPayment.Visit.Cash)}</td>
+                  <td style="text-align:center">${report.summary.byCategoryAndPayment.Visit.qtyTransfer}</td>
                   <td style="text-align:right">${formatCurrency(report.summary.byCategoryAndPayment.Visit.Transfer)}</td>
+                  <td style="text-align:center">${report.summary.byCategoryAndPayment.Visit.qtyCash + report.summary.byCategoryAndPayment.Visit.qtyTransfer}</td>
                   <td style="text-align:right"><b>${formatCurrency(report.summary.byCategory.Visit)}</b></td>
                 </tr>
                 <tr class="total-row">
                   <td>TOTAL PENDAPATAN (GROSS)</td>
+                  <td style="text-align:center">${report.summary.qtyByPayment.Cash}</td>
                   <td style="text-align:right">${formatCurrency(report.summary.cashIn)}</td>
+                  <td style="text-align:center">${report.summary.qtyByPayment.Transfer}</td>
                   <td style="text-align:right">${formatCurrency(report.summary.transferIn)}</td>
+                  <td style="text-align:center">${report.summary.qtyByPayment.Cash + report.summary.qtyByPayment.Transfer}</td>
                   <td style="text-align:right">${formatCurrency(report.summary.totalRevenue)}</td>
                 </tr>
                 <tr>
                   <td style="color:#ef4444">Total Operasional / Pengeluaran</td>
+                  <td style="text-align:center; color:#ef4444">-</td>
                   <td style="text-align:right; color:#ef4444">(${formatCurrency(report.summary.cashOut)})</td>
+                  <td style="text-align:center; color:#ef4444">-</td>
                   <td style="text-align:right; color:#ef4444">(${formatCurrency(report.summary.transferOut)})</td>
+                  <td style="text-align:center; color:#ef4444">-</td>
                   <td style="text-align:right; color:#ef4444"><b>(${formatCurrency(report.summary.totalExpenses)})</b></td>
                 </tr>
                 <tr class="net-row">
                   <td>SALDO AKHIR (NET)</td>
+                  <td style="text-align:center">-</td>
                   <td style="text-align:right">${formatCurrency(report.summary.netCash)}</td>
+                  <td style="text-align:center">-</td>
                   <td style="text-align:right">${formatCurrency(report.summary.netTransfer)}</td>
+                  <td style="text-align:center">-</td>
                   <td style="text-align:right">${formatCurrency(report.summary.totalRevenue - report.summary.totalExpenses)}</td>
                 </tr>
                 <tr class="total-row" style="background: var(--primary); color: white;">
-                  <td colspan="3" style="text-align:right; font-weight:800; font-size:16px">SALDO AKHIR GABUNGAN (NET)</td>
+                  <td colspan="6" style="text-align:right; font-weight:800; font-size:16px">SALDO AKHIR GABUNGAN (NET)</td>
                   <td style="text-align:right; font-weight:800; font-size:16px">${formatCurrency(report.summary.grandNet)}</td>
                 </tr>
               </tbody>
