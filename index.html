@@ -3891,7 +3891,6 @@
         case 'pt': loadPTView(); break;
         case 'approvals': loadApprovals(); break;
         case 'pos': loadPOSView(); break;
-        case 'memberAdmin': loadMemberAdminView(); break;
         case 'admin': loadAdminPanel(); break;
         case 'catalog': loadCatalogView(); break;
         case 'expenses': loadExpensesView(); break;
@@ -10520,7 +10519,7 @@
             visible = true;
           } else {
             // Branch-specific Admin (limited views)
-            const branchAdminViews = ['dashboard', 'members', 'transactions', 'checkin', 'pt', 'pos', 'approvals', 'expenses', 'gallery', 'catalogue', 'products', 'admin', 'memberAdmin'];
+            const branchAdminViews = ['dashboard', 'members', 'transactions', 'checkin', 'pt', 'pos', 'approvals', 'expenses', 'gallery', 'catalogue', 'products', 'admin'];
             if (!branchAdminViews.includes(view)) visible = false;
           }
         }
@@ -11726,7 +11725,6 @@
           // Re-render views if they are active
           const activeView = document.querySelector('.menu-item.active')?.dataset.view;
           if (activeView === 'gallery') loadGalleryView();
-          if (activeView === 'memberAdmin') loadMemberAdminView();
         }
       }
 
