@@ -9644,10 +9644,8 @@
     }
 
     function triggerSetupLeveling() {
-      showConfirmModal(
-        'Setup Leveling User',
-        'Sistem akan membuat akun default: Super Admin, Admin, dan 6 Kasir Cabang.\nLanjutkan?',
-        function () {
+      showConfirm('Setup Leveling User\n\nSistem akan membuat akun default: Super Admin, Admin, dan 6 Kasir Cabang.\nLanjutkan?', function (ok) {
+        if (!ok) return;
           showLoading();
           google.script.run
             .withSuccessHandler(function (res) {
@@ -9672,15 +9670,12 @@
               showToast('Error: ' + err.message, 'error');
             })
             .setupDefaultUsers();
-        }
-      );
+      });
     }
 
     function syncDatabase() {
-      showConfirmModal(
-        'Sinkronisasi Database',
-        'Sistem akan memeriksa dan membuat sheet yang belum ada (termasuk sheet Pengeluaran).\nLanjutkan?',
-        function () {
+      showConfirm('Sinkronisasi Database\n\nSistem akan memeriksa dan membuat sheet yang belum ada (termasuk sheet Pengeluaran).\nLanjutkan?', function (ok) {
+        if (!ok) return;
           showLoading();
           google.script.run
             .withSuccessHandler(function (res) {
@@ -9696,8 +9691,7 @@
               showToast('Error: ' + err.message, 'error');
             })
             .initializeSheets();
-        }
-      );
+      });
     }
 
 
@@ -10167,10 +10161,8 @@
     }
 
     function confirmDeleteUser(id, username) {
-      showConfirmModal(
-        'Hapus Akun User',
-        `Apakah Anda yakin ingin menghapus akun "${username}"?\n\nAkun ini tidak akan dapat login lagi.`,
-        function () {
+      showConfirm(`Hapus Akun User\n\nApakah Anda yakin ingin menghapus akun "${username}"?\n\nAkun ini tidak akan dapat login lagi.`, function (ok) {
+        if (!ok) return;
           showLoading();
           google.script.run
             .withSuccessHandler(function (res) {
@@ -10183,8 +10175,7 @@
               }
             })
             .deleteUserAccount(id, currentUser.name);
-        }
-      );
+      });
     }
     function loadExpensesView() {
       const content = `
@@ -10463,10 +10454,8 @@
 
 
     function deleteExpenseRecord(id) {
-      showConfirmModal(
-        'Hapus Pengeluaran',
-        'Apakah Anda yakin ingin menghapus catatan pengeluaran ini?\nTindakan ini tidak dapat dibatalkan.',
-        function () {
+      showConfirm('Hapus Pengeluaran\n\nApakah Anda yakin ingin menghapus catatan pengeluaran ini?\nTindakan ini tidak dapat dibatalkan.', function (ok) {
+        if (!ok) return;
           // ROLLBACK PREPARATION
           const start = document.getElementById('exp_start_date')?.value || 'all';
           const end = document.getElementById('exp_end_date')?.value || 'all';
@@ -10499,8 +10488,7 @@
               showToast('Error koneksi: ' + err.message, 'error');
             })
             .deleteExpense(id);
-        }
-      );
+      });
     }
 
 
