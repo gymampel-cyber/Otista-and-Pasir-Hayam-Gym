@@ -6083,7 +6083,12 @@
                         <tr style="background:var(--bg-card); box-shadow:0 2px 4px rgba(0,0,0,0.02); transition:0.2s">
                           <td style="padding:12px; border-radius:12px 0 0 12px"><div style="font-size:11px;color:#64748b">${formatDate(t.transactionDate)}</div></td>
                           <td style="padding:12px"><code>${t.receiptNumber}</code></td>
-                          <td style="padding:12px"><b>${escapeHtml(t.memberName)}</b> <small style="color:#64748b">(${t.memberId})</small></td>
+                          <td style="padding:12px">
+                            <div><b>${escapeHtml(t.memberName)}</b> <small style="color:#64748b">(${t.memberId})</small></div>
+                            <div style="font-size:10px; color:#64748b; margin-top:4px; display:inline-flex; align-items:center; gap:4px">
+                              <i class="fas fa-fingerprint" style="font-size:10px"></i> <code>${escapeHtml(t.faceIdCode || '-')}</code>
+                            </div>
+                          </td>
                           <td style="padding:12px">${escapeHtml(t.packageName)}</td>
                           <td style="padding:12px"><b>${formatCurrency(t.totalAmount)}</b></td>
                           <td style="padding:12px"><span class="badge badge-info" style="font-size:10px; padding:4px 8px; border-radius:6px">${t.paymentMethod}</span></td>
