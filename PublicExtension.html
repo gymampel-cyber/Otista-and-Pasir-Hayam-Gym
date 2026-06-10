@@ -895,13 +895,15 @@ function submitExtensionRequest() {
 
     function formatDate(date) {
       if (!date) return '-';
-      try {
-        const dt = safeParseDate(date);
-        if (!dt) return date;
-        return dt.toLocaleDateString('id-ID', { day: '2-digit', month: '2-digit', year: 'numeric' });
-      } catch (e) {
-        return date;
+      let d = new Date(date);
+      if (typeof date === 'string') {
+        const match = date.trim().match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})/);
+        if (match) {
+          d = new Date(parseInt(match[3], 10), parseInt(match[2], 10) - 1, parseInt(match[1], 10));
+        }
       }
+      if (isNaN(d.getTime())) return '-';
+      return d.toLocaleDateString('id-ID', { day: '2-digit', month: '2-digit', year: 'numeric' });
     }
   </script>
 </body>
