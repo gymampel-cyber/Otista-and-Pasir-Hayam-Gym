@@ -3207,10 +3207,39 @@
       return 'Rp\u00A0' + (Number(n) || 0).toLocaleString('id-ID');
     }
 
+    function safeParseDate(d) {
+      if (!d) return null;
+      if (d instanceof Date) return d;
+      if (typeof d === 'string') {
+        const trimmed = d.trim();
+        const match = trimmed.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})(.*)$/);
+        if (match) {
+          const day = parseInt(match[1], 10);
+          const month = parseInt(match[2], 10) - 1;
+          const year = parseInt(match[3], 10);
+          const rest = match[4] ? match[4].trim() : '';
+          
+          if (rest) {
+            const timeMatch = rest.match(/^(\d{1,2}):(\d{1,2})(?::(\d{1,2}))?$/);
+            if (timeMatch) {
+              const hour = parseInt(timeMatch[1], 10);
+              const minute = parseInt(timeMatch[2], 10);
+              const second = timeMatch[3] ? parseInt(timeMatch[3], 10) : 0;
+              return new Date(year, month, day, hour, minute, second);
+            }
+          }
+          return new Date(year, month, day);
+        }
+      }
+      const parsed = new Date(d);
+      return isNaN(parsed.getTime()) ? null : parsed;
+    }
+
     function formatDate(d) {
       if (!d) return '-';
       try {
-        const dt = new Date(d);
+        const dt = safeParseDate(d);
+        if (!dt) return d;
         return dt.toLocaleDateString('id-ID', {
           day: '2-digit',
           month: 'long',
@@ -3224,7 +3253,8 @@
     function formatDateTime(d) {
       if (!d) return '-';
       try {
-        const dt = new Date(d);
+        const dt = safeParseDate(d);
+        if (!dt) return d;
         return dt.toLocaleString('id-ID', {
           day: '2-digit',
           month: 'short',
@@ -3240,7 +3270,8 @@
     function formatTime(d) {
       if (!d) return '-';
       try {
-        const dt = new Date(d);
+        const dt = safeParseDate(d);
+        if (!dt) return d;
         return dt.toLocaleTimeString('id-ID', {
           hour: '2-digit',
           minute: '2-digit',
@@ -5324,7 +5355,7 @@
       const el = document.getElementById('checkinResult');
       if (el && member) {
         const checkinTime = new Date();
-        const daysLeft = member.expiryDate ? Math.max(0, Math.ceil((new Date(member.expiryDate) - new Date()) / 86400000)) : 0;
+        const daysLeft = member.expiryDate ? Math.max(0, Math.ceil((safeParseDate(member.expiryDate) - new Date()) / 86400000)) : 0;
         
         el.innerHTML = `
           <div class="checkin-success-card animate__animated animate__fadeInUp" style="background:white; border-radius:24px; padding:24px; box-shadow:0 15px 35px rgba(0,0,0,0.1)">
@@ -5880,7 +5911,7 @@
               if (res && res.success) {
                 const r = res.receipt || {};
                 const checkinTime = new Date();
-                const daysLeft = r.newExpiry ? Math.ceil((new Date(r.newExpiry) - new Date()) / 86400000) : 0;
+                const daysLeft = r.newExpiry ? Math.ceil((safeParseDate(r.newExpiry) - new Date()) / 86400000) : 0;
 
                 resultEl.className = 'result-card success';
                 resultEl.style.display = 'block';
@@ -9046,7 +9077,7 @@
 
               if (res && res.success) {
                 const checkinTime = new Date();
-                const daysLeft = res.expiryDate ? Math.ceil((new Date(res.expiryDate) - new Date()) / 86400000) : 0;
+                const daysLeft = res.expiryDate ? Math.ceil((safeParseDate(res.expiryDate) - new Date()) / 86400000) : 0;
 
                 resultEl.className = 'result-card success';
                 resultEl.style.display = 'block';
