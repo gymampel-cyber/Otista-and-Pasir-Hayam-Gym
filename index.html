@@ -11755,11 +11755,16 @@
           appData.members[idx].faceIdCode = faceIdCode;
           
           // Save updated cache to localStorage
-          localStorage.setItem('gym_app_data', JSON.stringify(appData));
+          try {
+            localStorage.setItem('gym_app_data', JSON.stringify(appData));
+          } catch(e) {
+            console.warn('localStorage full, skipping cache save');
+          }
           
           // Re-render views if they are active
           const activeView = document.querySelector('.menu-item.active')?.dataset.view;
-          if (activeView === 'gallery') loadGalleryView();
+          if (activeView === 'gallery') renderGallery(appData.members);
+          if (activeView === 'admin') loadMemberList(); // If they are in the admin table view
         }
       }
 
