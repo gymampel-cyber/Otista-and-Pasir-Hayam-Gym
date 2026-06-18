@@ -4436,6 +4436,9 @@
     }
 
     function renderGallery(members) {
+      const existingSearch = document.getElementById('gallerySearch') ? document.getElementById('gallerySearch').value : '';
+      const existingDate = document.getElementById('galleryDateFilter') ? document.getElementById('galleryDateFilter').value : '';
+
       const el = document.getElementById('contentArea');
       el.innerHTML = `
         <div class="dashboard-header-flex">
@@ -4448,11 +4451,11 @@
             ` : ''}
             <div class="stat-card" style="padding:8px 16px; flex-direction:row; align-items:center; gap:12px; margin-bottom:0; background:white; border-radius:14px">
               <i class="fas fa-calendar-alt" style="color:#94a3b8"></i>
-              <input type="date" id="galleryDateFilter" style="background:none; border:none; color:#1e293b; outline:none; font-size:14px">
+              <input type="date" id="galleryDateFilter" value="${existingDate}" style="background:none; border:none; color:#1e293b; outline:none; font-size:14px">
             </div>
             <div class="stat-card" style="padding:8px 16px; flex-direction:row; align-items:center; gap:12px; margin-bottom:0; background:white; border-radius:14px">
               <i class="fas fa-search" style="color:#94a3b8"></i>
-              <input type="text" id="gallerySearch" placeholder="Cari nama atau ID..." style="background:none; border:none; color:#1e293b; outline:none; font-size:14px; width:180px">
+              <input type="text" id="gallerySearch" value="${existingSearch}" placeholder="Cari nama atau ID..." style="background:none; border:none; color:#1e293b; outline:none; font-size:14px; width:180px">
             </div>
           </div>
         </div>
@@ -4583,6 +4586,10 @@
 
       document.getElementById('gallerySearch').addEventListener('input', filterGallery);
       document.getElementById('galleryDateFilter').addEventListener('change', filterGallery);
+      
+      if (existingSearch || existingDate) {
+        filterGallery();
+      }
     }
 
     function viewMemberFullDetails(memberId) {
