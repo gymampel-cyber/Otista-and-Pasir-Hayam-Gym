@@ -10220,7 +10220,7 @@
           email: email,
           role: role,
           password: password
-        }, currentUser.name);
+        }, currentUser.username);
     }
 
     function confirmDeleteUser(id, username) {
@@ -10237,7 +10237,7 @@
                 showToast('❌ ' + res.message, 'error');
               }
             })
-            .deleteUserAccount(id, currentUser.name);
+            .deleteUserAccount(id, currentUser.username);
       });
     }
     function loadExpensesView() {
