@@ -19,7 +19,7 @@
 
     let isSyncing = false;
     let isResultActive = false; // Flag to prevent automatic refresh while success card is shown
-    let syncQueue = JSON.parse(localStorage.getItem('gym_sync_queue') || '[]');
+    let syncQueue = JSON.parse(localStorage.getItem('otista_gym_sync_queue') || '[]');
 
     const google = {
       script: {
@@ -122,7 +122,7 @@
         args: args,
         timestamp: new Date().toISOString()
       });
-      localStorage.setItem('gym_sync_queue', JSON.stringify(syncQueue));
+      localStorage.setItem('otista_gym_sync_queue', JSON.stringify(syncQueue));
       updateSyncIndicator();
       processSyncQueue();
     }
@@ -237,7 +237,7 @@
 
           if (res.success) {
             syncQueue.shift();
-            localStorage.setItem('gym_sync_queue', JSON.stringify(syncQueue));
+            localStorage.setItem('otista_gym_sync_queue', JSON.stringify(syncQueue));
           } else break;
         } catch (e) { break; }
         updateSyncIndicator();
@@ -3039,7 +3039,7 @@
     var productWebcamStream = null;
 
     // Multi-Gym & Branding
-    var currentBranch = localStorage.getItem('current_branch') || 'All';
+    var currentBranch = localStorage.getItem('otista_current_branch') || 'All';
     var currentBranchName = 'Gym';
     var currentBranchAddress = '';
     var currentBranchPhone = '';
@@ -3047,7 +3047,7 @@
     var productCameraFacing = 'environment';
 
     // ================ CACHE SYSTEM ================
-    const APP_CACHE_KEY = 'gym_cache_';
+    const APP_CACHE_KEY = 'otista_gym_cache_';
     window.appData = {
       members: [],
       catalogue: [],
@@ -3670,7 +3670,7 @@
         console.log('Initializing App...');
         
         // Restore session if exists
-        const savedUser = localStorage.getItem('gym_current_user');
+        const savedUser = localStorage.getItem('otista_gym_current_user');
         if (savedUser) {
           try {
             currentUser = JSON.parse(savedUser);
@@ -3688,7 +3688,7 @@
             return; // Skip login form
           } catch (e) {
             console.error('Failed to restore session:', e);
-            localStorage.removeItem('gym_current_user');
+            localStorage.removeItem('otista_gym_current_user');
           }
         }
 
@@ -3856,7 +3856,7 @@
 
           if (res && res.success) {
             currentUser = res.user;
-            localStorage.setItem('gym_current_user', JSON.stringify(currentUser));
+            localStorage.setItem('otista_gym_current_user', JSON.stringify(currentUser));
             
             document.getElementById('authView').style.display = 'none';
             document.getElementById('dashboardView').style.display = 'flex';
@@ -3881,7 +3881,7 @@
     function logout(force = false) {
       const performLogout = function() {
         currentUser = null;
-        localStorage.removeItem('gym_current_user');
+        localStorage.removeItem('otista_gym_current_user');
         stopScanner();
         document.getElementById('dashboardView').style.display = 'none';
         document.getElementById('authView').style.display = 'flex';
@@ -10731,7 +10731,7 @@
     function toggleDarkMode() {
       const body = document.body;
       const isDark = body.classList.toggle('dark-mode');
-      localStorage.setItem('gym_theme', isDark ? 'dark' : 'light');
+      localStorage.setItem('otista_gym_theme', isDark ? 'dark' : 'light');
       updateThemeUI();
     }
 
@@ -10744,7 +10744,7 @@
     }
 
     // Load theme on startup
-    const savedTheme = localStorage.getItem('gym_theme');
+    const savedTheme = localStorage.getItem('otista_gym_theme');
     if (savedTheme === 'dark') {
       document.body.classList.add('dark-mode');
     }
@@ -11783,7 +11783,7 @@
           
           // Save updated cache to localStorage
           try {
-            localStorage.setItem('gym_app_data', JSON.stringify(appData));
+            localStorage.setItem('otista_gym_app_data', JSON.stringify(appData));
           } catch(e) {
             console.warn('localStorage full, skipping cache save');
           }
@@ -12043,7 +12043,7 @@
       if (newBranch === currentBranch) return;
 
       currentBranch = newBranch;
-      localStorage.setItem('current_branch', currentBranch);
+      localStorage.setItem('otista_current_branch', currentBranch);
 
       // RESET ALL CACHES AND STATE TO PREVENT DATA LEAKAGE BETWEEN BRANCHES
       if (typeof __productsCache !== 'undefined') __productsCache = null;
