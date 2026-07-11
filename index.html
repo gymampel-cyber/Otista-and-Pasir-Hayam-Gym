@@ -3959,6 +3959,7 @@
             <p class="view-subtitle">Ringkasan performa operasional dan keuangan ${currentBranchName}</p>
           </div>
           <div style="display:flex; flex-wrap:wrap; gap:12px">
+            ${(currentUser.role === 'Staff') ? '' : `
             <div class="filter-group" style="display:flex; align-items:center; gap:8px; background:white; padding:4px 12px; border-radius:10px; border:1px solid #e2e8f0">
               <i class="fas fa-calendar-alt" style="color:#64748b"></i>
               <input type="date" id="dash_start_date" class="filter-input" style="border:none; background:transparent">
@@ -3966,6 +3967,7 @@
               <input type="date" id="dash_end_date" class="filter-input" style="border:none; background:transparent">
             </div>
             <button class="btn btn-primary btn-sm" onclick="refreshDashboard()"><i class="fas fa-sync-alt"></i> Update</button>
+            `}
             <button class="btn btn-success btn-sm" onclick="showDailyReportModal()">
               <i class="fas fa-file-invoice-dollar"></i> Laporan Periodik
             </button>
@@ -3982,7 +3984,7 @@
           <i class="fas fa-star" style="color:#f59e0b"></i> Indikator Utama (KPI)
         </div>
         <div class="kpi-container">
-          <div class="stat-card stat-card-clickable" id="cardTotalMember" onclick="showDashboardDetail('total_member')">
+          <div class="stat-card stat-card-clickable" id="cardTotalMember" style="${(currentUser.role === 'Staff') ? 'display:none' : ''}" onclick="showDashboardDetail('total_member')">
             <div class="stat-header">
               <span class="stat-label">Total Member</span>
               <div class="stat-icon" style="background:#f1f5f9; color:#64748b"><i class="fas fa-users"></i></div>
@@ -3993,7 +3995,7 @@
               <span title="Perempuan" style="color:#ec4899"><i class="fas fa-venus"></i> <span id="statFemale">0</span></span>
             </div>
           </div>
-          <div class="stat-card stat-card-clickable" id="cardMemberAktif" style="border-top-color:#22c55e" onclick="showDashboardDetail('active_member')">
+          <div class="stat-card stat-card-clickable" id="cardMemberAktif" style="border-top-color:#22c55e; ${(currentUser.role === 'Staff') ? 'display:none' : ''}" onclick="showDashboardDetail('active_member')">
             <div class="stat-header">
               <span class="stat-label">Member Aktif</span>
               <div class="stat-icon" style="background:#dcfce7; color:#166534"><i class="fas fa-user-check"></i></div>
@@ -4004,7 +4006,7 @@
               <span title="Perempuan" style="color:#ec4899"><i class="fas fa-venus"></i> <span id="statAktifFemale">0</span></span>
             </div>
           </div>
-          <div class="stat-card stat-card-clickable" id="cardGallery" style="border-top-color:#f472b6" onclick="showView('gallery')">
+          <div class="stat-card stat-card-clickable" id="cardGallery" style="border-top-color:#f472b6; ${(currentUser.role === 'Staff') ? 'display:none' : ''}" onclick="showView('gallery')">
             <div class="stat-header">
               <span class="stat-label">Galeri Member</span>
               <div class="stat-icon" style="background:#fdf2f8; color:#db2777"><i class="fas fa-images"></i></div>
@@ -4067,7 +4069,7 @@
               </div>
             </div>
 
-            <div class="stat-card" style="margin-bottom:24px">
+            <div class="stat-card" style="margin-bottom:24px; ${(currentUser.role === 'Staff') ? 'display:none' : ''}">
               <div style="display:flex; justify-content:space-between; align-items:center">
                 <div>
                   <div class="stat-label">Gabungan Biaya Operasional</div>
@@ -4465,6 +4467,7 @@
             const statusColor = isActive ? '#10b981' : '#ef4444';
             const genderIcon = m.gender === 'Perempuan' ? 'venus' : 'mars';
             const genderColor = m.gender === 'Perempuan' ? '#ec4899' : '#3b82f6';
+            const isStaffOrKasir = (currentUser.role === 'Staff' || currentUser.role === 'Kasir');
             
             let regDateStr = '';
             if (m.registrationDate) {
@@ -4473,6 +4476,9 @@
                 regDateStr = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
               }
             }
+
+            // Staff & Kasir: sembunyikan kartu member seluruhnya
+            if (isStaffOrKasir) return '';
             
             return `
             <div class="gallery-item-premium" data-reg-date="${regDateStr}" style="background:white; border-radius:24px; overflow:hidden; position:relative; box-shadow:0 10px 25px rgba(0,0,0,0.05); border:1px solid #f1f5f9; transition:all 0.3s ease; display:flex; flex-direction:column; animation: fadeIn 0.4s ease forwards">
@@ -4540,6 +4546,13 @@
             </div>
           `;}).join('')}
         </div>
+        ${(currentUser.role === 'Staff' || currentUser.role === 'Kasir') ? `
+        <div style="text-align:center; padding:60px 20px; color:#94a3b8">
+          <i class="fas fa-user-plus fa-4x" style="opacity:0.2; margin-bottom:20px; display:block; color:#667eea"></i>
+          <p style="font-size:16px; font-weight:600; color:#475569; margin-bottom:8px">Data profil member tidak dapat ditampilkan</p>
+          <p style="font-size:13px; margin-bottom:20px">Gunakan tombol di atas untuk mendaftarkan member baru.</p>
+        </div>
+        ` : ''}
       `;
 
       // CSS for Hover Effect
@@ -10242,6 +10255,7 @@
     }
     function loadExpensesView() {
       const content = `
+        ${currentUser.role !== 'Staff' ? `
         <div class="filter-container">
           <div class="filter-item">
             <label class="filter-label">Tanggal Mulai</label>
@@ -10260,9 +10274,10 @@
             </button>
           </div>
         </div>
+        ` : ''}
 
         <div class="stats-grid">
-          <div class="stat-card" style="border-top-color:#ef4444">
+          <div class="stat-card" style="border-top-color:#ef4444; ${currentUser.role === 'Staff' ? 'display:none' : ''}">
             <div class="stat-header">
               <span class="stat-label">Total Pengeluaran</span>
               <div class="stat-icon" style="background:linear-gradient(135deg,#ef4444,#dc2626)">
@@ -10272,7 +10287,7 @@
             <div class="stat-value" id="expTotalValue">Rp 0</div>
             <div class="stat-label">Total Operasional</div>
           </div>
-          <div class="stat-card" style="border-top-color:#3b82f6">
+          <div class="stat-card" style="border-top-color:#3b82f6; ${currentUser.role === 'Staff' ? 'display:none' : ''}">
             <div class="stat-header">
               <span class="stat-label">Jumlah Transaksi</span>
               <div class="stat-icon" style="background:linear-gradient(135deg,#3b82f6,#2563eb)">
@@ -10572,9 +10587,7 @@
           const staffViews = ['dashboard', 'members', 'transactions', 'checkin', 'pt', 'pos', 'approvals', 'expenses', 'gallery', 'analytics'];
           if (!staffViews.includes(view)) visible = false;
 
-          // Sembunyikan kartu dashboard -> Gallery SEKARANG DIIJINKAN
-          // const galCard = document.getElementById('cardGallery');
-          // if (galCard) galCard.style.display = 'none';
+
         } else if (role === 'Admin') {
           // Super Admin (All branches) sees everything
           if (currentUser.branch === 'All' || !currentUser.branch) {
