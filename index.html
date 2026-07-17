@@ -10370,6 +10370,13 @@
       document.getElementById('contentArea').innerHTML = content;
       document.getElementById('exp_date').valueAsDate = new Date();
 
+      // Set default filter: awal bulan ini s.d. hari ini
+      const _now = new Date();
+      const _firstDay = new Date(_now.getFullYear(), _now.getMonth(), 1);
+      const toDateStr = d => d.toISOString().split('T')[0];
+      if (document.getElementById('exp_start_date')) document.getElementById('exp_start_date').value = toDateStr(_firstDay);
+      if (document.getElementById('exp_end_date')) document.getElementById('exp_end_date').value = toDateStr(_now);
+
       refreshExpenses();
     }
 
@@ -10408,8 +10415,11 @@
 
 
     function resetExpensesFilter() {
-      if (document.getElementById('exp_start_date')) document.getElementById('exp_start_date').value = '';
-      if (document.getElementById('exp_end_date')) document.getElementById('exp_end_date').value = '';
+      const _now = new Date();
+      const _firstDay = new Date(_now.getFullYear(), _now.getMonth(), 1);
+      const toDateStr = d => d.toISOString().split('T')[0];
+      if (document.getElementById('exp_start_date')) document.getElementById('exp_start_date').value = toDateStr(_firstDay);
+      if (document.getElementById('exp_end_date')) document.getElementById('exp_end_date').value = toDateStr(_now);
       refreshExpenses();
     }
 
