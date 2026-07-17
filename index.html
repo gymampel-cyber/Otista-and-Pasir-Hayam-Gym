@@ -7121,9 +7121,10 @@
       `;
       // Set default dates
       const today = new Date();
-      document.getElementById('restock_end').value = today.toISOString().split('T')[0];
+      const toLocalDateStr = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+      document.getElementById('restock_end').value = toLocalDateStr(today);
       const monthAgo = new Date(today.getFullYear(), today.getMonth() - 1, today.getDate());
-      document.getElementById('restock_start').value = monthAgo.toISOString().split('T')[0];
+      document.getElementById('restock_start').value = toLocalDateStr(monthAgo);
 
       loadRestockHistory();
     }
@@ -10368,12 +10369,13 @@
       `;
 
       document.getElementById('contentArea').innerHTML = content;
-      document.getElementById('exp_date').valueAsDate = new Date();
+      const _expToday = new Date();
+      document.getElementById('exp_date').value = `${_expToday.getFullYear()}-${String(_expToday.getMonth()+1).padStart(2,'0')}-${String(_expToday.getDate()).padStart(2,'0')}`;
 
       // Set default filter: awal bulan ini s.d. hari ini
       const _now = new Date();
       const _firstDay = new Date(_now.getFullYear(), _now.getMonth(), 1);
-      const toDateStr = d => d.toISOString().split('T')[0];
+      const toDateStr = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
       if (document.getElementById('exp_start_date')) document.getElementById('exp_start_date').value = toDateStr(_firstDay);
       if (document.getElementById('exp_end_date')) document.getElementById('exp_end_date').value = toDateStr(_now);
 
@@ -10417,7 +10419,7 @@
     function resetExpensesFilter() {
       const _now = new Date();
       const _firstDay = new Date(_now.getFullYear(), _now.getMonth(), 1);
-      const toDateStr = d => d.toISOString().split('T')[0];
+      const toDateStr = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
       if (document.getElementById('exp_start_date')) document.getElementById('exp_start_date').value = toDateStr(_firstDay);
       if (document.getElementById('exp_end_date')) document.getElementById('exp_end_date').value = toDateStr(_now);
       refreshExpenses();
@@ -10512,7 +10514,8 @@
 
       // Reset form immediately
       document.getElementById('expenseForm').reset();
-      document.getElementById('exp_date').valueAsDate = new Date();
+      const _expToday2 = new Date();
+      document.getElementById('exp_date').value = `${_expToday2.getFullYear()}-${String(_expToday2.getMonth()+1).padStart(2,'0')}-${String(_expToday2.getDate()).padStart(2,'0')}`;
       showToast('Sedang menyimpan...', 'info');
 
       payload.gym = currentBranch;
@@ -11652,8 +11655,9 @@
       // Default dates: current month
       const today = new Date();
       const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
-      document.getElementById('pos_hist_start').value = firstDay.toISOString().split('T')[0];
-      document.getElementById('pos_hist_end').value = today.toISOString().split('T')[0];
+      const toLocalDateStr = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+      document.getElementById('pos_hist_start').value = toLocalDateStr(firstDay);
+      document.getElementById('pos_hist_end').value = toLocalDateStr(today);
 
       loadPOSTransactionHistory();
     }
