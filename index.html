@@ -7559,7 +7559,7 @@
           if (res.success) {
             showToast('✅ Paket disimpan', 'success');
             loadPackageList();
-            loadInitialData(true); // Refresh all app data (catalogue, etc)
+            fetchInitialAppData(); // Refresh all app data (catalogue, etc)
           } else {
             showToast('❌ Gagal: ' + res.message, 'error');
             loadPackageList(); // Re-fetch to ensure UI is correct
