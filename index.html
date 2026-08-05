@@ -6287,11 +6287,17 @@
             </div>
 
             <div class="form-card" style="margin-top:0">
-              <div class="form-card-header" style="display:flex; justify-content:space-between; align-items:center">
+              <div class="form-card-header" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px">
                 <h4 style="margin:0"><i class="fas fa-clock"></i> Transaksi Terakhir</h4>
-                <button class="btn btn-sm btn-outline" onclick="loadTodayPOSTransactions()">
-                  <i class="fas fa-sync-alt"></i>
-                </button>
+                <div style="display:flex; gap:8px; align-items:center">
+                  <input type="date" id="pos_wdg_start" class="form-input" style="padding:6px; font-size:12px; width:auto" value="${new Date().toISOString().split('T')[0]}">
+                  <span style="color:#64748b">-</span>
+                  <input type="date" id="pos_wdg_end" class="form-input" style="padding:6px; font-size:12px; width:auto" value="${new Date().toISOString().split('T')[0]}">
+                  <button class="btn btn-primary btn-sm" onclick="loadTodayPOSTransactions(document.getElementById('pos_wdg_start').value, document.getElementById('pos_wdg_end').value)" style="padding:6px 12px; font-size:12px">Filter</button>
+                  <button class="btn btn-sm btn-outline" onclick="loadTodayPOSTransactions(document.getElementById('pos_wdg_start').value, document.getElementById('pos_wdg_end').value)">
+                    <i class="fas fa-sync-alt"></i>
+                  </button>
+                </div>
               </div>
               <div class="form-card-body" id="posTodayTransactions" style="padding:0">
                 <div style="text-align:center; padding:30px; color:#94a3b8">
@@ -6303,10 +6309,10 @@
         </div>
       `;
       loadPOSProducts();
-      loadTodayPOSTransactions();
+      loadTodayPOSTransactions(new Date().toISOString().split('T')[0], new Date().toISOString().split('T')[0]);
     }
 
-    function loadTodayPOSTransactions() {
+    function loadTodayPOSTransactions(startDate = null, endDate = null) {
       const el = document.getElementById('posTodayTransactions');
       if (!el) return;
 
@@ -6329,6 +6335,7 @@
                       <th>Pelanggan</th>
                       <th>Produk</th>
                       <th>Total</th>
+                      <th>Metode</th>
                       <th>Kasir</th>
                       <th>Aksi</th>
                     </tr>
@@ -6340,7 +6347,8 @@
                         <td>${t.time}</td>
                         <td>${escapeHtml(t.customer)}</td>
                         <td>${t.items || '-'}</td>
-                        <td><b>${formatCurrency(t.total)}</b></td>
+                        <td><b style="color:#22c55e">${formatCurrency(t.total)}</b></td>
+                        <td><span class="badge badge-info">${escapeHtml(t.paymentMethod || 'Cash')}</span></td>
                         <td><small>${t.cashier}</small></td>
                         <td style="text-align:center">
                           <div style="display:flex; gap:6px; justify-content:center">
@@ -6365,7 +6373,7 @@
             `;
           }
         })
-        .getTodayPOSTransactions(currentBranch, currentUser.role === 'Admin' ? 'All' : (currentUser.id || currentUser.name));
+        .getTodayPOSTransactions(currentBranch, currentUser.role === 'Admin' ? 'All' : (currentUser.id || currentUser.name), startDate, endDate);
     }
 
     function loadPOSProducts(force = false) {
@@ -8024,9 +8032,11 @@
                       <th>#</th>
                       <th>Nama</th>
                       <th>ID</th>
+                      <th>Tipe</th>
+                      <th>Metode</th>
+                      <th>Total</th>
                       <th>Waktu</th>
                       <th>Tanggal</th>
-                      <th>Tipe</th>
                       <th style="text-align:center">Aksi</th>
                     </tr>
                   </thead>
@@ -8034,14 +8044,24 @@
                     ${list.map((c, i) => {
               const typeClass = c.type === 'Visit' ? 'primary' : 'success';
               const isAdmin = currentUser && (currentUser.role === 'Admin' || currentUser.role === 'Super Admin');
+              let checkinPayment = '-';
+              let checkinTotal = 0;
+              if (c.notes) {
+                const matchPayment = c.notes.match(/Payment:\s*([^.]+)/);
+                if (matchPayment) checkinPayment = matchPayment[1].trim();
+                const matchPrice = c.notes.match(/Price:\s*(\d+)/);
+                if (matchPrice) checkinTotal = parseInt(matchPrice[1]);
+              }
               return `
                         <tr>
                           <td>${i + 1}</td>
                           <td><b>${escapeHtml(c.memberName || '-')}</b></td>
                           <td><code>${escapeHtml(c.memberId || '-')}</code></td>
+                          <td><span class="badge badge-${typeClass}">${c.type || 'Member'}</span></td>
+                          <td><span class="badge badge-info">${escapeHtml(checkinPayment)}</span></td>
+                          <td><b style="color:#22c55e">${formatCurrency(checkinTotal)}</b></td>
                           <td>${formatTime(c.checkInTime)}</td>
                           <td><div style="font-size:11px;color:#64748b">${formatDate(c.checkInTime)}</div></td>
-                          <td><span class="badge badge-${typeClass}">${c.type || 'Member'}</span></td>
                           <td style="text-align:center">
                             <div style="display:flex; gap:6px; justify-content:center">
                               <button class="btn btn-ghost btn-xs" onclick="printCheckinSlip('${c.id}', decodeURIComponent('${encodeURIComponent(c.memberName)}'), '${escapeHtml(c.type)}', '${formatDateTime(c.checkInTime)}', ${c.price || 0})" title="Cetak Slip">
