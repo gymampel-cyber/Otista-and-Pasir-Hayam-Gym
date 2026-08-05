@@ -320,6 +320,10 @@
       background: rgba(255, 255, 255, 0.02);
     }
 
+    * {
+      box-sizing: border-box;
+    }
+
     body {
       font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
       background: var(--bg-light);
@@ -4883,8 +4887,14 @@
             </div>
 
             <div class="form-card" style="margin-top:24px">
-              <div class="form-card-header">
-                <h3><i class="fas fa-history"></i> Riwayat Registrasi Admin (Terbaru)</h3>
+              <div class="form-card-header" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px">
+                <h3 style="margin:0"><i class="fas fa-history"></i> Riwayat Registrasi Admin</h3>
+                <div style="display:flex; gap:8px; align-items:center">
+                  <input type="date" id="regStartDate" class="form-input" style="padding:6px; font-size:12px; width:auto" value="${new Date().toISOString().split('T')[0]}">
+                  <span style="color:#64748b">-</span>
+                  <input type="date" id="regEndDate" class="form-input" style="padding:6px; font-size:12px; width:auto" value="${new Date().toISOString().split('T')[0]}">
+                  <button class="btn btn-primary btn-sm" onclick="loadAdminTrxHistory('Registrasi Baru', 'regHistoryContainer', document.getElementById('regStartDate').value, document.getElementById('regEndDate').value)" style="padding:6px 12px; font-size:12px">Filter</button>
+                </div>
               </div>
               <div class="form-card-body">
                 <div id="regHistoryContainer" style="overflow-x:auto">
@@ -4896,7 +4906,7 @@
             </div>
           `;
 
-          loadAdminTrxHistory('Registrasi Baru', 'regHistoryContainer');
+          loadAdminTrxHistory('Registrasi Baru', 'regHistoryContainer', new Date().toISOString().split('T')[0], new Date().toISOString().split('T')[0]);
 
           document.querySelectorAll('.pkg-card').forEach(card => {
             card.addEventListener('click', function () {
@@ -5620,8 +5630,14 @@
             </div>
 
             <div class="form-card" style="margin-top:24px">
-              <div class="form-card-header">
-                <h3><i class="fas fa-history"></i> Riwayat Perpanjangan Admin (Terbaru)</h3>
+              <div class="form-card-header" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px">
+                <h3 style="margin:0"><i class="fas fa-history"></i> Riwayat Perpanjangan Admin</h3>
+                <div style="display:flex; gap:8px; align-items:center">
+                  <input type="date" id="extStartDate" class="form-input" style="padding:6px; font-size:12px; width:auto" value="${new Date().toISOString().split('T')[0]}">
+                  <span style="color:#64748b">-</span>
+                  <input type="date" id="extEndDate" class="form-input" style="padding:6px; font-size:12px; width:auto" value="${new Date().toISOString().split('T')[0]}">
+                  <button class="btn btn-primary btn-sm" onclick="loadAdminTrxHistory('Perpanjangan', 'extHistoryContainer', document.getElementById('extStartDate').value, document.getElementById('extEndDate').value)" style="padding:6px 12px; font-size:12px">Filter</button>
+                </div>
               </div>
               <div class="form-card-body">
                 <div id="extHistoryContainer" style="overflow-x:auto">
@@ -5633,7 +5649,7 @@
             </div>
           `;
 
-          loadAdminTrxHistory('Perpanjangan', 'extHistoryContainer');
+          loadAdminTrxHistory('Perpanjangan', 'extHistoryContainer', new Date().toISOString().split('T')[0], new Date().toISOString().split('T')[0]);
 
           document.getElementById('trx_package').addEventListener('change', updateTransactionSummary);
         })
@@ -6090,7 +6106,7 @@
       );
     }
 
-    function loadAdminTrxHistory(type, containerId) {
+    function loadAdminTrxHistory(type, containerId, startDate = null, endDate = null) {
       const container = document.getElementById(containerId);
       if (!container) return;
 
@@ -6154,7 +6170,7 @@
             container.innerHTML = `<div style="text-align:center; padding:20px; color:#ef4444">Gagal memuat riwayat: ${res.message}</div>`;
           }
         })
-        .getFilteredTransactionHistory(type, currentBranch, currentUser.role === 'Admin' ? 'All' : (currentUser.id || currentUser.name));
+        .getFilteredTransactionHistory(type, currentBranch, currentUser.role === 'Admin' ? 'All' : (currentUser.id || currentUser.name), startDate, endDate);
     }
 
     // ================ POS (POINT OF SALE) ================
@@ -6950,10 +6966,11 @@
         const startEl = document.getElementById('stock_filter_start');
         const endEl = document.getElementById('stock_filter_end');
         if (prodEl) prodEl.value = '';
-        if (startEl) startEl.value = '';
-        if (endEl) endEl.value = '';
-        start = '';
-        end = '';
+        const todayStr = new Date().toISOString().split('T')[0];
+        if (startEl) startEl.value = todayStr;
+        if (endEl) endEl.value = todayStr;
+        start = todayStr;
+        end = todayStr;
       }
       showLoading();
       google.script.run
@@ -7967,11 +7984,17 @@
               </div>
             </div>
             <div id="todayCheckinWidget" style="margin-top:24px">
-              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
-                <h4 style="font-weight:600;color:#334155"><i class="fas fa-list-check"></i> Check-In Hari Ini</h4>
-                <button class="btn btn-sm btn-outline" onclick="loadTodayCheckins()">
-                  <i class="fas fa-sync-alt"></i> Refresh
-                </button>
+              <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;margin-bottom:12px">
+                <h4 style="font-weight:600;color:#334155;margin:0"><i class="fas fa-list-check"></i> Riwayat Check-In</h4>
+                <div style="display:flex; gap:8px; align-items:center">
+                  <input type="date" id="ci_start_date" class="form-input" style="padding:6px; font-size:12px; width:auto" value="${new Date().toISOString().split('T')[0]}">
+                  <span style="color:#64748b">-</span>
+                  <input type="date" id="ci_end_date" class="form-input" style="padding:6px; font-size:12px; width:auto" value="${new Date().toISOString().split('T')[0]}">
+                  <button class="btn btn-primary btn-sm" onclick="loadTodayCheckins(document.getElementById('ci_start_date').value, document.getElementById('ci_end_date').value)" style="padding:6px 12px; font-size:12px">Filter</button>
+                  <button class="btn btn-sm btn-outline" onclick="loadTodayCheckins(document.getElementById('ci_start_date').value, document.getElementById('ci_end_date').value)">
+                    <i class="fas fa-sync-alt"></i>
+                  </button>
+                </div>
               </div>
               <div id="todayCheckinsTable">
                 <div style="text-align:center;padding:20px;color:#94a3b8">
@@ -7982,10 +8005,10 @@
           </div>
         </div>
       `;
-      loadTodayCheckins();
+      loadTodayCheckins(new Date().toISOString().split('T')[0], new Date().toISOString().split('T')[0]);
     }
 
-    function loadTodayCheckins() {
+    function loadTodayCheckins(startDate = null, endDate = null) {
       google.script.run
         .withSuccessHandler(function (res) {
           const el = document.getElementById('todayCheckinsTable');
@@ -8002,6 +8025,7 @@
                       <th>Nama</th>
                       <th>ID</th>
                       <th>Waktu</th>
+                      <th>Tanggal</th>
                       <th>Tipe</th>
                       <th style="text-align:center">Aksi</th>
                     </tr>
@@ -8016,6 +8040,7 @@
                           <td><b>${escapeHtml(c.memberName || '-')}</b></td>
                           <td><code>${escapeHtml(c.memberId || '-')}</code></td>
                           <td>${formatTime(c.checkInTime)}</td>
+                          <td><div style="font-size:11px;color:#64748b">${formatDate(c.checkInTime)}</div></td>
                           <td><span class="badge badge-${typeClass}">${c.type || 'Member'}</span></td>
                           <td style="text-align:center">
                             <div style="display:flex; gap:6px; justify-content:center">
@@ -8055,7 +8080,7 @@
             el.innerHTML = '<p class="text-muted" style="padding:20px;text-align:center">Gagal memuat data: ' + err.message + '</p>';
           }
         })
-        .getTodayCheckins(currentBranch);
+        .getTodayCheckins(currentBranch, startDate, endDate);
     }
 
     function autoPreviewCheckin(val) {
@@ -8686,9 +8711,17 @@
 
             <!-- Tambahan: Riwayat Transaksi PT -->
             <div style="margin-top:32px; border-top:1px solid #e2e8f0; padding-top:24px">
-              <h4 style="margin-bottom:16px;font-weight:600;color:#334155">
-                <i class="fas fa-history"></i> Riwayat Transaksi PT
-              </h4>
+              <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px; margin-bottom:16px">
+                <h4 style="margin:0;font-weight:600;color:#334155">
+                  <i class="fas fa-history"></i> Riwayat Transaksi PT
+                </h4>
+                <div style="display:flex; gap:8px; align-items:center">
+                  <input type="date" id="ptStartDate" class="form-input" style="padding:6px; font-size:12px; width:auto" value="${new Date().toISOString().split('T')[0]}">
+                  <span style="color:#64748b">-</span>
+                  <input type="date" id="ptEndDate" class="form-input" style="padding:6px; font-size:12px; width:auto" value="${new Date().toISOString().split('T')[0]}">
+                  <button class="btn btn-primary btn-sm" onclick="loadPTTransactionHistory(document.getElementById('ptStartDate').value, document.getElementById('ptEndDate').value)" style="padding:6px 12px; font-size:12px">Filter</button>
+                </div>
+              </div>
               <div id="ptHistoryContainer">
                 <div style="text-align:center;padding:30px;color:#94a3b8">
                   <i class="fas fa-spinner fa-spin fa-2x"></i>
@@ -8706,10 +8739,10 @@
 
       loadActivePTSessions();
       loadPTCatalogue();
-      loadPTTransactionHistory();
+      loadPTTransactionHistory(new Date().toISOString().split('T')[0], new Date().toISOString().split('T')[0]);
     }
 
-    function loadPTTransactionHistory() {
+    function loadPTTransactionHistory(startDate = null, endDate = null) {
       const container = document.getElementById('ptHistoryContainer');
       if (!container) return;
 
@@ -8734,6 +8767,7 @@
                         <th>Member</th>
                         <th>Paket</th>
                         <th>Total</th>
+                        <th>Metode</th>
                         <th>Tanggal</th>
                         <th>Status</th>
                         <th style="text-align:center">Aksi</th>
@@ -8746,6 +8780,7 @@
                           <td><b>${escapeHtml(t.memberName || '-')}</b></td>
                           <td>${escapeHtml(t.packageName || '-')}</td>
                           <td><b style="color:#22c55e">${formatCurrency(t.totalAmount || 0)}</b></td>
+                          <td><span class="badge badge-info">${escapeHtml(t.paymentMethod || '-')}</span></td>
                           <td>${formatDateTime(t.transactionDate)}</td>
                           <td><span class="badge badge-success">${escapeHtml(t.status || 'Berhasil')}</span></td>
                           <td style="text-align:center">
@@ -8778,7 +8813,7 @@
         .withFailureHandler(function (err) {
           container.innerHTML = '<p class="text-danger" style="text-align:center;padding:20px">Error: ' + err.message + '</p>';
         })
-        .getFilteredTransactionHistory('Personal Trainer', currentBranch);
+        .getFilteredTransactionHistory('Personal Trainer', currentBranch, 'All', startDate, endDate);
     }
 
     function sendPTWhatsApp(receipt, name, pkg, total, payment) {
@@ -10355,8 +10390,14 @@
 
           <!-- LIST EXPENSES -->
           <div class="table-container list-container">
-            <div class="cart-header" style="background:#fff; border-bottom:1px solid #f1f5f9; padding:20px 24px">
+            <div class="cart-header" style="background:#fff; border-bottom:1px solid #f1f5f9; padding:20px 24px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px">
               <h4 style="color:#334155; margin:0"><i class="fas fa-history"></i> Riwayat Pengeluaran</h4>
+              <div style="display:flex; gap:8px; align-items:center">
+                <input type="date" id="exp_start_date" class="form-input" style="padding:6px; font-size:12px; width:auto">
+                <span style="color:#64748b">-</span>
+                <input type="date" id="exp_end_date" class="form-input" style="padding:6px; font-size:12px; width:auto">
+                <button class="btn btn-primary btn-sm" onclick="refreshExpenses()" style="padding:6px 12px; font-size:12px">Filter</button>
+              </div>
             </div>
             <div id="expensesTableContainer" style="overflow-x:auto">
               <div style="text-align:center; padding:40px; color:#94a3b8">
@@ -10372,11 +10413,10 @@
       const _expToday = new Date();
       document.getElementById('exp_date').value = `${_expToday.getFullYear()}-${String(_expToday.getMonth()+1).padStart(2,'0')}-${String(_expToday.getDate()).padStart(2,'0')}`;
 
-      // Set default filter: awal bulan ini s.d. hari ini
+      // Set default filter: hari ini s.d. hari ini
       const _now = new Date();
-      const _firstDay = new Date(_now.getFullYear(), _now.getMonth(), 1);
       const toDateStr = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
-      if (document.getElementById('exp_start_date')) document.getElementById('exp_start_date').value = toDateStr(_firstDay);
+      if (document.getElementById('exp_start_date')) document.getElementById('exp_start_date').value = toDateStr(_now);
       if (document.getElementById('exp_end_date')) document.getElementById('exp_end_date').value = toDateStr(_now);
 
       refreshExpenses();
@@ -10418,9 +10458,8 @@
 
     function resetExpensesFilter() {
       const _now = new Date();
-      const _firstDay = new Date(_now.getFullYear(), _now.getMonth(), 1);
       const toDateStr = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
-      if (document.getElementById('exp_start_date')) document.getElementById('exp_start_date').value = toDateStr(_firstDay);
+      if (document.getElementById('exp_start_date')) document.getElementById('exp_start_date').value = toDateStr(_now);
       if (document.getElementById('exp_end_date')) document.getElementById('exp_end_date').value = toDateStr(_now);
       refreshExpenses();
     }
@@ -11652,11 +11691,10 @@
         </div>
       `;
 
-      // Default dates: current month
+      // Default dates: today
       const today = new Date();
-      const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
       const toLocalDateStr = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
-      document.getElementById('pos_hist_start').value = toLocalDateStr(firstDay);
+      document.getElementById('pos_hist_start').value = toLocalDateStr(today);
       document.getElementById('pos_hist_end').value = toLocalDateStr(today);
 
       loadPOSTransactionHistory();
