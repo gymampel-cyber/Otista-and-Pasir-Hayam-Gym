@@ -4308,13 +4308,21 @@
         return;
       }
 
-      let html = '<div class="list-container" style="border:none; box-shadow:none; background:transparent">';
+      const btnDeleteSelected = \`<button id="btnMassDelete_Checkin" class="btn btn-primary btn-sm" onclick="executeMassDelete('Checkin')" style="display:none; padding:6px 12px; font-size:12px; background:#ef4444; border-color:#ef4444"></button>\`;
+      
+      let html = \`
+        <div style="display:flex; justify-content:space-between; align-items:center; padding: 0 10px 10px 10px;">
+          <div><input type="checkbox" id="selectAll_Checkin" onclick="toggleSelectAll(this, 'Checkin')"> <label for="selectAll_Checkin" style="font-size:12px; color:#64748b; cursor:pointer">Pilih Semua</label></div>
+          \${btnDeleteSelected}
+        </div>
+        <div class="list-container" style="border:none; box-shadow:none; background:transparent">\`;
       list.forEach((c) => {
         const typeClass = c.type === 'VISIT' ? 'primary' : 'success';
         const typeText = c.type === 'VISIT' ? 'Visit' : 'Member';
 
         html += `
           <div class="list-item" style="display:flex; justify-content:space-between; align-items:center; background:white; margin-bottom:8px; border-radius:12px; border:1px solid #f1f5f9; box-shadow: 0 2px 4px rgba(0,0,0,0.02); padding:14px 20px">
+            <div style="margin-right:16px"><input type="checkbox" class="rowCheckbox" data-type="Checkin" value="${c.id}" onclick="toggleSelectRow(this, '${c.id}', 'Checkin')"></div>
             <div class="list-item-content" style="flex:1">
               <div class="list-item-title" style="font-weight:600; font-size:15px; color:#1c1c1e">
                 ${escapeHtml(c.memberName || '-')}
@@ -6118,12 +6126,16 @@
               container.innerHTML = '<div style="text-align:center; padding:32px; color:#94a3b8; background:rgba(0,0,0,0.02); border-radius:12px; border:1px dashed var(--border-color)"><i class="fas fa-receipt" style="font-size:24px; margin-bottom:12px; display:block; opacity:0.5"></i> Belum ada riwayat transaksi.</div>';
               return;
             }
+            
+            const btnDeleteSelected = \`<button id="btnMassDelete_Transaction" class="btn btn-primary btn-sm" onclick="executeMassDelete('Transaction')" style="display:none; padding:6px 12px; font-size:12px; margin-bottom:12px; background:#ef4444; border-color:#ef4444"></button>\`;
 
-            let html = `
-              <div class="table-responsive">
+            let html = \`
+              \${btnDeleteSelected}
+              <div class="table-responsive">\`;
                 <table class="table-premium" style="width:100%; border-collapse:separate; border-spacing:0 8px">
                   <thead>
                     <tr style="background:transparent">
+                      <th style="padding:12px; width:40px; text-align:center"><input type="checkbox" id="selectAll_Transaction" onclick="toggleSelectAll(this, 'Transaction')"></th>
                       <th style="padding:12px; font-size:11px; text-transform:uppercase; color:#64748b; font-weight:700">Waktu</th>
                       <th style="padding:12px; font-size:11px; text-transform:uppercase; color:#64748b; font-weight:700">No. Resi</th>
                       <th style="padding:12px; font-size:11px; text-transform:uppercase; color:#64748b; font-weight:700">Member</th>
@@ -6137,7 +6149,8 @@
                     ${list.map(t => {
               return `
                         <tr style="background:var(--bg-card); box-shadow:0 2px 4px rgba(0,0,0,0.02); transition:0.2s">
-                          <td style="padding:12px; border-radius:12px 0 0 12px"><div style="font-size:11px;color:#64748b">${formatDate(t.transactionDate)}</div></td>
+                          <td style="padding:12px; text-align:center; border-radius:12px 0 0 12px"><input type="checkbox" class="rowCheckbox" data-type="Transaction" value="${t.receiptNumber}" onclick="toggleSelectRow(this, '${t.receiptNumber}', 'Transaction')"></td>
+                          <td style="padding:12px"><div style="font-size:11px;color:#64748b">${formatDate(t.transactionDate)}</div></td>
                           <td style="padding:12px"><code>${t.receiptNumber}</code></td>
                           <td style="padding:12px">
                             <div><b>${escapeHtml(t.memberName)}</b> <small style="color:#64748b">(${t.memberId})</small></div>
@@ -6325,11 +6338,15 @@
               return;
             }
 
-            el.innerHTML = `
+            const btnDeleteSelected = \`<button id="btnMassDelete_POS" class="btn btn-primary btn-sm" onclick="executeMassDelete('POS')" style="display:none; padding:6px 12px; font-size:12px; margin-bottom:12px; background:#ef4444; border-color:#ef4444"></button>\`;
+
+            el.innerHTML = \`
+              \${btnDeleteSelected}
               <div style="overflow-x:auto">
                 <table class="data-table" style="font-size:13px">
                   <thead>
                     <tr>
+                      <th style="width:40px; text-align:center"><input type="checkbox" id="selectAll_POS" onclick="toggleSelectAll(this, 'POS')"></th>
                       <th>ID</th>
                       <th>Waktu</th>
                       <th>Pelanggan</th>
@@ -6341,9 +6358,10 @@
                     </tr>
                   </thead>
                   <tbody>
-                    ${list.map(t => `
+                    ${list.map(t => \`
                       <tr>
-                        <td><code>${t.id}</code></td>
+                        <td style="text-align:center"><input type="checkbox" class="rowCheckbox" data-type="POS" value="\${t.id}" onclick="toggleSelectRow(this, '\${t.id}', 'POS')"></td>
+                        <td><code>\${t.id}</code></td>
                         <td>${t.time}</td>
                         <td>${escapeHtml(t.customer)}</td>
                         <td>${t.items || '-'}</td>
@@ -8777,12 +8795,16 @@
 
             const isAdmin = currentUser && (currentUser.role === 'Admin' || currentUser.role === 'Super Admin');
 
-            let html = `
+            const btnDeleteSelected = \`<button id="btnMassDelete_Transaction" class="btn btn-primary btn-sm" onclick="executeMassDelete('Transaction')" style="display:none; padding:6px 12px; font-size:12px; margin-bottom:12px; background:#ef4444; border-color:#ef4444"></button>\`;
+
+            let html = \`
+              \${btnDeleteSelected}
               <div class="table-container" style="box-shadow:none; border:1px solid #e2e8f0">
-                <div style="overflow-x:auto">
+                <div style="overflow-x:auto">\`;
                   <table class="data-table">
                     <thead>
                       <tr>
+                        <th style="width:40px; text-align:center"><input type="checkbox" id="selectAll_Transaction" onclick="toggleSelectAll(this, 'Transaction')"></th>
                         <th>No. Kwitansi</th>
                         <th>Member</th>
                         <th>Paket</th>
@@ -8796,6 +8818,7 @@
                     <tbody>
                       ${list.map(t => `
                         <tr>
+                          <td style="text-align:center"><input type="checkbox" class="rowCheckbox" data-type="Transaction" value="${t.receiptNumber}" onclick="toggleSelectRow(this, '${t.receiptNumber}', 'Transaction')"></td>
                           <td><code>${escapeHtml(t.receiptNumber || '-')}</code></td>
                           <td><b>${escapeHtml(t.memberName || '-')}</b></td>
                           <td>${escapeHtml(t.packageName || '-')}</td>
@@ -10311,26 +10334,7 @@
     }
     function loadExpensesView() {
       const content = `
-        ${currentUser.role !== 'Staff' ? `
-        <div class="filter-container">
-          <div class="filter-item">
-            <label class="filter-label">Tanggal Mulai</label>
-            <input type="date" id="exp_start_date" class="filter-input">
-          </div>
-          <div class="filter-item">
-            <label class="filter-label">Tanggal Akhir</label>
-            <input type="date" id="exp_end_date" class="filter-input">
-          </div>
-          <div style="display:flex; gap:8px">
-            <button class="btn btn-primary" onclick="refreshExpenses()" style="padding:8px 20px">
-              <i class="fas fa-filter"></i> Filter
-            </button>
-            <button class="btn btn-outline" onclick="resetExpensesFilter()" style="padding:8px 12px">
-              <i class="fas fa-undo"></i> Reset
-            </button>
-          </div>
-        </div>
-        ` : ''}
+
 
         <div class="stats-grid">
           <div class="stat-card" style="border-top-color:#ef4444; ${currentUser.role === 'Staff' ? 'display:none' : ''}">
@@ -10416,7 +10420,8 @@
                 <input type="date" id="exp_start_date" class="form-input" style="padding:6px; font-size:12px; width:auto">
                 <span style="color:#64748b">-</span>
                 <input type="date" id="exp_end_date" class="form-input" style="padding:6px; font-size:12px; width:auto">
-                <button class="btn btn-primary btn-sm" onclick="refreshExpenses()" style="padding:6px 12px; font-size:12px">Filter</button>
+                <button class="btn btn-primary btn-sm" onclick="refreshExpenses()" style="padding:6px 12px; font-size:12px"><i class="fas fa-filter"></i> Filter</button>
+                <button class="btn btn-outline btn-sm" onclick="resetExpensesFilter()" style="padding:6px 12px; font-size:12px"><i class="fas fa-undo"></i> Reset</button>
               </div>
             </div>
             <div id="expensesTableContainer" style="overflow-x:auto">
@@ -10500,10 +10505,14 @@
         return;
       }
 
-      let html = `
+      const btnDeleteSelected = \`<button id="btnMassDelete_Expense" class="btn btn-primary btn-sm" onclick="executeMassDelete('Expense')" style="display:none; padding:6px 12px; font-size:12px; margin-bottom:12px; background:#ef4444; border-color:#ef4444"></button>\`;
+
+      let html = \`
+        \${btnDeleteSelected}
         <table class="data-table">
           <thead>
             <tr>
+              <th style="width:40px; text-align:center"><input type="checkbox" id="selectAll_Expense" onclick="toggleSelectAll(this, 'Expense')"></th>
               <th>Tanggal</th>
               <th>Kategori</th>
               <th>Keterangan</th>
@@ -10520,6 +10529,7 @@
         totalAmount += Number(item.amount) || 0;
         html += `
           <tr>
+            <td style="text-align:center"><input type="checkbox" class="rowCheckbox" data-type="Expense" value="${item.id}" onclick="toggleSelectRow(this, '${item.id}', 'Expense')"></td>
             <td style="white-space:nowrap">${formatDate(item.date)}</td>
             <td><span class="badge badge-primary">${item.category}</span></td>
             <td style="max-width:250px; font-size:13px">${item.description}</td>
@@ -12264,6 +12274,90 @@
         })
         .updateBranding(settings);
     }
+    // ==========================================
+    // MASS DELETION LOGIC
+    // ==========================================
+    let selectedForDeletion = [];
+
+    function toggleSelectAll(checkboxEl, type) {
+      const checkboxes = document.querySelectorAll(`.rowCheckbox[data-type="${type}"]`);
+      
+      // Remove all currently selected items of this type
+      selectedForDeletion = selectedForDeletion.filter(item => item.type !== type);
+      
+      checkboxes.forEach(cb => {
+        cb.checked = checkboxEl.checked;
+        if (checkboxEl.checked) {
+          selectedForDeletion.push({ id: cb.value, type: type });
+        }
+      });
+      
+      updateMassDeleteBtn(type);
+    }
+
+    function toggleSelectRow(checkboxEl, id, type) {
+      if (checkboxEl.checked) {
+        if (!selectedForDeletion.find(item => String(item.id) === String(id) && item.type === type)) {
+          selectedForDeletion.push({ id: id, type: type });
+        }
+      } else {
+        selectedForDeletion = selectedForDeletion.filter(item => !(String(item.id) === String(id) && item.type === type));
+      }
+      
+      const selectAllCb = document.getElementById(`selectAll_${type}`);
+      const allRowCbs = document.querySelectorAll(`.rowCheckbox[data-type="${type}"]`);
+      if (selectAllCb) {
+        selectAllCb.checked = allRowCbs.length > 0 && document.querySelectorAll(`.rowCheckbox[data-type="${type}"]:checked`).length === allRowCbs.length;
+      }
+      
+      updateMassDeleteBtn(type);
+    }
+
+    function updateMassDeleteBtn(type) {
+      const btn = document.getElementById(`btnMassDelete_${type}`);
+      if (btn) {
+        const count = selectedForDeletion.filter(item => item.type === type).length;
+        if (count > 0) {
+          btn.style.display = 'inline-flex';
+          btn.innerHTML = `<i class="fas fa-trash-alt"></i> Hapus (${count})`;
+        } else {
+          btn.style.display = 'none';
+        }
+      }
+    }
+
+    function executeMassDelete(type) {
+      const toDelete = selectedForDeletion.filter(item => item.type === type);
+      if (toDelete.length === 0) return;
+      
+      showConfirm(`Hapus Massal\n\nApakah Anda yakin ingin menghapus ${toDelete.length} data terpilih?\n(Proses auto-rollback stok/kuota akan tetap berjalan).`, function(ok) {
+        if (!ok) return;
+        
+        showLoading();
+        google.script.run
+          .withSuccessHandler(function(res) {
+            hideLoading();
+            if (res.success) {
+              showToast('✅ ' + res.message, 'success');
+              selectedForDeletion = selectedForDeletion.filter(item => item.type !== type);
+              updateMassDeleteBtn(type);
+              
+              if (type === 'Transaction') document.querySelector('.btn-primary[onclick^="loadAdminTrxHistory"]').click();
+              else if (type === 'POS') document.querySelector('.btn-primary[onclick^="loadTodayPOSTransactions"]').click();
+              else if (type === 'Checkin') document.querySelector('.btn-primary[onclick^="loadTodayCheckins"]').click();
+              else if (type === 'Expense') refreshExpenses();
+            } else {
+              showToast('❌ Gagal: ' + res.message, 'error');
+            }
+          })
+          .withFailureHandler(function(err) {
+            hideLoading();
+            showToast('❌ Error jaringan: ' + err.message, 'error');
+          })
+          .deleteMultipleRecords(toDelete);
+      });
+    }
+
   </script>
 </body>
 
