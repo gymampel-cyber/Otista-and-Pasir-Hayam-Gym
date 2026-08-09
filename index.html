@@ -5,6 +5,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Gym Management</title>
+  <link rel="icon" href="data:;base64,iVBORw0KGgo=">
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
   <script>
@@ -6358,10 +6359,10 @@
                     </tr>
                   </thead>
                   <tbody>
-                    ${list.map(t => \`
+                    ${list.map(t => `
                       <tr>
-                        <td style="text-align:center"><input type="checkbox" class="rowCheckbox" data-type="POS" value="\${t.id}" onclick="toggleSelectRow(this, '\${t.id}', 'POS')"></td>
-                        <td><code>\${t.id}</code></td>
+                        <td style="text-align:center"><input type="checkbox" class="rowCheckbox" data-type="POS" value="${t.id}" onclick="toggleSelectRow(this, '${t.id}', 'POS')"></td>
+                        <td><code>${t.id}</code></td>
                         <td>${t.time}</td>
                         <td>${escapeHtml(t.customer)}</td>
                         <td>${t.items || '-'}</td>
