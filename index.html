@@ -4309,11 +4309,11 @@
         return;
       }
 
-      const btnDeleteSelected = `<button id="btnMassDelete_Checkin" class="btn btn-primary btn-sm" onclick="executeMassDelete('Checkin')" style="display:none; padding:6px 12px; font-size:12px; background:#ef4444; border-color:#ef4444"></button>`;
+      const btnDeleteSelected = `<button id="btnMassDelete_CheckinDash" class="btn btn-primary btn-sm" onclick="executeMassDelete('CheckinDash')" style="display:none; padding:6px 12px; font-size:12px; background:#ef4444; border-color:#ef4444"></button>`;
       
       let html = `
         <div style="display:flex; justify-content:space-between; align-items:center; padding: 0 10px 10px 10px;">
-          <div><input type="checkbox" id="selectAll_Checkin" onclick="toggleSelectAll(this, 'Checkin')"> <label for="selectAll_Checkin" style="font-size:12px; color:#64748b; cursor:pointer">Pilih Semua</label></div>
+          <div><input type="checkbox" id="selectAll_CheckinDash" onclick="toggleSelectAll(this, 'CheckinDash')"> <label for="selectAll_CheckinDash" style="font-size:12px; color:#64748b; cursor:pointer">Pilih Semua</label></div>
           ${btnDeleteSelected}
         </div>
         <div class="list-container" style="border:none; box-shadow:none; background:transparent">`;
@@ -4323,7 +4323,7 @@
 
         html += `
           <div class="list-item" style="display:flex; justify-content:space-between; align-items:center; background:white; margin-bottom:8px; border-radius:12px; border:1px solid #f1f5f9; box-shadow: 0 2px 4px rgba(0,0,0,0.02); padding:14px 20px">
-            <div style="margin-right:16px"><input type="checkbox" class="rowCheckbox" data-type="Checkin" value="${c.id}" onclick="toggleSelectRow(this, '${c.id}', 'Checkin')"></div>
+            <div style="margin-right:16px"><input type="checkbox" class="rowCheckbox" data-type="CheckinDash" value="${c.id}" onclick="toggleSelectRow(this, '${c.id}', 'CheckinDash')"></div>
             <div class="list-item-content" style="flex:1">
               <div class="list-item-title" style="font-weight:600; font-size:15px; color:#1c1c1e">
                 ${escapeHtml(c.memberName || '-')}
@@ -8043,11 +8043,15 @@
 
           if (res && res.success && res.checkins && res.checkins.length > 0) {
             const list = res.checkins;
+            const btnDeleteSelected = `<button id="btnMassDelete_CheckinTable" class="btn btn-primary btn-sm" onclick="executeMassDelete('CheckinTable')" style="display:none; padding:6px 12px; font-size:12px; margin-bottom:12px; background:#ef4444; border-color:#ef4444"></button>`;
+
             el.innerHTML = `
+              ${btnDeleteSelected}
               <div style="overflow-x:auto">
                 <table class="data-table">
                   <thead>
                     <tr>
+                      <th style="width:40px; text-align:center"><input type="checkbox" id="selectAll_CheckinTable" onclick="toggleSelectAll(this, 'CheckinTable')"></th>
                       <th>#</th>
                       <th>Nama</th>
                       <th>ID</th>
@@ -8073,6 +8077,7 @@
               }
               return `
                         <tr>
+                          <td style="text-align:center"><input type="checkbox" class="rowCheckbox" data-type="CheckinTable" value="${c.id}" onclick="toggleSelectRow(this, '${c.id}', 'CheckinTable')"></td>
                           <td>${i + 1}</td>
                           <td><b>${escapeHtml(c.memberName || '-')}</b></td>
                           <td><code>${escapeHtml(c.memberId || '-')}</code></td>
@@ -12331,6 +12336,11 @@
       const toDelete = selectedForDeletion.filter(item => item.type === type);
       if (toDelete.length === 0) return;
       
+      const toDeleteBackend = toDelete.map(item => ({
+        id: item.id,
+        type: (item.type === 'CheckinTable' || item.type === 'CheckinDash') ? 'Checkin' : item.type
+      }));
+      
       showConfirm(`Hapus Massal\n\nApakah Anda yakin ingin menghapus ${toDelete.length} data terpilih?\n(Proses auto-rollback stok/kuota akan tetap berjalan).`, function(ok) {
         if (!ok) return;
         
@@ -12345,7 +12355,17 @@
               
               if (type === 'Transaction') document.querySelector('.btn-primary[onclick^="loadAdminTrxHistory"]').click();
               else if (type === 'POS') document.querySelector('.btn-primary[onclick^="loadTodayPOSTransactions"]').click();
-              else if (type === 'Checkin') document.querySelector('.btn-primary[onclick^="loadTodayCheckins"]').click();
+              else if (type === 'CheckinTable') {
+                const btn = document.querySelector('.btn-primary[onclick^="loadTodayCheckins"]');
+                if (btn) btn.click();
+              }
+              else if (type === 'CheckinDash') {
+                if (typeof fetchDashboardData === 'function') fetchDashboardData(null, null, true);
+              }
+              else if (type === 'Checkin') {
+                const btn = document.querySelector('.btn-primary[onclick^="loadTodayCheckins"]');
+                if (btn) btn.click();
+              }
               else if (type === 'Expense') refreshExpenses();
             } else {
               showToast('❌ Gagal: ' + res.message, 'error');
@@ -12355,7 +12375,7 @@
             hideLoading();
             showToast('❌ Error jaringan: ' + err.message, 'error');
           })
-          .deleteMultipleRecords(toDelete);
+          .deleteMultipleRecords(toDeleteBackend);
       });
     }
 
