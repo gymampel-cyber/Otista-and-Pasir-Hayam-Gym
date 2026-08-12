@@ -112,14 +112,7 @@
         .catch(err => {
           if (failureHandler) failureHandler(err);
           else {
-            if (typeof Swal !== 'undefined') {
-              Swal.fire({
-                icon: 'error',
-                title: 'Koneksi Gagal',
-                text: 'Gagal terhubung ke server atau respon tidak valid. Pastikan URL Web App sudah benar dan koneksi internet Anda stabil.',
-                confirmButtonColor: '#d4af37'
-              });
-            }
+            console.error('Connection Error:', err.message);
           }
         });
     }
@@ -328,6 +321,13 @@
     body.dark-mode .cart-footer,
     body.dark-mode .cart-header {
       background: rgba(255, 255, 255, 0.02);
+    }
+
+    /* Hide mass delete features for Staff */
+    body[data-role="Staff"] .rowCheckbox,
+    body[data-role="Staff"] [id^="selectAll_"],
+    body[data-role="Staff"] [id^="btnMassDelete_"] {
+      display: none !important;
     }
 
     * {
@@ -10443,6 +10443,7 @@
       if (!currentUser) return;
 
       const role = currentUser.role;
+      document.body.setAttribute('data-role', role);
       document.getElementById('userName').textContent = currentUser.name;
       document.getElementById('userRole').textContent = role;
 
@@ -12100,6 +12101,11 @@
     }
 
     function executeMassDelete(type) {
+      if (currentUser && currentUser.role === 'Staff') {
+        showToast('Staff tidak diizinkan melakukan hapus massal.', 'error');
+        return;
+      }
+
       const toDelete = selectedForDeletion.filter(item => item.type === type);
       if (toDelete.length === 0) return;
       
