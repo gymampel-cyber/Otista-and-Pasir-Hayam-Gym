@@ -11,6 +11,26 @@
   <script>
     const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyBeSt3SGeDvsDcbwYIlrO0jDAOIs1XUgg9BvxCk9fxeT1W0UsDrHAByGirXeIqZIHn/exec';
 
+    // Auto-retry untuk mengatasi Cold Start (timeout 502) dari Google Apps Script
+    // maxRetries diset rendah (misal 1) agar tidak menghabiskan kuota harian jika benar-benar error
+    async function fetchWithRetry(url, options, maxRetries = 1) {
+      let lastError;
+      for (let i = 0; i <= maxRetries; i++) {
+        try {
+          const response = await fetch(url, options);
+          const data = await response.json();
+          return data;
+        } catch (error) {
+          lastError = error;
+          if (i < maxRetries) {
+            console.warn(`Fetch error (percobaan ${i + 1}/${maxRetries}), menunggu 1.5 detik sebelum mencoba lagi...`, error.message);
+            await new Promise(resolve => setTimeout(resolve, 1500));
+          }
+        }
+      }
+      throw lastError;
+    }
+
     // WRITE_ACTIONS: Routine actions that use Offline-First (Local-First + Sync)
     // Actions NOT in this list (like registerMember, processTransaction, processPOSTransaction, processVisitCheckIn)
     // will be executed in real-time because they require server-generated IDs/Receipts for WhatsApp confirmations.
@@ -94,13 +114,12 @@
         }
       }
 
-      fetch(SCRIPT_URL, {
+      fetchWithRetry(SCRIPT_URL, {
         method: 'POST',
         cache: 'no-store',
         body: JSON.stringify({ action: methodName, args: args }),
         headers: { 'Content-Type': 'text/plain;charset=utf-8' }
-      })
-        .then(response => response.json())
+      }, 1)
         .then(data => {
           if (!data.success) {
             if (failureHandler) failureHandler(new Error(data.message));
@@ -231,12 +250,12 @@
       while (syncQueue.length > 0 && navigator.onLine) {
         const item = syncQueue[0];
         try {
-          const res = await fetch(SCRIPT_URL, {
+          const res = await fetchWithRetry(SCRIPT_URL, {
             method: 'POST',
             cache: 'no-store',
             body: JSON.stringify({ action: item.action, args: item.args }),
             headers: { 'Content-Type': 'text/plain;charset=utf-8' }
-          }).then(r => r.json());
+          }, 1);
 
           if (res.success) {
             syncQueue.shift();
@@ -3170,7 +3189,28 @@
         })
         .getInitialAppData(currentBranch);
     }
-
+    function backgroundSyncMembers(callback) {
+      if (!currentUser) return;
+      google.script.run
+        .withSuccessHandler(function (res) {
+          if (res && res.success && res.members) {
+            saveToCache('members', res.members);
+            if (typeof callback === 'function') callback(res.members);
+            
+            // Re-render UI jika sedang berada di view yang berhubungan
+            if (window.currentView === 'members' && typeof renderMembersList === 'function') {
+              renderMembersList(res.members);
+            }
+            if (window.currentView === 'gallery' && typeof renderGallery === 'function') {
+              renderGallery(res.members);
+            }
+          }
+        })
+        .withFailureHandler(function (err) {
+          console.warn('Background sync members failed:', err);
+        })
+        .getAllMembers('All');
+    }
     
 
 
@@ -3685,6 +3725,7 @@
             applyRolePermissions();
             initMultiGym();
             fetchInitialAppData();
+            backgroundSyncMembers(); // Sync berat dilakukan asinkron di belakang
             showView('dashboard');
             loadApprovalCount();
             loadAndApplyBranding();
@@ -3864,6 +3905,7 @@
             applyRolePermissions();
             initMultiGym();
             fetchInitialAppData(); // Trigger full sync after login
+            backgroundSyncMembers(); // Sync berat dilakukan asinkron di belakang
             showView('dashboard');
             loadApprovalCount();
           } else {
@@ -4424,23 +4466,49 @@
     }
 
     // ================ GALLERY ================
+    window.galleryLimit = 100;
+    
     function loadGalleryView() {
-      showLoading();
-      google.script.run
-        .withSuccessHandler(function (res) {
-          hideLoading();
-          if (res.success) {
-            if (window.appData) window.appData.members = res.members;
-            renderGallery(res.members);
-          } else {
-            showToast('Gagal memuat galeri: ' + res.message, 'error');
-          }
-        })
-        .withFailureHandler(function (err) {
-          hideLoading();
-          showToast('Gagal memuat galeri: ' + err.message, 'error');
-        })
-        .getAllMembers('All');
+      window.galleryLimit = 100; // Reset limit
+      const localMembers = getFromCache('members');
+      
+      if (localMembers && localMembers.length > 0) {
+        // 1. Tampilkan dari cache secara instan (0.1 detik)
+        renderGallery(localMembers);
+        
+        // 2. Tampilkan indikator SWR kecil
+        const swrIndicator = document.createElement('div');
+        swrIndicator.id = 'swrIndicator';
+        swrIndicator.style.cssText = 'position:fixed; bottom:24px; right:24px; background:var(--primary); color:white; padding:8px 16px; border-radius:24px; font-size:12px; font-weight:600; box-shadow:0 4px 12px rgba(0,0,0,0.15); z-index:9999; display:flex; align-items:center; gap:8px; animation:slideUp 0.3s ease';
+        swrIndicator.innerHTML = '<i class="fas fa-sync fa-spin"></i> Menyinkronkan data...';
+        document.body.appendChild(swrIndicator);
+        
+        // 3. Tarik data terbaru di belakang layar
+        backgroundSyncMembers((updatedMembers) => {
+          const ind = document.getElementById('swrIndicator');
+          if (ind) ind.remove();
+          // Tabel akan otomatis di-render ulang oleh callback di backgroundSyncMembers
+        });
+      } else {
+        // Fallback jika tidak ada cache sama sekali (misal login pertama kali)
+        showLoading();
+        google.script.run
+          .withSuccessHandler(function (res) {
+            hideLoading();
+            if (res.success) {
+              if (window.appData) window.appData.members = res.members;
+              saveToCache('members', res.members);
+              renderGallery(res.members);
+            } else {
+              showToast('Gagal memuat galeri: ' + res.message, 'error');
+            }
+          })
+          .withFailureHandler(function (err) {
+            hideLoading();
+            showToast('Gagal memuat galeri: ' + err.message, 'error');
+          })
+          .getAllMembers('All');
+      }
     }
 
     function renderGallery(members) {
@@ -4468,7 +4536,7 @@
           </div>
         </div>
         <div id="galleryGrid" style="display:grid; grid-template-columns:repeat(auto-fill, minmax(280px, 1fr)); gap:24px; margin-top:24px">
-          ${members.map(m => {
+          ${members.slice(0, window.galleryLimit || 100).map(m => {
             const isActive = m.status === 'Aktif';
             const statusColor = isActive ? '#10b981' : '#ef4444';
             const genderIcon = m.gender === 'Perempuan' ? 'venus' : 'mars';
@@ -4552,6 +4620,13 @@
             </div>
           `;}).join('')}
         </div>
+        ${members.length > (window.galleryLimit || 100) ? `
+          <div style="text-align:center; margin-top:32px; margin-bottom:32px;">
+            <button class="btn btn-primary" onclick="window.galleryLimit += 100; renderGallery(window.appData.members);" style="padding:12px 32px; border-radius:24px; display:inline-flex; align-items:center; gap:8px">
+              <i class="fas fa-chevron-down"></i> Muat Lebih Banyak (${window.galleryLimit} dari ${members.length})
+            </button>
+          </div>
+        ` : ''}
         ${(currentUser.role === 'Staff' || currentUser.role === 'Kasir') ? `
         <div style="text-align:center; padding:60px 20px; color:#94a3b8">
           <i class="fas fa-user-plus fa-4x" style="opacity:0.2; margin-bottom:20px; display:block; color:#667eea"></i>
@@ -4771,156 +4846,184 @@
         showView('gallery');
         return;
       }
-      showLoading();
-      google.script.run
-        .withSuccessHandler(function (res) {
-          hideLoading();
-          const pkgs = (res && res.success) ? res.packages : [];
+      
+      const cacheKey = `packages_${currentBranch}`;
+      const localPkgs = getFromCache(cacheKey);
 
-          document.getElementById('contentArea').innerHTML = `
-            <div class="form-card">
-              <div class="form-card-header">
-                <h3><i class="fas fa-user-plus"></i> Registrasi Member Baru</h3>
+      const buildForm = () => {
+        document.getElementById('contentArea').innerHTML = `
+          <div class="form-card">
+            <div class="form-card-header">
+              <h3><i class="fas fa-user-plus"></i> Registrasi Member Baru</h3>
+            </div>
+            <div class="form-card-body">
+              <div id="memberResult" class="result-card" style="display:none;"></div>
+              <div class="form-row">
+                <div class="form-group">
+                  <label class="form-label">Nama Lengkap *</label>
+                  <input id="reg_name" class="form-input" placeholder="Contoh: Budi Santoso">
+                </div>
               </div>
-              <div class="form-card-body">
-                <div id="memberResult" class="result-card" style="display:none;"></div>
-                <div class="form-row">
-                  <div class="form-group">
-                    <label class="form-label">Nama Lengkap *</label>
-                    <input id="reg_name" class="form-input" placeholder="Contoh: Budi Santoso">
-                  </div>
-                </div>
-                <div class="form-row">
-                  <div class="form-group">
-                    <label class="form-label">No. Telepon *</label>
-                    <input id="reg_phone" class="form-input" placeholder="0xxxxxxxxxx">
-                  </div>
-                  <div class="form-group">
-                    <label class="form-label">Email</label>
-                    <input id="reg_email" type="email" class="form-input" placeholder="contoh@email.com">
-                  </div>
-                  <div class="form-group">
-                    <label class="form-label">Jenis Kelamin *</label>
-                    <select id="reg_gender" class="form-input">
-                      <option value="" disabled selected>Pilih Jenis Kelamin</option>
-                      <option value="Laki-laki">Laki-laki</option>
-                      <option value="Perempuan">Perempuan</option>
-                    </select>
-                  </div>
+              <div class="form-row">
+                <div class="form-group">
+                  <label class="form-label">No. Telepon *</label>
+                  <input id="reg_phone" class="form-input" placeholder="0xxxxxxxxxx">
                 </div>
                 <div class="form-group">
-                  <label class="form-label">Pilih Paket *</label>
-                  <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:12px">
-                    ${pkgs.length ? pkgs.filter(p => p.type && p.type.toLowerCase().includes('regular')).map(p => `
-                      <div class="pkg-card" data-id="${p.id}" data-price="${p.price}" data-name="${p.name}" data-dur="${p.duration}" onclick="selectPkg(this)">
-                        <div style="font-weight:600;margin-bottom:6px">${escapeHtml(p.name)}</div>
-                        <div style="color:#667eea;font-weight:700">${formatCurrency(p.price)}</div>
-                        <div style="font-size:12px;color:#64748b;margin-top:4px">${escapeHtml(p.duration || '')}</div>
-                      </div>
-                    `).join('') : '<p class="text-muted">Tidak ada paket tersedia</p>'}
-                  </div>
+                  <label class="form-label">Email</label>
+                  <input id="reg_email" type="email" class="form-input" placeholder="contoh@email.com">
                 </div>
-                <div class="payment-info">
-                  <h4 style="margin-bottom:12px;color:#334155"><i class="fas fa-credit-card"></i> Informasi Pembayaran</h4>
-                  <div class="payment-row">
-                    <span>Harga Paket</span>
-                    <span id="paymentPackagePrice">Rp 0</span>
-                  </div>
-                  <div class="payment-row" id="regFeeRow" style="display:none">
-                    <span>Biaya Registrasi</span>
-                    <span>Rp 0</span>
-                  </div>
-                  <div class="payment-row payment-total">
-                    <span>Total</span>
-                    <span id="paymentTotal">Rp 0</span>
-                  </div>
-                </div>
-                <!-- Foto Member -->
                 <div class="form-group">
-                  <label class="form-label"><i class="fas fa-camera" style="color:#667eea"></i> Foto Member <span style="color:#94a3b8;font-weight:400">(Opsional)</span></label>
-                  <div class="admin-photo-upload" id="adminPhotoUploadBox">
-                    <img id="adminPhotoPreview"
-                         src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='90' height='90' viewBox='0 0 24 24' fill='none' stroke='%23aaa' stroke-width='1.5'%3E%3Cpath d='M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2'/%3E%3Ccircle cx='12' cy='7' r='4'/%3E%3C/svg%3E"
-                         class="admin-photo-avatar" alt="Foto Member">
-                    <div class="admin-photo-actions">
-                      <p id="adminPhotoLabel">Belum ada foto. Pilih dari file atau ambil lewat kamera.</p>
-                      <div class="admin-photo-btns">
-                        <button type="button" class="admin-photo-btn" onclick="document.getElementById('adminPhotoFile').click()">
-                          <i class="fas fa-folder-open"></i> Upload File
-                        </button>
-                        <button type="button" class="admin-photo-btn camera" onclick="adminOpenWebcam()">
-                          <i class="fas fa-camera"></i> Buka Kamera
-                        </button>
-                        <button type="button" class="admin-photo-btn remove" id="adminPhotoClearBtn" onclick="clearAdminMemberPhoto()" style="display:none">
-                          <i class="fas fa-trash"></i> Hapus
-                        </button>
-                      </div>
+                  <label class="form-label">Jenis Kelamin *</label>
+                  <select id="reg_gender" class="form-input">
+                    <option value="" disabled selected>Pilih Jenis Kelamin</option>
+                    <option value="Laki-laki">Laki-laki</option>
+                    <option value="Perempuan">Perempuan</option>
+                  </select>
+                </div>
+              </div>
+              <div class="form-group">
+                <label class="form-label">Pilih Paket *</label>
+                <div id="regPackageGrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:12px">
+                  <p class="text-muted"><i class="fas fa-spinner fa-spin"></i> Memuat opsi paket...</p>
+                </div>
+              </div>
+              <div class="payment-info">
+                <h4 style="margin-bottom:12px;color:#334155"><i class="fas fa-credit-card"></i> Informasi Pembayaran</h4>
+                <div class="payment-row">
+                  <span>Harga Paket</span>
+                  <span id="paymentPackagePrice">Rp 0</span>
+                </div>
+                <div class="payment-row" id="regFeeRow" style="display:none">
+                  <span>Biaya Registrasi</span>
+                  <span>Rp 0</span>
+                </div>
+                <div class="payment-row payment-total">
+                  <span>Total</span>
+                  <span id="paymentTotal">Rp 0</span>
+                </div>
+              </div>
+              <!-- Foto Member -->
+              <div class="form-group">
+                <label class="form-label"><i class="fas fa-camera" style="color:#667eea"></i> Foto Member <span style="color:#94a3b8;font-weight:400">(Opsional)</span></label>
+                <div class="admin-photo-upload" id="adminPhotoUploadBox">
+                  <img id="adminPhotoPreview"
+                       src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='90' height='90' viewBox='0 0 24 24' fill='none' stroke='%23aaa' stroke-width='1.5'%3E%3Cpath d='M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2'/%3E%3Ccircle cx='12' cy='7' r='4'/%3E%3C/svg%3E"
+                       class="admin-photo-avatar" alt="Foto Member">
+                  <div class="admin-photo-actions">
+                    <p id="adminPhotoLabel">Belum ada foto. Pilih dari file atau ambil lewat kamera.</p>
+                    <div class="admin-photo-btns">
+                      <button type="button" class="admin-photo-btn" onclick="document.getElementById('adminPhotoFile').click()">
+                        <i class="fas fa-folder-open"></i> Upload File
+                      </button>
+                      <button type="button" class="admin-photo-btn camera" onclick="adminOpenWebcam()">
+                        <i class="fas fa-camera"></i> Buka Kamera
+                      </button>
+                      <button type="button" class="admin-photo-btn remove" id="adminPhotoClearBtn" onclick="clearAdminMemberPhoto()" style="display:none">
+                        <i class="fas fa-trash"></i> Hapus
+                      </button>
                     </div>
-                    <input type="file" id="adminPhotoFile" accept="image/*" style="display:none" onchange="adminPreviewMemberPhoto(this)">
-                    <input type="hidden" id="adminPhotoBase64">
                   </div>
-                  <small style="color:#94a3b8;font-size:12px"><i class="fas fa-info-circle"></i> Format: JPG, PNG, WEBP (maks 2MB)</small>
+                  <input type="file" id="adminPhotoFile" accept="image/*" style="display:none" onchange="adminPreviewMemberPhoto(this)">
+                  <input type="hidden" id="adminPhotoBase64">
                 </div>
+                <small style="color:#94a3b8;font-size:12px"><i class="fas fa-info-circle"></i> Format: JPG, PNG, WEBP (maks 2MB)</small>
+              </div>
 
-                <div class="form-row">
-                  <div class="form-group">
-                    <label class="form-label">Metode Pembayaran *</label>
-                    <select id="reg_payment" class="form-input">
-                      <option value="Transfer Bank">Transfer Bank</option>
-                      <option value="QRIS">QRIS</option>
-                      <option value="Debit">Debit</option>
-                      <option value="Cash">Cash</option>
-                    </select>
-                  </div>
-                  <div class="form-group">
-                    <label class="form-label">Catatan</label>
-                    <input id="reg_notes" class="form-input" placeholder="Opsional">
-                  </div>
+              <div class="form-row">
+                <div class="form-group">
+                  <label class="form-label">Metode Pembayaran *</label>
+                  <select id="reg_payment" class="form-input">
+                    <option value="Transfer Bank">Transfer Bank</option>
+                    <option value="QRIS">QRIS</option>
+                    <option value="Debit">Debit</option>
+                    <option value="Cash">Cash</option>
+                  </select>
                 </div>
-                <div style="display:flex;gap:12px;flex-wrap:wrap">
-                  <button id="btnRegMember" class="btn btn-primary" onclick="registerMemberSubmit()">
-                    <i class="fas fa-save"></i> Daftarkan Member
-                  </button>
-                  <button class="btn btn-secondary" onclick="clearMemberForm()">
-                    <i class="fas fa-times"></i> Bersihkan Form
-                  </button>
+                <div class="form-group">
+                  <label class="form-label">Catatan</label>
+                  <input id="reg_notes" class="form-input" placeholder="Opsional">
+                </div>
+              </div>
+              <div style="display:flex;gap:12px;flex-wrap:wrap">
+                <button id="btnRegMember" class="btn btn-primary" onclick="registerMemberSubmit()">
+                  <i class="fas fa-save"></i> Daftarkan Member
+                </button>
+                <button class="btn btn-secondary" onclick="clearMemberForm()">
+                  <i class="fas fa-times"></i> Bersihkan Form
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div class="form-card" style="margin-top:24px">
+            <div class="form-card-header" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px">
+              <h3 style="margin:0"><i class="fas fa-history"></i> Riwayat Registrasi Admin</h3>
+              <div style="display:flex; gap:8px; align-items:center">
+                <input type="date" id="regStartDate" class="form-input" style="padding:6px; font-size:12px; width:auto" value="${new Date().toISOString().split('T')[0]}">
+                <span style="color:#64748b">-</span>
+                <input type="date" id="regEndDate" class="form-input" style="padding:6px; font-size:12px; width:auto" value="${new Date().toISOString().split('T')[0]}">
+                <button class="btn btn-primary btn-sm" onclick="loadAdminTrxHistory('Registrasi Baru', 'regHistoryContainer', document.getElementById('regStartDate').value, document.getElementById('regEndDate').value)" style="padding:6px 12px; font-size:12px">Filter</button>
+              </div>
+            </div>
+            <div class="form-card-body">
+              <div id="regHistoryContainer" style="overflow-x:auto">
+                <div style="text-align:center; padding:20px; color:#94a3b8">
+                  <i class="fas fa-spinner fa-spin"></i> Memuat riwayat...
                 </div>
               </div>
             </div>
+          </div>
+        `;
+        loadAdminTrxHistory('Registrasi Baru', 'regHistoryContainer', new Date().toISOString().split('T')[0], new Date().toISOString().split('T')[0]);
+      };
 
-            <div class="form-card" style="margin-top:24px">
-              <div class="form-card-header" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px">
-                <h3 style="margin:0"><i class="fas fa-history"></i> Riwayat Registrasi Admin</h3>
-                <div style="display:flex; gap:8px; align-items:center">
-                  <input type="date" id="regStartDate" class="form-input" style="padding:6px; font-size:12px; width:auto" value="${new Date().toISOString().split('T')[0]}">
-                  <span style="color:#64748b">-</span>
-                  <input type="date" id="regEndDate" class="form-input" style="padding:6px; font-size:12px; width:auto" value="${new Date().toISOString().split('T')[0]}">
-                  <button class="btn btn-primary btn-sm" onclick="loadAdminTrxHistory('Registrasi Baru', 'regHistoryContainer', document.getElementById('regStartDate').value, document.getElementById('regEndDate').value)" style="padding:6px 12px; font-size:12px">Filter</button>
-                </div>
-              </div>
-              <div class="form-card-body">
-                <div id="regHistoryContainer" style="overflow-x:auto">
-                  <div style="text-align:center; padding:20px; color:#94a3b8">
-                    <i class="fas fa-spinner fa-spin"></i> Memuat riwayat...
-                  </div>
-                </div>
-              </div>
-            </div>
-          `;
+      const renderGrid = (pkgs) => {
+        const grid = document.getElementById('regPackageGrid');
+        if (!grid) return;
+        grid.innerHTML = pkgs.length ? pkgs.filter(p => p.type && p.type.toLowerCase().includes('regular')).map(p => `
+          <div class="pkg-card" data-id="${p.id}" data-price="${p.price}" data-name="${p.name}" data-dur="${p.duration}" onclick="selectPkg(this)">
+            <div style="font-weight:600;margin-bottom:6px">${escapeHtml(p.name)}</div>
+            <div style="color:#667eea;font-weight:700">${formatCurrency(p.price)}</div>
+            <div style="font-size:12px;color:#64748b;margin-top:4px">${escapeHtml(p.duration || '')}</div>
+          </div>
+        `).join('') : '<p class="text-muted">Tidak ada paket tersedia</p>';
 
-          loadAdminTrxHistory('Registrasi Baru', 'regHistoryContainer', new Date().toISOString().split('T')[0], new Date().toISOString().split('T')[0]);
-
-          document.querySelectorAll('.pkg-card').forEach(card => {
-            card.addEventListener('click', function () {
-              updatePaymentInfo();
-            });
+        document.querySelectorAll('.pkg-card').forEach(card => {
+          card.addEventListener('click', function () {
+            updatePaymentInfo();
           });
-        })
-        .withFailureHandler(function (err) {
-          hideLoading();
-          showToast('Gagal memuat paket: ' + err.message, 'error');
-        })
-        .getPackages(false, currentBranch);
+        });
+      };
+
+      buildForm();
+
+      if (localPkgs) {
+        renderGrid(localPkgs);
+        // SWR
+        google.script.run
+          .withSuccessHandler(function (res) {
+            if (res && res.success) {
+              saveToCache(cacheKey, res.packages || []);
+              if (document.getElementById('regPackageGrid')) renderGrid(res.packages);
+            }
+          })
+          .getPackages(false, currentBranch);
+      } else {
+        google.script.run
+          .withSuccessHandler(function (res) {
+            if (res && res.success) {
+              saveToCache(cacheKey, res.packages || []);
+              renderGrid(res.packages);
+            }
+          })
+          .withFailureHandler(function (err) {
+            showToast('Gagal memuat paket: ' + err.message, 'error');
+            const grid = document.getElementById('regPackageGrid');
+            if (grid) grid.innerHTML = '<p class="text-muted">Gagal memuat paket.</p>';
+          })
+          .getPackages(false, currentBranch);
+      }
     }
 
     function selectPkg(el) {
@@ -5398,103 +5501,139 @@
 
     // ================ TRANSACTIONS ================
     function loadTransactionForm() {
-      showLoading();
-      google.script.run
-        .withSuccessHandler(function (res) {
-          hideLoading();
-          const pkgs = (res && res.success) ? res.packages : [];
+      const cacheKey = `packages_${currentBranch}`;
+      const localPkgs = getFromCache(cacheKey);
 
-          document.getElementById('contentArea').innerHTML = `
-            <div class="form-card">
-              <div class="form-card-header">
-                <h3><i class="fas fa-cash-register"></i> Perpanjangan Member</h3>
-              </div>
-              <div class="form-card-body">
-                <div id="trxResult" class="result-card" style="display:none;"></div>
-                <div class="form-row">
-                  <div class="form-group">
-                    <label class="form-label">Member ID / Nama / No. HP *</label>
-                    <div style="display:flex;gap:8px">
-                      <input id="trx_memberId" class="form-input" placeholder="Cari ID, Nama, atau No. HP..." oninput="searchMemberForTrx(this.value)">
-                      <button class="btn btn-outline" onclick="searchMemberForTrx(document.getElementById('trx_memberId').value)">
-                        <i class="fas fa-search"></i>
-                      </button>
-                    </div>
-                    <div id="memberSearchResults" style="margin-top:8px;max-height:300px;overflow-y:auto"></div>
+      const buildForm = () => {
+        document.getElementById('contentArea').innerHTML = `
+          <div class="form-card">
+            <div class="form-card-header">
+              <h3><i class="fas fa-cash-register"></i> Perpanjangan Member</h3>
+            </div>
+            <div class="form-card-body">
+              <div id="trxResult" class="result-card" style="display:none;"></div>
+              <div class="form-row">
+                <div class="form-group">
+                  <label class="form-label">Member ID / Nama / No. HP *</label>
+                  <div style="display:flex;gap:8px">
+                    <input id="trx_memberId" class="form-input" placeholder="Cari ID, Nama, atau No. HP..." oninput="searchMemberForTrx(this.value)">
+                    <button class="btn btn-outline" onclick="searchMemberForTrx(document.getElementById('trx_memberId').value)">
+                      <i class="fas fa-search"></i>
+                    </button>
                   </div>
-                  <div class="form-group">
-                    <label class="form-label">Info Member</label>
-                    <div id="selectedMemberInfo" style="padding:14px;background:#f8fafc;border-radius:8px;border:1px solid #e2e8f0;font-size:13px;color:#64748b;min-height:100px">
-                      <i class="fas fa-info-circle"></i> Belum ada member dipilih
-                    </div>
+                  <div id="memberSearchResults" style="margin-top:8px;max-height:300px;overflow-y:auto"></div>
+                </div>
+                <div class="form-group">
+                  <label class="form-label">Info Member</label>
+                  <div id="selectedMemberInfo" style="padding:14px;background:#f8fafc;border-radius:8px;border:1px solid #e2e8f0;font-size:13px;color:#64748b;min-height:100px">
+                    <i class="fas fa-info-circle"></i> Belum ada member dipilih
                   </div>
                 </div>
-                <div class="form-row">
-                  <div class="form-group">
-                    <label class="form-label">Pilih Paket *</label>
-                    <select id="trx_package" class="form-input">
-                      <option value="">-- Pilih Paket --</option>
-                      ${pkgs.filter(p => p.type && p.type.toLowerCase().includes('regular')).map(p =>
+              </div>
+              <div class="form-row">
+                <div class="form-group">
+                  <label class="form-label">Pilih Paket *</label>
+                  <select id="trx_package" class="form-input">
+                    <option value="">-- Memuat Paket... --</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label class="form-label">Metode Pembayaran *</label>
+                  <select id="trx_payment" class="form-input">
+                    <option value="Transfer Bank">Transfer Bank</option>
+                    <option value="QRIS">QRIS</option>
+                    <option value="Debit">Debit</option>
+                    <option value="Cash">Cash</option>
+                  </select>
+                </div>
+              </div>
+              <div class="payment-info">
+                <h4 style="margin-bottom:12px"><i class="fas fa-receipt"></i> Ringkasan Transaksi</h4>
+                <div id="transactionSummary" style="color:#334155">
+                  <p class="text-muted">Pilih member dan paket untuk melihat ringkasan</p>
+                </div>
+              </div>
+              <div style="display:flex;gap:12px;flex-wrap:wrap">
+                <button id="btnProcessTrx" class="btn btn-success" onclick="processTransactionSubmit()">
+                  <i class="fas fa-check"></i> Proses Transaksi
+                </button>
+                <button class="btn btn-secondary" onclick="clearTrxForm()">
+                  <i class="fas fa-times"></i> Reset
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div class="form-card" style="margin-top:24px">
+            <div class="form-card-header" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px">
+              <h3 style="margin:0"><i class="fas fa-history"></i> Riwayat Perpanjangan Admin</h3>
+              <div style="display:flex; gap:8px; align-items:center">
+                <input type="date" id="extStartDate" class="form-input" style="padding:6px; font-size:12px; width:auto" value="${new Date().toISOString().split('T')[0]}">
+                <span style="color:#64748b">-</span>
+                <input type="date" id="extEndDate" class="form-input" style="padding:6px; font-size:12px; width:auto" value="${new Date().toISOString().split('T')[0]}">
+                <button class="btn btn-primary btn-sm" onclick="loadAdminTrxHistory('Perpanjangan', 'extHistoryContainer', document.getElementById('extStartDate').value, document.getElementById('extEndDate').value)" style="padding:6px 12px; font-size:12px">Filter</button>
+              </div>
+            </div>
+            <div class="form-card-body">
+              <div id="extHistoryContainer" style="overflow-x:auto">
+                <div style="text-align:center; padding:20px; color:#94a3b8">
+                  <i class="fas fa-spinner fa-spin"></i> Memuat riwayat...
+                </div>
+              </div>
+            </div>
+          </div>
+        `;
+        loadAdminTrxHistory('Perpanjangan', 'extHistoryContainer', new Date().toISOString().split('T')[0], new Date().toISOString().split('T')[0]);
+
+        const packageSelect = document.getElementById('trx_package');
+        if (packageSelect) {
+          packageSelect.addEventListener('change', updateTransactionSummary);
+        }
+      };
+
+      const renderDropdown = (pkgs) => {
+        const select = document.getElementById('trx_package');
+        if (!select) return;
+        
+        // Preserve selected value if any
+        const currentVal = select.value;
+        
+        select.innerHTML = `
+          <option value="">-- Pilih Paket --</option>
+          ${pkgs.filter(p => p.type && p.type.toLowerCase().includes('regular')).map(p =>
             `<option value="${p.id}" data-price="${p.price}" data-name="${p.name}" data-duration="${p.duration}">${escapeHtml(p.name)} - ${formatCurrency(p.price)} (${escapeHtml(p.duration)})</option>`
           ).join('')}
-                    </select>
-                  </div>
-                  <div class="form-group">
-                    <label class="form-label">Metode Pembayaran *</label>
-                    <select id="trx_payment" class="form-input">
-                      <option value="Transfer Bank">Transfer Bank</option>
-                      <option value="QRIS">QRIS</option>
-                      <option value="Debit">Debit</option>
-                      <option value="Cash">Cash</option>
-                    </select>
-                  </div>
-                </div>
-                <div class="payment-info">
-                  <h4 style="margin-bottom:12px"><i class="fas fa-receipt"></i> Ringkasan Transaksi</h4>
-                  <div id="transactionSummary" style="color:#334155">
-                    <p class="text-muted">Pilih member dan paket untuk melihat ringkasan</p>
-                  </div>
-                </div>
-                <div style="display:flex;gap:12px;flex-wrap:wrap">
-                  <button id="btnProcessTrx" class="btn btn-success" onclick="processTransactionSubmit()">
-                    <i class="fas fa-check"></i> Proses Transaksi
-                  </button>
-                  <button class="btn btn-secondary" onclick="clearTrxForm()">
-                    <i class="fas fa-times"></i> Reset
-                  </button>
-                </div>
-              </div>
-            </div>
+        `;
+        
+        if (currentVal) select.value = currentVal;
+      };
 
-            <div class="form-card" style="margin-top:24px">
-              <div class="form-card-header" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px">
-                <h3 style="margin:0"><i class="fas fa-history"></i> Riwayat Perpanjangan Admin</h3>
-                <div style="display:flex; gap:8px; align-items:center">
-                  <input type="date" id="extStartDate" class="form-input" style="padding:6px; font-size:12px; width:auto" value="${new Date().toISOString().split('T')[0]}">
-                  <span style="color:#64748b">-</span>
-                  <input type="date" id="extEndDate" class="form-input" style="padding:6px; font-size:12px; width:auto" value="${new Date().toISOString().split('T')[0]}">
-                  <button class="btn btn-primary btn-sm" onclick="loadAdminTrxHistory('Perpanjangan', 'extHistoryContainer', document.getElementById('extStartDate').value, document.getElementById('extEndDate').value)" style="padding:6px 12px; font-size:12px">Filter</button>
-                </div>
-              </div>
-              <div class="form-card-body">
-                <div id="extHistoryContainer" style="overflow-x:auto">
-                  <div style="text-align:center; padding:20px; color:#94a3b8">
-                    <i class="fas fa-spinner fa-spin"></i> Memuat riwayat...
-                  </div>
-                </div>
-              </div>
-            </div>
-          `;
+      buildForm();
 
-          loadAdminTrxHistory('Perpanjangan', 'extHistoryContainer', new Date().toISOString().split('T')[0], new Date().toISOString().split('T')[0]);
-
-          document.getElementById('trx_package').addEventListener('change', updateTransactionSummary);
-        })
-        .withFailureHandler(function (err) {
-          hideLoading();
-          showToast('Gagal: ' + err.message, 'error');
-        })
-        .getPackages(false, currentBranch);
+      if (localPkgs) {
+        renderDropdown(localPkgs);
+        // SWR sync
+        google.script.run
+          .withSuccessHandler(function (res) {
+            if (res && res.success) {
+              saveToCache(cacheKey, res.packages || []);
+              if (document.getElementById('trx_package')) renderDropdown(res.packages);
+            }
+          })
+          .getPackages(false, currentBranch);
+      } else {
+        google.script.run
+          .withSuccessHandler(function (res) {
+            if (res && res.success) {
+              saveToCache(cacheKey, res.packages || []);
+              renderDropdown(res.packages);
+            }
+          })
+          .withFailureHandler(function (err) {
+            showToast('Gagal memuat paket: ' + err.message, 'error');
+          })
+          .getPackages(false, currentBranch);
+      }
     }
 
     function searchMemberForTrx(query) {
@@ -6221,47 +6360,60 @@
 
     function loadPOSProducts(force = false) {
       const cacheKey = `pos_products_${currentBranch}`;
-      if (!force) {
-        const cached = getFromCache(cacheKey);
-        if (cached && cached.length > 0) {
-          posProducts = cached;
-          const cats = ['All'];
-          posProducts.forEach(p => {
-            if (p.category && !cats.includes(p.category)) cats.push(p.category);
-          });
-          posCategories = cats;
-          renderPOSCategories();
-          renderPOSProducts();
-        }
-      }
+      const cached = getFromCache(cacheKey);
 
-      if (!force && posProducts && posProducts.length > 0 && !getFromCache(cacheKey)) {
-        // Fallback for in-memory only but no cache
+      if (cached && cached.length > 0) {
+        posProducts = cached;
+        const cats = ['All'];
+        posProducts.forEach(p => {
+          if (p.category && !cats.includes(p.category)) cats.push(p.category);
+        });
+        posCategories = cats;
         renderPOSCategories();
         renderPOSProducts();
-        return;
+        
+        // SWR background sync
+        google.script.run
+          .withSuccessHandler(function (res) {
+            if (res && res.success) {
+              posProducts = res.products;
+              saveToCache(cacheKey, posProducts);
+
+              const cats = ['All'];
+              posProducts.forEach(p => {
+                if (p.category && !cats.includes(p.category)) cats.push(p.category);
+              });
+              posCategories = cats;
+              
+              // Refresh view non-destructively
+              if (document.getElementById('posProductGrid')) {
+                renderPOSCategories();
+                filterPOSProducts(); 
+              }
+            }
+          })
+          .getProducts(currentBranch);
+      } else {
+        google.script.run
+          .withSuccessHandler(function (res) {
+            if (res && res.success) {
+              posProducts = res.products;
+              saveToCache(cacheKey, posProducts);
+
+              const cats = ['All'];
+              posProducts.forEach(p => {
+                if (p.category && !cats.includes(p.category)) cats.push(p.category);
+              });
+              posCategories = cats;
+
+              renderPOSCategories();
+              renderPOSProducts();
+            } else {
+              showToast('Gagal memuat produk: ' + (res.message || 'Error tidak diketahui'), 'error');
+            }
+          })
+          .getProducts(currentBranch);
       }
-
-      google.script.run
-        .withSuccessHandler(function (res) {
-          if (res && res.success) {
-            posProducts = res.products;
-            saveToCache(cacheKey, posProducts);
-
-            // Extract categories
-            const cats = ['All'];
-            posProducts.forEach(p => {
-              if (p.category && !cats.includes(p.category)) cats.push(p.category);
-            });
-            posCategories = cats;
-
-            renderPOSCategories();
-            renderPOSProducts();
-          } else {
-            showToast('Gagal memuat produk: ' + (res.message || 'Error tidak diketahui'), 'error');
-          }
-        })
-        .getProducts(currentBranch);
     }
 
 
@@ -6646,14 +6798,36 @@
     }
 
     function loadPackageList() {
-      google.script.run
-        .withSuccessHandler(function (res) {
-          if (res.success) {
-            __packagesCache = res.packages;
-            _renderPackageTable(res.packages);
-          }
-        })
-        .getFullCatalogue(currentBranch);
+      const cacheKey = `admin_packages_${currentBranch}`;
+      const cached = getFromCache(cacheKey);
+
+      if (cached) {
+        __packagesCache = cached;
+        _renderPackageTable(cached);
+
+        google.script.run
+          .withSuccessHandler(function (res) {
+            if (res.success) {
+              __packagesCache = res.packages;
+              saveToCache(cacheKey, res.packages);
+              if (document.getElementById('packageListTable')) {
+                const query = document.getElementById('packageSearchInput')?.value || '';
+                filterPackageList(query);
+              }
+            }
+          })
+          .getFullCatalogue(currentBranch);
+      } else {
+        google.script.run
+          .withSuccessHandler(function (res) {
+            if (res.success) {
+              __packagesCache = res.packages;
+              saveToCache(cacheKey, res.packages);
+              _renderPackageTable(res.packages);
+            }
+          })
+          .getFullCatalogue(currentBranch);
+      }
     }
 
     function filterPackageList(query) {
@@ -6766,15 +6940,37 @@
 
     let __productsCache = null;
     function loadProductList(force = false) {
-      if (!force && __productsCache) {
-        _renderProductTable(__productsCache);
-        return;
+      const cacheKey = `admin_products_${currentBranch}`;
+      
+      if (!force) {
+        const cached = getFromCache(cacheKey);
+        if (cached) {
+          __productsCache = cached;
+          _renderProductTable(cached);
+          
+          google.script.run
+            .withSuccessHandler(function (res) {
+              if (res.success) {
+                __productsCache = res.products;
+                saveToCache(cacheKey, res.products);
+                if (document.getElementById('productListTable')) {
+                  const query = document.getElementById('productSearchInput')?.value || '';
+                  filterProductList(query);
+                }
+              }
+            })
+            .getFullProducts(currentBranch);
+          return;
+        }
       }
+
       showLoading();
       google.script.run
         .withSuccessHandler(function (res) {
+          hideLoading();
           if (res.success) {
             __productsCache = res.products;
+            saveToCache(cacheKey, res.products);
             _renderProductTable(res.products);
           }
         })
@@ -7830,95 +8026,136 @@
       loadTodayCheckins(new Date().toISOString().split('T')[0], new Date().toISOString().split('T')[0]);
     }
 
-    function loadTodayCheckins(startDate = null, endDate = null) {
-      google.script.run
-        .withSuccessHandler(function (res) {
-          const el = document.getElementById('todayCheckinsTable');
-          if (!el) return;
+    window.checkinLimit = 100;
+    window.checkinLastStart = null;
+    window.checkinLastEnd = null;
+    
+    function renderCheckinsTable(list) {
+      const el = document.getElementById('todayCheckinsTable');
+      if (!el) return;
 
-          if (res && res.success && res.checkins && res.checkins.length > 0) {
-            const list = res.checkins;
-            const btnDeleteSelected = `<button id="btnMassDelete_CheckinTable" class="btn btn-primary btn-sm" onclick="executeMassDelete('CheckinTable')" style="display:none; padding:6px 12px; font-size:12px; margin-bottom:12px; background:#ef4444; border-color:#ef4444"></button>`;
+      if (list && list.length > 0) {
+        const btnDeleteSelected = `<button id="btnMassDelete_CheckinTable" class="btn btn-primary btn-sm" onclick="executeMassDelete('CheckinTable')" style="display:none; padding:6px 12px; font-size:12px; margin-bottom:12px; background:#ef4444; border-color:#ef4444"></button>`;
 
-            el.innerHTML = `
-              ${btnDeleteSelected}
-              <div style="overflow-x:auto">
-                <table class="data-table">
-                  <thead>
+        el.innerHTML = `
+          ${btnDeleteSelected}
+          <div style="overflow-x:auto">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th style="width:40px; text-align:center"><input type="checkbox" id="selectAll_CheckinTable" onclick="toggleSelectAll(this, 'CheckinTable')"></th>
+                  <th>#</th>
+                  <th>Nama</th>
+                  <th>ID</th>
+                  <th>Tipe</th>
+                  <th>Metode</th>
+                  <th>Total</th>
+                  <th>Waktu</th>
+                  <th>Tanggal</th>
+                  <th style="text-align:center">Aksi</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${list.slice(0, window.checkinLimit || 100).map((c, i) => {
+                  const typeClass = c.type === 'Visit' ? 'primary' : 'success';
+                  const isAdmin = currentUser && (currentUser.role === 'Admin' || currentUser.role === 'Super Admin');
+                  let checkinPayment = '-';
+                  let checkinTotal = 0;
+                  if (c.notes) {
+                    const matchPayment = c.notes.match(/Payment:\s*([^.]+)/);
+                    if (matchPayment) checkinPayment = matchPayment[1].trim();
+                    const matchPrice = c.notes.match(/Price:\s*(\d+)/);
+                    if (matchPrice) checkinTotal = parseInt(matchPrice[1]);
+                  }
+                  return `
                     <tr>
-                      <th style="width:40px; text-align:center"><input type="checkbox" id="selectAll_CheckinTable" onclick="toggleSelectAll(this, 'CheckinTable')"></th>
-                      <th>#</th>
-                      <th>Nama</th>
-                      <th>ID</th>
-                      <th>Tipe</th>
-                      <th>Metode</th>
-                      <th>Total</th>
-                      <th>Waktu</th>
-                      <th>Tanggal</th>
-                      <th style="text-align:center">Aksi</th>
+                      <td style="text-align:center"><input type="checkbox" class="rowCheckbox" data-type="CheckinTable" value="${c.id}" onclick="toggleSelectRow(this, '${c.id}', 'CheckinTable')"></td>
+                      <td>${i + 1}</td>
+                      <td><b>${escapeHtml(c.memberName || '-')}</b></td>
+                      <td><code>${escapeHtml(c.memberId || '-')}</code></td>
+                      <td><span class="badge badge-${typeClass}">${c.type || 'Member'}</span></td>
+                      <td><span class="badge badge-info">${escapeHtml(checkinPayment)}</span></td>
+                      <td><b style="color:#22c55e">${formatCurrency(checkinTotal)}</b></td>
+                      <td>${formatTime(c.checkInTime)}</td>
+                      <td><div style="font-size:11px;color:#64748b">${formatDate(c.checkInTime)}</div></td>
+                      <td style="text-align:center">
+                        <div style="display:flex; gap:6px; justify-content:center">
+                          <button class="btn btn-ghost btn-xs" onclick="printCheckinSlip('${c.id}', decodeURIComponent('${encodeURIComponent(c.memberName)}'), '${escapeHtml(c.type)}', '${formatDateTime(c.checkInTime)}', ${c.price || 0})" title="Cetak Slip">
+                            <i class="fas fa-print"></i>
+                          </button>
+                          <button class="btn btn-ghost btn-xs" style="color:#22c55e" onclick="sendCheckinWhatsApp('${c.id}', '${c.memberId}', decodeURIComponent('${encodeURIComponent(c.memberName)}'), '${formatDateTime(c.checkInTime)}')" title="Kirim WA">
+                            <i class="fab fa-whatsapp"></i>
+                          </button>
+                          ${isAdmin ? `
+                            <button class="btn btn-ghost btn-xs" style="color:#ef4444" onclick="confirmDeleteCheckin('${c.id}', '${c.memberId}', '${escapeHtml(c.type)}', decodeURIComponent('${encodeURIComponent(c.memberName)}')); loadTodayCheckins();" title="Hapus">
+                              <i class="fas fa-trash-alt"></i>
+                            </button>
+                          ` : ''}
+                        </div>
+                      </td>
                     </tr>
-                  </thead>
-                  <tbody>
-                    ${list.map((c, i) => {
-              const typeClass = c.type === 'Visit' ? 'primary' : 'success';
-              const isAdmin = currentUser && (currentUser.role === 'Admin' || currentUser.role === 'Super Admin');
-              let checkinPayment = '-';
-              let checkinTotal = 0;
-              if (c.notes) {
-                const matchPayment = c.notes.match(/Payment:\s*([^.]+)/);
-                if (matchPayment) checkinPayment = matchPayment[1].trim();
-                const matchPrice = c.notes.match(/Price:\s*(\d+)/);
-                if (matchPrice) checkinTotal = parseInt(matchPrice[1]);
-              }
-              return `
-                        <tr>
-                          <td style="text-align:center"><input type="checkbox" class="rowCheckbox" data-type="CheckinTable" value="${c.id}" onclick="toggleSelectRow(this, '${c.id}', 'CheckinTable')"></td>
-                          <td>${i + 1}</td>
-                          <td><b>${escapeHtml(c.memberName || '-')}</b></td>
-                          <td><code>${escapeHtml(c.memberId || '-')}</code></td>
-                          <td><span class="badge badge-${typeClass}">${c.type || 'Member'}</span></td>
-                          <td><span class="badge badge-info">${escapeHtml(checkinPayment)}</span></td>
-                          <td><b style="color:#22c55e">${formatCurrency(checkinTotal)}</b></td>
-                          <td>${formatTime(c.checkInTime)}</td>
-                          <td><div style="font-size:11px;color:#64748b">${formatDate(c.checkInTime)}</div></td>
-                          <td style="text-align:center">
-                            <div style="display:flex; gap:6px; justify-content:center">
-                              <button class="btn btn-ghost btn-xs" onclick="printCheckinSlip('${c.id}', decodeURIComponent('${encodeURIComponent(c.memberName)}'), '${escapeHtml(c.type)}', '${formatDateTime(c.checkInTime)}', ${c.price || 0})" title="Cetak Slip">
-                                <i class="fas fa-print"></i>
-                              </button>
-                              <button class="btn btn-ghost btn-xs" style="color:#22c55e" onclick="sendCheckinWhatsApp('${c.id}', '${c.memberId}', decodeURIComponent('${encodeURIComponent(c.memberName)}'), '${formatDateTime(c.checkInTime)}')" title="Kirim WA">
-                                <i class="fab fa-whatsapp"></i>
-                              </button>
-                              ${isAdmin ? `
-                                <button class="btn btn-ghost btn-xs" style="color:#ef4444" onclick="confirmDeleteCheckin('${c.id}', '${c.memberId}', '${escapeHtml(c.type)}', decodeURIComponent('${encodeURIComponent(c.memberName)}')); loadTodayCheckins();" title="Hapus">
-                                  <i class="fas fa-trash-alt"></i>
-                                </button>
-                              ` : ''}
-                            </div>
-                          </td>
-                        </tr>
-                      `;
-            }).join('')}
-                  </tbody>
-                </table>
-              </div>
-            `;
-          } else {
-            el.innerHTML = `
-              <div style="text-align:center;padding:40px;color:#94a3b8">
-                <i class="fas fa-calendar-day fa-3x" style="margin-bottom:16px;color:#cbd5e1"></i>
-                <p>Belum ada check-in hari ini</p>
-              </div>
-            `;
-          }
-        })
-        .withFailureHandler(function (err) {
-          const el = document.getElementById('todayCheckinsTable');
-          if (el) {
-            el.innerHTML = '<p class="text-muted" style="padding:20px;text-align:center">Gagal memuat data: ' + err.message + '</p>';
-          }
-        })
-        .getTodayCheckins(currentBranch, startDate, endDate);
+                  `;
+                }).join('')}
+              </tbody>
+            </table>
+          </div>
+          ${list.length > (window.checkinLimit || 100) ? `
+          <div style="text-align:center; padding:16px;">
+            <button class="btn btn-outline" onclick="window.checkinLimit += 100; renderCheckinsTable(getFromCache('today_checkins_'+(window.checkinLastStart||'')+'_'+(window.checkinLastEnd||'')) || []);">Muat Lebih Banyak (${window.checkinLimit} dari ${list.length})</button>
+          </div>
+          ` : ''}
+        `;
+      } else {
+        el.innerHTML = `
+          <div style="text-align:center;padding:40px;color:#94a3b8">
+            <i class="fas fa-calendar-day fa-3x" style="margin-bottom:16px;color:#cbd5e1"></i>
+            <p>Belum ada check-in pada rentang waktu ini</p>
+          </div>
+        `;
+      }
+    }
+
+    function loadTodayCheckins(startDate = null, endDate = null) {
+      window.checkinLimit = 100;
+      window.checkinLastStart = startDate;
+      window.checkinLastEnd = endDate;
+      const cacheKey = `today_checkins_${startDate || ''}_${endDate || ''}`;
+      const localCheckins = getFromCache(cacheKey);
+
+      if (localCheckins) {
+        renderCheckinsTable(localCheckins);
+        
+        // SWR
+        google.script.run
+          .withSuccessHandler(function (res) {
+            if (res && res.success) {
+              saveToCache(cacheKey, res.checkins || []);
+              if (document.getElementById('todayCheckinsTable')) renderCheckinsTable(res.checkins || []);
+            }
+          })
+          .getTodayCheckins(currentBranch, startDate, endDate);
+      } else {
+        const el = document.getElementById('todayCheckinsTable');
+        if (el) el.innerHTML = '<div style="text-align:center;padding:40px;color:#94a3b8"><i class="fas fa-spinner fa-spin"></i> Memuat data...</div>';
+        
+        google.script.run
+          .withSuccessHandler(function (res) {
+            if (res && res.success) {
+              const list = res.checkins || [];
+              saveToCache(cacheKey, list);
+              renderCheckinsTable(list);
+            } else {
+              renderCheckinsTable([]);
+            }
+          })
+          .withFailureHandler(function (err) {
+            const el = document.getElementById('todayCheckinsTable');
+            if (el) {
+              el.innerHTML = '<p class="text-muted" style="padding:20px;text-align:center">Gagal memuat data: ' + err.message + '</p>';
+            }
+          })
+          .getTodayCheckins(currentBranch, startDate, endDate);
+      }
     }
 
     function autoPreviewCheckin(val) {
@@ -8677,30 +8914,56 @@
     }
 
     function loadPTCatalogue() {
-      const sel = document.getElementById('pt_catalog');
-      if (!sel) return;
-      sel.innerHTML = '<option value="">-- Memuat Katalog... --</option>';
+      const cacheKey = `pt_catalog_global`;
+      const cached = getFromCache(cacheKey);
 
-      google.script.run
-        .withSuccessHandler(function (res) {
-          if (res && res.success) {
-            if (res.packages.length === 0) {
-              sel.innerHTML = '<option value="">-- Tidak ada katalog PT aktif --</option>';
-              return;
+      const renderDropdown = (packages) => {
+        const sel = document.getElementById('pt_catalog');
+        if (!sel) return;
+        const currentVal = sel.value;
+        if (packages.length === 0) {
+          sel.innerHTML = '<option value="">-- Tidak ada katalog PT aktif --</option>';
+          return;
+        }
+        let html = '<option value="">-- Pilih Katalog PT --</option>';
+        packages.forEach(p => {
+          html += `<option value="${p.id}" data-sessions="${p.duration}" data-price="${p.price}" data-name="${p.name}">${p.name} (${p.duration} Sesi)</option>`;
+        });
+        sel.innerHTML = html;
+        if (currentVal) sel.value = currentVal;
+      };
+
+      if (cached) {
+        renderDropdown(cached);
+        google.script.run
+          .withSuccessHandler(function (res) {
+            if (res && res.success) {
+              saveToCache(cacheKey, res.packages);
+              if (document.getElementById('pt_catalog')) {
+                renderDropdown(res.packages);
+              }
             }
-            let html = '<option value="">-- Pilih Katalog PT --</option>';
-            res.packages.forEach(p => {
-              html += `<option value="${p.id}" data-sessions="${p.duration}" data-price="${p.price}" data-name="${p.name}">${p.name} (${p.duration} Sesi)</option>`;
-            });
-            sel.innerHTML = html;
-          } else {
-            sel.innerHTML = '<option value="">-- Gagal memuat katalog --</option>';
-          }
-        })
-        .withFailureHandler(function (err) {
-          sel.innerHTML = '<option value="">-- Error Koneksi --</option>';
-        })
-        .getPTCatalogue();
+          })
+          .getPTCatalogue();
+      } else {
+        const sel = document.getElementById('pt_catalog');
+        if (sel) sel.innerHTML = '<option value="">-- Memuat Katalog... --</option>';
+        google.script.run
+          .withSuccessHandler(function (res) {
+            if (res && res.success) {
+              saveToCache(cacheKey, res.packages);
+              renderDropdown(res.packages);
+            } else {
+              const el = document.getElementById('pt_catalog');
+              if (el) el.innerHTML = '<option value="">-- Gagal memuat katalog --</option>';
+            }
+          })
+          .withFailureHandler(function (err) {
+            const el = document.getElementById('pt_catalog');
+            if (el) el.innerHTML = '<option value="">-- Error Koneksi --</option>';
+          })
+          .getPTCatalogue();
+      }
     }
 
     function onPTCatalogChange() {
@@ -9227,22 +9490,49 @@
         .getPendingApprovalCount(currentBranch);
     }
 
-    function loadApprovals() {
-      document.getElementById('contentArea').innerHTML = `
-        <div id="approvalsContainer">
-          <div style="text-align:center;padding:60px;color:#94a3b8">
-            <i class="fas fa-spinner fa-spin fa-2x"></i>
-            <p style="margin-top:16px">Memuat...</p>
-          </div>
-        </div>
-      `;
+    window.approvalsLimit = 100;
 
-      google.script.run
-        .withSuccessHandler(renderApprovals)
-        .withFailureHandler(function (err) {
-          document.getElementById('approvalsContainer').innerHTML = '<p class="text-muted">Error: ' + err.message + '</p>';
-        })
-        .getPendingApprovals(currentBranch);
+    function loadApprovals() {
+      window.approvalsLimit = 100;
+      const cacheKey = `approvals_${currentBranch}`;
+      const localApprovals = getFromCache(cacheKey);
+      
+      const setHTML = () => {
+        document.getElementById('contentArea').innerHTML = `
+          <div id="approvalsContainer">
+            <div style="text-align:center;padding:60px;color:#94a3b8">
+              <i class="fas fa-spinner fa-spin fa-2x"></i>
+              <p style="margin-top:16px">Memuat...</p>
+            </div>
+          </div>
+        `;
+      };
+
+      if (localApprovals) {
+        setHTML();
+        renderApprovals({success:true, approvals: localApprovals});
+        // SWR
+        google.script.run
+          .withSuccessHandler(function(res) {
+             if (res && res.success) {
+               saveToCache(cacheKey, res.approvals || []);
+               if (document.getElementById('approvalsContainer')) renderApprovals(res);
+             }
+          })
+          .getPendingApprovals(currentBranch);
+      } else {
+        setHTML();
+        google.script.run
+          .withSuccessHandler(function (res) {
+             if (res && res.success) saveToCache(cacheKey, res.approvals || []);
+             renderApprovals(res);
+          })
+          .withFailureHandler(function (err) {
+            const container = document.getElementById('approvalsContainer');
+            if (container) container.innerHTML = '<p class="text-muted">Error: ' + err.message + '</p>';
+          })
+          .getPendingApprovals(currentBranch);
+      }
     }
 
     function renderApprovals(res) {
@@ -9263,7 +9553,7 @@
 
       el.innerHTML = `
         <div style="display:grid;gap:16px">
-          ${list.map(a => {
+          ${list.slice(0, window.approvalsLimit || 100).map(a => {
         const data = a.data || {};
         return `
               <div class="form-card" style="margin:0">
@@ -9315,6 +9605,11 @@
             `;
       }).join('')}
         </div>
+        ${list.length > (window.approvalsLimit || 100) ? `
+          <div style="text-align:center; padding:16px;">
+            <button class="btn btn-outline" onclick="window.approvalsLimit += 100; renderApprovals({success:true, approvals: getFromCache('approvals_'+currentBranch) || []});">Muat Lebih Banyak (${window.approvalsLimit} dari ${list.length})</button>
+          </div>
+        ` : ''}
       `;
     }
 
@@ -9668,127 +9963,186 @@
         .sendTestEmail(email);
     }
 
-    function loadMemberList() {
-      document.getElementById('adminDataView').innerHTML = `
-        <div style="text-align:center;padding:20px;color:#94a3b8">
-          <i class="fas fa-spinner fa-spin"></i> Memuat...
+    window.adminMemberLimit = 100;
+
+    function renderAdminMembersList(list) {
+      const el = document.getElementById('adminDataView');
+      if (!el) return;
+
+      if (!list || !list.length) {
+        el.innerHTML = '<p class="text-muted" style="padding:20px;text-align:center">Tidak ada data member</p>';
+        return;
+      }
+
+      el.innerHTML = `
+        <div class="table-container">
+          <div style="padding:16px;background:#f8fafc;border-bottom:1px solid #e2e8f0">
+            <h4 style="font-weight:600;margin:0">Semua Member (${list.length})</h4>
+          </div>
+          <div style="overflow-x:auto">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>Nama</th>
+                  <th>Telepon</th>
+                  <th>Email</th>
+                  <th>Paket</th>
+                  <th>Expire</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${list.slice(0, window.adminMemberLimit || 100).map(m => `
+                  <tr>
+                    <td><code>${escapeHtml(m.memberId || '-')}</code></td>
+                    <td><b>${escapeHtml(m.name || '-')}</b></td>
+                    <td>${escapeHtml(m.phone || '-')}</td>
+                    <td>${escapeHtml(m.email || '-')}</td>
+                    <td>${escapeHtml(m.currentPackage || '-')}</td>
+                    <td>${formatDate(m.expiryDate)}</td>
+                    <td><span class="badge badge-${m.status === 'Aktif' ? 'success' : 'warning'}">${escapeHtml(m.status || '-')}</span></td>
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table>
+          </div>
+          ${list.length > (window.adminMemberLimit || 100) ? `
+          <div style="text-align:center; padding:16px;">
+            <button class="btn btn-outline" onclick="window.adminMemberLimit += 100; renderAdminMembersList(window.appData.members.filter(m => currentBranch === 'All' || m.branch === currentBranch));">Muat Lebih Banyak (${window.adminMemberLimit} dari ${list.length})</button>
+          </div>
+          ` : ''}
         </div>
       `;
+    }
 
-      google.script.run
-        .withSuccessHandler(function (res) {
-          const el = document.getElementById('adminDataView');
-          if (!el) return;
-          const list = (res && res.success) ? res.members : [];
+    function loadMemberList() {
+      window.adminMemberLimit = 100;
+      const localMembers = getFromCache('members');
+      
+      if (localMembers && localMembers.length > 0) {
+        let list = localMembers;
+        if (currentBranch !== 'All') list = list.filter(m => m.branch === currentBranch);
+        renderAdminMembersList(list);
+        
+        // SWR
+        backgroundSyncMembers((updatedMembers) => {
+           let ul = updatedMembers;
+           if (currentBranch !== 'All') ul = ul.filter(m => m.branch === currentBranch);
+           renderAdminMembersList(ul);
+        });
+      } else {
+        document.getElementById('adminDataView').innerHTML = `
+          <div style="text-align:center;padding:20px;color:#94a3b8">
+            <i class="fas fa-spinner fa-spin"></i> Memuat...
+          </div>
+        `;
+        google.script.run
+          .withSuccessHandler(function (res) {
+            const list = (res && res.success) ? res.members : [];
+            saveToCache('members', list);
+            renderAdminMembersList(list);
+          })
+          .withFailureHandler(function (err) {
+            const el = document.getElementById('adminDataView');
+            if (el) el.innerHTML = '<p class="text-muted">Error: ' + err.message + '</p>';
+          })
+          .getAllMembers(currentBranch);
+      }
+    }
 
-          if (!list || !list.length) {
-            el.innerHTML = '<p class="text-muted" style="padding:20px;text-align:center">Tidak ada data member</p>';
-            return;
-          }
+    window.adminTrxLimit = 100;
 
-          el.innerHTML = `
-            <div class="table-container">
-              <div style="padding:16px;background:#f8fafc;border-bottom:1px solid #e2e8f0">
-                <h4 style="font-weight:600">Semua Member (${list.length})</h4>
-              </div>
-              <div style="overflow-x:auto">
-                <table class="data-table">
-                  <thead>
-                    <tr>
-                      <th>ID</th>
-                      <th>Nama</th>
-                      <th>Telepon</th>
-                      <th>Email</th>
-                      <th>Paket</th>
-                      <th>Expire</th>
-                      <th>Status</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    ${list.map(m => `
-                      <tr>
-                        <td><code>${escapeHtml(m.memberId || '-')}</code></td>
-                        <td><b>${escapeHtml(m.name || '-')}</b></td>
-                        <td>${escapeHtml(m.phone || '-')}</td>
-                        <td>${escapeHtml(m.email || '-')}</td>
-                        <td>${escapeHtml(m.currentPackage || '-')}</td>
-                        <td>${formatDate(m.expiryDate)}</td>
-                        <td><span class="badge badge-${m.status === 'Aktif' ? 'success' : 'warning'}">${escapeHtml(m.status || '-')}</span></td>
-                      </tr>
-                    `).join('')}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          `;
-        })
-        .withFailureHandler(function (err) {
-          const el = document.getElementById('adminDataView');
-          if (el) el.innerHTML = '<p class="text-muted">Error: ' + err.message + '</p>';
-        })
-        .getAllMembers(currentBranch);
+    function renderAdminTransactionList(list) {
+      const el = document.getElementById('adminDataView');
+      if (!el) return;
+
+      if (!list || !list.length) {
+        el.innerHTML = '<p class="text-muted" style="padding:20px;text-align:center">Tidak ada data transaksi</p>';
+        return;
+      }
+
+      el.innerHTML = `
+        <div class="table-container">
+          <div style="padding:16px;background:#f8fafc;border-bottom:1px solid #e2e8f0;display:flex;justify-content:space-between;align-items:center">
+            <h4 style="font-weight:600;margin:0">Riwayat Transaksi (${list.length})</h4>
+          </div>
+          <div style="overflow-x:auto">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>No. Kwitansi</th>
+                  <th>Member</th>
+                  <th>Paket</th>
+                  <th>Total</th>
+                  <th>Tanggal</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${list.slice(0, window.adminTrxLimit || 100).map(t => `
+                  <tr>
+                    <td><code>${escapeHtml(t.receiptNumber || '-')}</code></td>
+                    <td>${escapeHtml(t.memberName || '-')}</td>
+                    <td>${escapeHtml(t.packageName || '-')}</td>
+                    <td><b style="color:#22c55e">${formatCurrency(t.totalAmount || 0)}</b></td>
+                    <td>${formatDateTime(t.transactionDate)}</td>
+                    <td><span class="badge badge-success">${escapeHtml(t.status || 'Berhasil')}</span></td>
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table>
+          </div>
+          ${list.length > (window.adminTrxLimit || 100) ? `
+          <div style="text-align:center; padding:16px;">
+            <button class="btn btn-outline" onclick="window.adminTrxLimit += 100; renderAdminTransactionList(getFromCache('admin_transactions') || []);">Muat Lebih Banyak (${window.adminTrxLimit} dari ${list.length})</button>
+          </div>
+          ` : ''}
+        </div>
+      `;
     }
 
     function loadTransactionList() {
       const adminDataView = document.getElementById('adminDataView');
-      if (!adminDataView) return; // Exit if Admin Panel is not currently rendered
+      if (!adminDataView) return; 
 
-      adminDataView.innerHTML = `
-        <div style="text-align:center;padding:20px;color:#94a3b8">
-          <i class="fas fa-spinner fa-spin"></i> Memuat...
-        </div>
-      `;
+      window.adminTrxLimit = 100;
+      const localTrx = getFromCache('admin_transactions');
 
-      google.script.run
-        .withSuccessHandler(function (res) {
-          const el = document.getElementById('adminDataView');
-          if (!el) return;
-          const list = (res && res.success) ? res.transactions : [];
+      if (localTrx && localTrx.length > 0) {
+        renderAdminTransactionList(localTrx);
+        
+        // SWR: Background Sync
+        google.script.run
+          .withSuccessHandler(function (res) {
+            if (res && res.success) {
+              saveToCache('admin_transactions', res.transactions);
+              const el = document.getElementById('adminDataView');
+              if (el) renderAdminTransactionList(res.transactions);
+            }
+          })
+          .getTransactionHistory(currentBranch);
+      } else {
+        adminDataView.innerHTML = `
+          <div style="text-align:center;padding:20px;color:#94a3b8">
+            <i class="fas fa-spinner fa-spin"></i> Memuat...
+          </div>
+        `;
 
-          if (!list || !list.length) {
-            el.innerHTML = '<p class="text-muted" style="padding:20px;text-align:center">Tidak ada data transaksi</p>';
-            return;
-          }
-
-          el.innerHTML = `
-            <div class="table-container">
-              <div style="padding:16px;background:#f8fafc;border-bottom:1px solid #e2e8f0">
-                <h4 style="font-weight:600">Riwayat Transaksi (${list.length})</h4>
-              </div>
-              <div style="overflow-x:auto">
-                <table class="data-table">
-                  <thead>
-                    <tr>
-                      <th>No. Kwitansi</th>
-                      <th>Member</th>
-                      <th>Paket</th>
-                      <th>Total</th>
-                      <th>Tanggal</th>
-                      <th>Status</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    ${list.map(t => `
-                      <tr>
-                        <td><code>${escapeHtml(t.receiptNumber || '-')}</code></td>
-                        <td>${escapeHtml(t.memberName || '-')}</td>
-                        <td>${escapeHtml(t.packageName || '-')}</td>
-                        <td><b style="color:#22c55e">${formatCurrency(t.totalAmount || 0)}</b></td>
-                        <td>${formatDateTime(t.transactionDate)}</td>
-                        <td><span class="badge badge-success">${escapeHtml(t.status || 'Berhasil')}</span></td>
-                      </tr>
-                    `).join('')}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          `;
-        })
-        .withFailureHandler(function (err) {
-          const el = document.getElementById('adminDataView');
-          if (el) el.innerHTML = '<p class="text-muted">Error: ' + err.message + '</p>';
-        })
-        .getTransactionHistory(currentBranch);
+        google.script.run
+          .withSuccessHandler(function (res) {
+            const el = document.getElementById('adminDataView');
+            if (!el) return;
+            const list = (res && res.success) ? res.transactions : [];
+            saveToCache('admin_transactions', list);
+            renderAdminTransactionList(list);
+          })
+          .withFailureHandler(function (err) {
+            const el = document.getElementById('adminDataView');
+            if (el) el.innerHTML = '<p class="text-muted">Error: ' + err.message + '</p>';
+          })
+          .getTransactionHistory(currentBranch);
+      }
     }
 
     function triggerShowSysInfo() {
@@ -10239,10 +10593,23 @@
       const start = document.getElementById('exp_start_date')?.value || 'all';
       const end = document.getElementById('exp_end_date')?.value || 'all';
       const cacheKey = `expenses_list_${start}_${end}_${currentBranch}`;
+      
+      window.expensesLimit = 100;
+      window.expensesLastStart = start;
+      window.expensesLastEnd = end;
 
       const cached = getFromCache(cacheKey);
       if (cached) {
         renderExpensesTable(cached);
+        // SWR
+        google.script.run
+          .withSuccessHandler(function (res) {
+            if (res && res.success) {
+              saveToCache(cacheKey, res.expenses || []);
+              if (document.getElementById('expensesTableContainer')) renderExpensesTable(res.expenses || []);
+            }
+          })
+          .getExpenses(start === 'all' ? '' : start, end === 'all' ? '' : end, currentBranch);
       } else {
         document.getElementById('expensesTableContainer').innerHTML = `
           <div style="text-align:center; padding:40px; color:#94a3b8">
@@ -10250,21 +10617,21 @@
             <p style="margin-top:12px">Memuat data pengeluaran...</p>
           </div>
         `;
+        
+        google.script.run
+          .withSuccessHandler(function (res) {
+            if (res && res.success) {
+              saveToCache(cacheKey, res.expenses || []);
+              renderExpensesTable(res.expenses || []);
+            } else {
+              showToast('Gagal memuat data: ' + (res.message || 'Error Unknown'), 'error');
+            }
+          })
+          .withFailureHandler(function (err) {
+            showToast('Error: ' + err.message, 'error');
+          })
+          .getExpenses(start === 'all' ? '' : start, end === 'all' ? '' : end, currentBranch);
       }
-
-      google.script.run
-        .withSuccessHandler(function (res) {
-          if (res && res.success) {
-            saveToCache(cacheKey, res.expenses || []);
-            renderExpensesTable(res.expenses || []);
-          } else {
-            if (!cached) showToast('Gagal memuat data: ' + (res.message || 'Error Unknown'), 'error');
-          }
-        })
-        .withFailureHandler(function (err) {
-          if (!cached) showToast('Error: ' + err.message, 'error');
-        })
-        .getExpenses(start === 'all' ? '' : start, end === 'all' ? '' : end, currentBranch);
     }
 
 
@@ -10314,6 +10681,9 @@
 
       data.forEach(item => {
         totalAmount += Number(item.amount) || 0;
+      });
+
+      data.slice(0, window.expensesLimit || 100).forEach(item => {
         html += `
           <tr>
             <td style="text-align:center"><input type="checkbox" class="rowCheckbox" data-type="Expense" value="${item.id}" onclick="toggleSelectRow(this, '${item.id}', 'Expense')"></td>
@@ -10333,6 +10703,15 @@
       });
 
       html += `</tbody></table>`;
+      
+      if (data.length > (window.expensesLimit || 100)) {
+        html += `
+        <div style="text-align:center; padding:16px;">
+          <button class="btn btn-outline" onclick="window.expensesLimit += 100; renderExpensesTable(getFromCache('expenses_list_'+(window.expensesLastStart||'all')+'_'+(window.expensesLastEnd||'all')+'_'+currentBranch) || []);">Muat Lebih Banyak (${window.expensesLimit} dari ${data.length})</button>
+        </div>
+        `;
+      }
+
       container.innerHTML = html;
 
       document.getElementById('expTotalValue').textContent = formatCurrency(totalAmount);
@@ -11514,64 +11893,96 @@
       if (mainArea) mainArea.style.display = 'flex';
     }
 
+    window.posTrxLimit = 100;
+    
+    function renderPOSTransactionHistory(list) {
+      const container = document.getElementById('posHistoryTableContainer');
+      if (!container) return;
+      if (!list || list.length === 0) {
+        container.innerHTML = '<div style="text-align:center; padding:40px; color:#94a3b8">Tidak ada transaksi ditemukan</div>';
+        return;
+      }
+      let html = `
+        <div class="list-container">
+          ${list.slice(0, window.posTrxLimit || 100).map(t => `
+            <div class="list-item" onclick="showPOSReceiptDetail('${t['ID Transaksi']}')">
+              <div class="list-item-content">
+                <div class="list-item-title">${escapeHtml(t['Nama Pembeli'] || 'Pelanggan Guest')}</div>
+                <div class="list-item-subtitle">
+                  <span class="badge badge-primary" style="font-size:10px">${t['ID Transaksi']}</span> • 
+                  ${new Date(t.Waktu).toLocaleString('id-ID', { day: '2-digit', month: 'long', hour: '2-digit', minute: '2-digit' })} • 
+                  <i class="fas fa-user-tie"></i> ${t.Kasir}
+                </div>
+                <div style="font-size:11px; color:#64748b; margin-top:4px">${t['Daftar Item'] || '-'}</div>
+              </div>
+              <div class="list-item-action">
+                <div style="text-align:right">
+                  ${formatCurrency(t.Total)}
+                  <div style="font-size:11px; color:#8E8E93; font-weight:normal">${t['Metode Pembayaran']}</div>
+                </div>
+                <div style="display:flex; gap:8px; margin-top:8px; justify-content:flex-end">
+                  <button class="btn btn-ghost btn-xs" onclick="event.stopPropagation(); printReceipt('pos', { receipt: '${t['ID Transaksi']}', name: decodeURIComponent('${encodeURIComponent(t['Nama Pembeli'])}'), items: JSON.parse(decodeURIComponent('${encodeURIComponent(t.rawItems || '[]')}')), total: ${t.Total}, payment: '${t['Metode Pembayaran']}' })" title="Cetak Struk">
+                    <i class="fas fa-print"></i>
+                  </button>
+                  <button class="btn btn-ghost btn-xs" style="color:#22c55e" onclick="event.stopPropagation(); sendPOSWhatsApp('${t['ID Transaksi']}', '${t['WhatsApp']}' || getMemberPhone('${t['Member ID']}'), decodeURIComponent('${encodeURIComponent(t['Nama Pembeli'])}'), ${t.Subtotal || t.Total}, ${t.Diskon || 0}, ${t.Total}, '${t['Metode Pembayaran']}', decodeURIComponent('${encodeURIComponent(t.rawItems || '[]')}'))" title="Kirim WA">
+                    <i class="fab fa-whatsapp"></i>
+                  </button>
+                  ${currentUser.role === 'Admin' ? `
+                    <button class="btn btn-ghost btn-xs" style="color:#ef4444" onclick="event.stopPropagation(); confirmDeleteTransactionRecord('${t['ID Transaksi']}', 'POS', null)" title="Hapus Transaksi">
+                      <i class="fas fa-trash-alt"></i>
+                    </button>
+                  ` : ''}
+                </div>
+              </div>
+            </div>
+          `).join('')}
+        </div>
+        ${list.length > (window.posTrxLimit || 100) ? `
+        <div style="text-align:center; padding:16px;">
+          <button class="btn btn-outline" onclick="window.posTrxLimit += 100; renderPOSTransactionHistory(getFromCache('pos_hist_'+document.getElementById('pos_hist_start').value+'_'+document.getElementById('pos_hist_end').value) || []);">Muat Lebih Banyak (${window.posTrxLimit} dari ${list.length})</button>
+        </div>
+        ` : ''}
+      `;
+      container.innerHTML = html;
+    }
+
     function loadPOSTransactionHistory() {
       const start = document.getElementById('pos_hist_start').value;
       const end = document.getElementById('pos_hist_end').value;
       const container = document.getElementById('posHistoryTableContainer');
-
-      container.innerHTML = '<div style="text-align:center; padding:40px; color:#94a3b8"><i class="fas fa-spinner fa-spin"></i> Memuat data...</div>';
-
-      google.script.run
-        .withSuccessHandler(function (res) {
-          if (res.success) {
-            const list = res.history;
-            if (list.length === 0) {
-              container.innerHTML = '<div style="text-align:center; padding:40px; color:#94a3b8">Tidak ada transaksi ditemukan</div>';
-              return;
+      
+      window.posTrxLimit = 100;
+      const cacheKey = `pos_hist_${start}_${end}`;
+      const localTrx = getFromCache(cacheKey);
+      
+      if (localTrx && localTrx.length > 0) {
+        renderPOSTransactionHistory(localTrx);
+        // SWR: Background Sync
+        google.script.run
+          .withSuccessHandler(function (res) {
+            if (res.success) {
+              saveToCache(cacheKey, res.history);
+              if (document.getElementById('posHistoryTableContainer')) renderPOSTransactionHistory(res.history);
             }
+          })
+          .getFilteredPOSTransactions(start, end, currentBranch, currentUser.role === 'Admin' ? 'All' : (currentUser.id || currentUser.name));
+      } else {
+        container.innerHTML = '<div style="text-align:center; padding:40px; color:#94a3b8"><i class="fas fa-spinner fa-spin"></i> Memuat data...</div>';
 
-            let html = `
-              <div class="list-container">
-                ${list.map(t => `
-                  <div class="list-item" onclick="showPOSReceiptDetail('${t['ID Transaksi']}')">
-                    <div class="list-item-content">
-                      <div class="list-item-title">${escapeHtml(t['Nama Pembeli'] || 'Pelanggan Guest')}</div>
-                      <div class="list-item-subtitle">
-                        <span class="badge badge-primary" style="font-size:10px">${t['ID Transaksi']}</span> • 
-                        ${new Date(t.Waktu).toLocaleString('id-ID', { day: '2-digit', month: 'long', hour: '2-digit', minute: '2-digit' })} • 
-                        <i class="fas fa-user-tie"></i> ${t.Kasir}
-                      </div>
-                      <div style="font-size:11px; color:#64748b; margin-top:4px">${t['Daftar Item'] || '-'}</div>
-                    </div>
-                    <div class="list-item-action">
-                      <div style="text-align:right">
-                        ${formatCurrency(t.Total)}
-                        <div style="font-size:11px; color:#8E8E93; font-weight:normal">${t['Metode Pembayaran']}</div>
-                      </div>
-                      <div style="display:flex; gap:8px; margin-top:8px; justify-content:flex-end">
-                        <button class="btn btn-ghost btn-xs" onclick="event.stopPropagation(); printReceipt('pos', { receipt: '${t['ID Transaksi']}', name: decodeURIComponent('${encodeURIComponent(t['Nama Pembeli'])}'), items: JSON.parse(decodeURIComponent('${encodeURIComponent(t.rawItems || '[]')}')), total: ${t.Total}, payment: '${t['Metode Pembayaran']}' })" title="Cetak Struk">
-                          <i class="fas fa-print"></i>
-                        </button>
-                        <button class="btn btn-ghost btn-xs" style="color:#22c55e" onclick="event.stopPropagation(); sendPOSWhatsApp('${t['ID Transaksi']}', '${t['WhatsApp']}' || getMemberPhone('${t['Member ID']}'), decodeURIComponent('${encodeURIComponent(t['Nama Pembeli'])}'), ${t.Subtotal || t.Total}, ${t.Diskon || 0}, ${t.Total}, '${t['Metode Pembayaran']}', decodeURIComponent('${encodeURIComponent(t.rawItems || '[]')}'))" title="Kirim WA">
-                          <i class="fab fa-whatsapp"></i>
-                        </button>
-                        ${currentUser.role === 'Admin' ? `
-                          <button class="btn btn-ghost btn-xs" style="color:#ef4444" onclick="event.stopPropagation(); confirmDeleteTransactionRecord('${t['ID Transaksi']}', 'POS', null)" title="Hapus Transaksi">
-                            <i class="fas fa-trash-alt"></i>
-                          </button>
-                        ` : ''}
-                      </div>
-                    </div>
-                  </div>
-                `).join('')}
-              </div>
-            `;
-            container.innerHTML = html;
-          } else {
-            container.innerHTML = '<div class="alert alert-error">Gagal: ' + res.message + '</div>';
-          }
-        })
-        .getFilteredPOSTransactions(start, end, currentBranch, currentUser.role === 'Admin' ? 'All' : (currentUser.id || currentUser.name));
+        google.script.run
+          .withSuccessHandler(function (res) {
+            if (res.success) {
+              saveToCache(cacheKey, res.history);
+              renderPOSTransactionHistory(res.history);
+            } else {
+              container.innerHTML = '<div class="alert alert-error">Gagal: ' + res.message + '</div>';
+            }
+          })
+          .withFailureHandler(function (err) {
+            container.innerHTML = '<div style="text-align:center; padding:40px; color:#ef4444">Error koneksi: ' + err.message + '</div>';
+          })
+          .getFilteredPOSTransactions(start, end, currentBranch, currentUser.role === 'Admin' ? 'All' : (currentUser.id || currentUser.name));
+      }
     }
 
     // STOCK HISTORY
