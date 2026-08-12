@@ -78,7 +78,6 @@
 
     function executeAction(methodName, args, successHandler, failureHandler) {
       if (WRITE_ACTIONS.includes(methodName)) {
-        console.log(`[LocalFirst] Intercepting ${methodName}`);
         performOptimisticUpdate(methodName, args);
         addToSyncQueue(methodName, args);
         if (successHandler) {
@@ -90,7 +89,6 @@
       if (!navigator.onLine && isActionCachable(methodName)) {
         const cachedData = getCachedDataForAction(methodName, args);
         if (cachedData) {
-          console.log(`[Offline] Serving ${methodName} from cache`);
           if (successHandler) setTimeout(() => successHandler(cachedData), 10);
           return;
         }
@@ -113,7 +111,6 @@
         .catch(err => {
           if (failureHandler) failureHandler(err);
           else {
-            console.error('Network Error:', err);
             if (typeof Swal !== 'undefined') {
               Swal.fire({
                 icon: 'error',
@@ -3075,7 +3072,6 @@
 
     const CACHE = {
       clearStats: function () {
-        console.log('Clearing stats cache...');
         window.appData.stats = {};
         // Clear all localStorage keys matching dashboard_stats
         for (let i = 0; i < localStorage.length; i++) {
@@ -3147,7 +3143,6 @@
 
     function fetchInitialAppData(callback) {
       if (!currentUser) return;
-      console.log('Fetching initial app data...');
 
       google.script.run
         .withSuccessHandler(function (res) {
@@ -3169,15 +3164,12 @@
           }
         })
         .withFailureHandler(function (err) {
-          console.error('Fetch error:', err);
           if (typeof callback === 'function') callback({ success: false, message: err });
         })
         .getInitialAppData(currentBranch);
     }
 
-    function removeFromCache(key) {
-      localStorage.removeItem(APP_CACHE_KEY + key);
-    }
+    
 
 
     // ================ UTILS ================
@@ -3594,7 +3586,6 @@
         })
         .withFailureHandler(function (err) {
           hideLoading();
-          console.error('Failed to generate POS PDF for WA:', err);
           // Fallback without URL
           const items = JSON.parse(itemsJson || '[]');
           const txt = generateReceiptText('pos', {
@@ -3650,10 +3641,7 @@
       el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     }
 
-    function hideAlert(containerId) {
-      const el = document.getElementById(containerId);
-      if (el) { el.style.display = 'none'; }
-    }
+    
 
     function showConfirm(msg, cb) {
       confirmCallback = cb;
@@ -3682,14 +3670,12 @@
     // ================ AUTH ================
     function initApp() {
       try {
-        console.log('Initializing App...');
         
         // Restore session if exists
         const savedUser = localStorage.getItem('otista_gym_current_user');
         if (savedUser) {
           try {
             currentUser = JSON.parse(savedUser);
-            console.log('Session restored for:', currentUser.name);
             
             document.getElementById('authView').style.display = 'none';
             document.getElementById('dashboardView').style.display = 'flex';
@@ -3702,16 +3688,13 @@
             loadAndApplyBranding();
             return; // Skip login form
           } catch (e) {
-            console.error('Failed to restore session:', e);
             localStorage.removeItem('otista_gym_current_user');
           }
         }
 
         renderLoginForm();
         loadAndApplyBranding(); // Load branding even before login
-        console.log('Login form rendered.');
       } catch (e) {
-        console.error('Init error:', e);
         renderLoginForm();
       }
     }
@@ -3957,7 +3940,6 @@
 
     function refreshPage() {
       if (isResultActive) {
-        console.log('Skipping automatic refresh because a result card is active.');
         return;
       }
       const active = document.querySelector('.menu-item.active');
@@ -4204,7 +4186,6 @@
 
       const cached = force ? null : getFromCache(cacheKey);
       if (cached) {
-        console.log('Rendering dashboard from cache:', cacheKey);
         renderDashboardUI(cached);
       }
 
@@ -5201,7 +5182,6 @@
             showToast('Request timeout. Silakan coba lagi.', 'error');
           }, 30000);
 
-          console.log('Mengirim request registrasi member:', { name, phone, email, package: pkg.name });
 
           google.script.run
             .withSuccessHandler(function (res) {
@@ -5210,7 +5190,6 @@
               btn.innerHTML = originalText;
               btn.disabled = false;
 
-              console.log('RESPON REGISTRASI DITERIMA:', res);
 
               const resultEl = document.getElementById('memberResult');
               if (!resultEl) return;
@@ -5233,7 +5212,6 @@
                 isResultActive = true; // Prevent automatic refresh
                 // Update cache in background without resetting the current success UI
                 if (typeof fetchInitialAppData === 'function') fetchInitialAppData(() => {
-                  console.log('Background sync complete');
                 });
                 resultEl.innerHTML = `
                   <div style="display:flex;align-items:center;gap:16px;margin-bottom:16px">
@@ -5374,7 +5352,6 @@
               btn.innerHTML = originalText;
               btn.disabled = false;
 
-              console.error('FAILURE HANDLER REGISTER:', err);
 
               const resultEl = document.getElementById('memberResult');
               if (resultEl) {
@@ -5413,170 +5390,9 @@
       );
     }
 
-    function doCheckin() {
-      const mid = (document.getElementById('ci_memberId')?.value || '').trim().toUpperCase();
-      if (!mid) { showToast('Masukkan Member ID', 'warning'); return; }
+    
 
-      const member = (window.appData && appData.members) ? appData.members.find(m => m.memberId === mid) : null;
-      const requestId = 'REQ_CIN_' + Date.now() + '_' + Math.floor(Math.random() * 1000);
-
-      // 1. INSTANT UI
-      const el = document.getElementById('checkinResult');
-      if (el && member) {
-        const checkinTime = new Date();
-        const daysLeft = member.expiryDate ? Math.max(0, Math.ceil((safeParseDate(member.expiryDate) - new Date()) / 86400000)) : 0;
-        
-        el.innerHTML = `
-          <div class="checkin-success-card animate__animated animate__fadeInUp" style="background:white; border-radius:24px; padding:24px; box-shadow:0 15px 35px rgba(0,0,0,0.1)">
-            <div style="display:flex;align-items:center;gap:16px;margin-bottom:20px">
-              <div style="background:#10b981;color:white;width:60px;height:60px;border-radius:20px;display:flex;align-items:center;justify-content:center;font-size:24px;box-shadow:0 8px 15px rgba(16,185,129,0.3)">
-                <i class="fas fa-check"></i>
-              </div>
-              <div>
-                <h3 style="color:#1e293b;margin:0 0 4px 0; font-weight:800">Check-In Berhasil</h3>
-                <p style="color:#64748b;margin:0;font-size:13px"><i class="far fa-clock"></i> ${formatTime(checkinTime)}</p>
-              </div>
-            </div>
-            <div class="info-box" style="background:#f8fafc; border-radius:16px; padding:20px; border:1px solid #e2e8f0">
-              <div style="font-size:20px; font-weight:900; color:#1e293b; margin-bottom:12px">${escapeHtml(member.name)}</div>
-              <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px; text-align:left">
-                <div><small style="color:#94a3b8">PAKET</small><div style="font-weight:700; color:#475569">${member.currentPackage || '-'}</div></div>
-                <div><small style="color:#94a3b8">MASA AKTIF</small><div style="font-weight:700; color:${daysLeft <= 7 ? '#ef4444' : '#10b981'}">${daysLeft} HARI LAGI</div></div>
-              </div>
-            </div>
-            <div id="sync_${requestId}" style="margin-top:16px; text-align:center; font-size:11px; color:#94a3b8">
-              <i class="fas fa-sync fa-spin"></i> Menyinkronkan...
-            </div>
-          </div>
-        `;
-        document.getElementById('ci_memberId').value = '';
-      }
-
-      // 2. BACKGROUND SYNC
-      google.script.run
-        .withSuccessHandler(function (res) {
-          const syncEl = document.getElementById('sync_' + requestId);
-          if (res.success) {
-            if (syncEl) syncEl.innerHTML = '✅ Sinkron';
-            fetchDashboardData();
-            loadTodayCheckins();
-          } else {
-            if (syncEl) syncEl.innerHTML = '❌ Gagal: ' + res.message;
-          }
-        })
-        .processCheckIn({ memberId: mid, requestId: requestId }, getCurrentStaffIdentifier());
-    }
-
-    function printMemberCard(memberId) {
-      if (!memberId) {
-        showToast('ID Member tidak valid', 'warning');
-        return;
-      }
-
-      showLoading();
-      google.script.run
-        .withSuccessHandler(function (res) {
-          hideLoading();
-          if (res && res.success) {
-            const m = res.member;
-            const printWindow = window.open('', '_blank');
-            const photoUrl = m.profilePic ? getDirectLink(m.profilePic) : 'https://i.imgur.com/vHEx3jR.png';
-
-            printWindow.document.write(`
-              <html>
-                <head>
-                  <title>Member Card - ${m.name}</title>
-                  <style>
-                    @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Roboto:wght@400;700&display=swap');
-                    body { margin: 0; padding: 0; display: flex; justify-content: center; align-items: center; min-height: 100vh; background: #fff; font-family: 'Roboto', sans-serif; }
-                    .card { 
-                      width: 350px; height: 210px; background: #000; color: white; border-radius: 12px; position: relative; overflow: hidden; 
-                      box-shadow: none; border: 1px solid #222; -webkit-print-color-adjust: exact;
-                    }
-                    .card::before {
-                      content: ''; position: absolute; top: -50px; right: -50px; width: 150px; height: 150px;
-                      background: linear-gradient(135deg, rgba(124, 58, 237, 0.2), transparent); border-radius: 50%; z-index: 1;
-                    }
-                    .card::after {
-                      content: ''; position: absolute; bottom: -30px; left: -30px; width: 100px; height: 100px;
-                      background: linear-gradient(135deg, rgba(250, 204, 21, 0.1), transparent); border-radius: 50%; z-index: 1;
-                    }
-                    .card-content { position: relative; z-index: 2; padding: 15px; display: flex; height: 100%; box-sizing: border-box; }
-                    .card-left { flex: 0 0 100px; display: flex; flex-direction: column; align-items: center; }
-                    .card-right { flex: 1; padding-left: 18px; display: flex; flex-direction: column; justify-content: space-between; border-left: 1px solid rgba(255,255,255,0.1); }
-                    .photo-container { 
-                      width: 90px; height: 110px; border: 2px solid #7c3aed; border-radius: 8px; overflow: hidden; background: #111; 
-                      box-shadow: 0 4px 10px rgba(0,0,0,0.5); margin-bottom: 10px;
-                    }
-                    .photo-container img { width: 100%; height: 100%; object-fit: cover; }
-                    .qr-container { 
-                      width: 65px; height: 65px; background: white; padding: 4px; border-radius: 6px; 
-                      box-shadow: 0 2px 8px rgba(0,0,0,0.3);
-                    }
-                    .qr-container img { width: 100%; height: 100%; }
-                    .header { margin-bottom: 12px; }
-                    .gym-name { font-family: 'Orbitron', sans-serif; font-size: 20px; font-weight: 700; color: #facc15; letter-spacing: 2px; text-shadow: 0 2px 4px rgba(0,0,0,0.5); }
-                    .tagline { font-size: 8px; color: #a78bfa; text-transform: uppercase; letter-spacing: 1px; margin-top: -4px; }
-                    .member-info { margin-bottom: 10px; }
-                    .member-name { font-size: 17px; font-weight: 700; color: #fff; text-transform: uppercase; margin: 0; line-height: 1.2; word-break: break-word; }
-                    .member-id { font-family: monospace; font-size: 14px; color: #7c3aed; font-weight: bold; margin-top: 2px; }
-                    .details { display: grid; grid-template-columns: 1fr; gap: 4px; }
-                    .info-row { font-size: 10px; display: flex; align-items: center; gap: 8px; color: #94a3b8; }
-                    .info-row b { color: #facc15; font-size: 11px; }
-                    .footer-tag { 
-                      position: absolute; bottom: 0; right: 0; padding: 5px 15px; background: #7c3aed; color: white; 
-                      font-size: 10px; font-weight: 700; border-top-left-radius: 12px; letter-spacing: 1px;
-                    }
-                    @media print {
-                      body { background: none; }
-                      .card { border: none; }
-                    }
-                  </style>
-                </head>
-                <body onload="setTimeout(() => { window.print(); window.close(); }, 500)">
-                  <div class="card">
-                    <div class="card-content">
-                      <div class="card-left">
-                        <div class="photo-container">
-                          <img src="${photoUrl}" alt="Photo" onerror="this.src='https://i.imgur.com/vHEx3jR.png'">
-                        </div>
-                        <div class="qr-container">
-                          <img src="${m.qr || ''}" alt="QR">
-                        </div>
-                      </div>
-                      <div class="card-right">
-                        <div>
-                          <div class="header">
-                            <div class="gym-name">${currentBranchName}</div>
-                            <div class="tagline">Power • Fitness • Health</div>
-                          </div>
-                          <div class="member-info">
-                            <div class="member-name">${m.name}</div>
-                            <div class="member-id">${m.id}</div>
-                          </div>
-                        </div>
-                        <div class="details">
-                          <div class="info-row"><span>PAKET:</span> <b>${m.package}</b></div>
-                          <div class="info-row"><span>EXPIRED:</span> <b>${formatDate(m.expiry)}</b></div>
-                        </div>
-                      </div>
-                    </div>
-                    <div class="footer-tag">VIP MEMBER</div>
-                  </div>
-                </body>
-              </html>
-            `);
-            printWindow.document.close();
-          } else {
-            showToast('Gagal memuat data member: ' + (res.message || 'Error'), 'error');
-          }
-        })
-        .withFailureHandler(function (err) {
-          hideLoading();
-          showToast('Error: ' + err.message, 'error');
-        })
-        .getMemberDetail(memberId);
-    }
+    
 
     // ================ TRANSACTIONS ================
     function loadTransactionForm() {
@@ -5696,7 +5512,6 @@
       window.trxSearchTimeout = setTimeout(function () {
         google.script.run
           .withSuccessHandler(function (res) {
-            console.log('Search results:', res);
 
             const el = document.getElementById('memberSearchResults');
             if (!el) return;
@@ -5745,7 +5560,6 @@
             }
           })
           .withFailureHandler(function (err) {
-            console.error('Search error:', err);
             const el = document.getElementById('memberSearchResults');
             if (el) {
               el.innerHTML = `
@@ -5861,7 +5675,6 @@
 
         updateTransactionSummary();
       } catch (e) {
-        console.error('Error parsing member:', e);
         showToast('Gagal memilih member', 'error');
       }
     }
@@ -5993,7 +5806,6 @@
                 isResultActive = true; // Prevent automatic refresh
                 // Update cache in background without resetting the current success UI
                 if (typeof fetchInitialAppData === 'function') fetchInitialAppData(() => {
-                  console.log('Background sync complete');
                 });
                 resultEl.innerHTML = `
                   <div style="display:flex;align-items:center;gap:16px;margin-bottom:16px">
@@ -6418,7 +6230,6 @@
           posCategories = cats;
           renderPOSCategories();
           renderPOSProducts();
-          console.log('POS products loaded from cache');
         }
       }
 
@@ -6736,35 +6547,7 @@
       loadPOSProducts();
     }
 
-    function sendPOSReceiptToWA(trxId, data) {
-      showLoading();
-      google.script.run
-        .withSuccessHandler(function (res) {
-          hideLoading();
-          if (res.success) {
-            const text = generateReceiptText('pos', {
-              receipt: trxId,
-              name: data.customerName,
-              items: data.items,
-              subtotal: data.subtotal,
-              discount: data.discount,
-              total: data.total,
-              payment: data.paymentMethod,
-              pdfUrl: res.url
-            });
-
-            const waNumber = data.whatsapp || '';
-            if (waNumber) {
-              shareToWhatsApp(waNumber, text);
-            } else {
-              showToast('Nomor WA tidak tersedia', 'warning');
-            }
-          } else {
-            showToast('Gagal membuat link struk: ' + res.message, 'error');
-          }
-        })
-        .generatePOSReceiptPDF(trxId);
-    }
+    
     // printPOSReceipt function removed.
 
 
@@ -8128,7 +7911,6 @@
           }
         })
         .withFailureHandler(function (err) {
-          console.error('Load today checkins error:', err);
           const el = document.getElementById('todayCheckinsTable');
           if (el) {
             el.innerHTML = '<p class="text-muted" style="padding:20px;text-align:center">Gagal memuat data: ' + err.message + '</p>';
@@ -8273,7 +8055,6 @@
           btn.innerHTML = originalText;
           btn.disabled = false;
 
-          console.log('Check-in response from server:', res);
 
           const el = document.getElementById('checkinResult');
           if (!el) return;
@@ -8468,7 +8249,6 @@
           return isVisit && isBranch;
         }) : [];
 
-      console.log('Filtered visit packages for branch', currentBranch, ':', visits);
 
       if (visits.length > 0) {
         visits.forEach(v => {
@@ -8913,12 +8693,10 @@
             sel.innerHTML = html;
           } else {
             sel.innerHTML = '<option value="">-- Gagal memuat katalog --</option>';
-            console.error('PT Catalogue Error:', res ? res.message : 'Unknown error');
           }
         })
         .withFailureHandler(function (err) {
           sel.innerHTML = '<option value="">-- Error Koneksi --</option>';
-          console.error('PT Catalogue RPC Error:', err);
         })
         .getPTCatalogue();
     }
@@ -8967,7 +8745,6 @@
       const resultsEl = document.getElementById('ptMemberResults');
 
       if (!resultsEl) {
-        console.error('Element ptMemberResults tidak ditemukan');
         return;
       }
 
@@ -8979,11 +8756,9 @@
       resultsEl.innerHTML = '<div style="text-align:center;padding:10px;color:#94a3b8"><i class="fas fa-spinner fa-spin"></i> Mencari...</div>';
 
       window.ptSearchTimeout = setTimeout(function () {
-        console.log('Mencari member untuk PT dengan kata kunci:', searchInput);
 
         google.script.run
           .withSuccessHandler(function (res) {
-            console.log('Hasil pencarian PT:', res);
 
             if (!resultsEl) return;
 
@@ -9054,7 +8829,6 @@
             }
           })
           .withFailureHandler(function (err) {
-            console.error('PT Search error:', err);
             if (resultsEl) {
               resultsEl.innerHTML = `
                 <div style="padding:15px;text-align:center;background:#fef2f2;border-radius:8px;color:#991b1b">
@@ -9073,7 +8847,6 @@
         try {
           member = JSON.parse(memberJson);
         } catch (e) {
-          console.error('Error parsing member JSON:', e);
           showToast('Data member tidak valid', 'error');
           return;
         }
@@ -9153,7 +8926,6 @@
         showToast(`Member ${member.name} dipilih`, 'success');
 
       } catch (e) {
-        console.error('Error in selectMemberForPT:', e);
         showToast('Gagal memilih member: ' + e.message, 'error');
       }
     }
@@ -9386,7 +9158,6 @@
           }).join('');
         })
         .withFailureHandler(function (err) {
-          console.error('Load PT sessions error:', err);
           const el = document.getElementById('ptActiveList');
           if (el) {
             el.innerHTML = '<p class="text-muted" style="padding:20px;text-align:center">Gagal memuat data: ' + err.message + '</p>';
@@ -9436,7 +9207,6 @@
           }
         })
         .withFailureHandler(function (err) {
-          console.error('Load PT info error:', err);
         })
         .getActivePTSessions(currentBranch);
     }
@@ -10470,7 +10240,6 @@
 
       const cached = getFromCache(cacheKey);
       if (cached) {
-        console.log('Rendering expenses from cache');
         renderExpensesTable(cached);
       } else {
         document.getElementById('expensesTableContainer').innerHTML = `
@@ -10706,20 +10475,9 @@
     }
 
 
-    function toggleExpenseSplit() {
-      const type = document.getElementById('exp_type').value;
-      document.getElementById('split_section').style.display = type === 'Global' ? 'block' : 'none';
-    }
+    
 
-    function balanceSplit(source) {
-      const gymInput = document.getElementById('exp_gym_split');
-      const retailInput = document.getElementById('exp_retail_split');
-      if (source === 'gym') {
-        retailInput.value = 100 - (Number(gymInput.value) || 0);
-      } else {
-        gymInput.value = 100 - (Number(retailInput.value) || 0);
-      }
-    }
+    
 
     function showDashboardDetail(type) {
       const financialTypes = ['fitness_revenue', 'pos_revenue', 'expenses', 'fitness_expenses', 'pos_expenses'];
@@ -11814,10 +11572,7 @@
     }
 
     // STOCK HISTORY
-    function showStockOpnameHistory() {
-      // This is already inside showInventoryTools in index.html
-      // We'll update the render part there.
-    }
+    
     function openEditProfileModal(memberId) {
       if (currentUser && currentUser.role !== 'Admin') {
         showToast('Akses ditolak: Hanya Admin yang dapat mengedit profil member.', 'warning');
