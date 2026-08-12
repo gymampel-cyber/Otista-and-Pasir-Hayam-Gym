@@ -112,7 +112,17 @@
         })
         .catch(err => {
           if (failureHandler) failureHandler(err);
-          else console.error('Network Error:', err);
+          else {
+            console.error('Network Error:', err);
+            if (typeof Swal !== 'undefined') {
+              Swal.fire({
+                icon: 'error',
+                title: 'Koneksi Gagal',
+                text: 'Gagal terhubung ke server atau respon tidak valid. Pastikan URL Web App sudah benar dan koneksi internet Anda stabil.',
+                confirmButtonColor: '#d4af37'
+              });
+            }
+          }
         });
     }
 
