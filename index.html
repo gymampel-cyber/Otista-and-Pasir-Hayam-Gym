@@ -3189,41 +3189,63 @@
         })
         .getInitialAppData(currentBranch);
     }
-    function backgroundSyncMembers(callback) {
+    function backgroundSyncMembers(callback, offset = 0, limit = 500, accumulatedMembers = []) {
       if (!currentUser) return;
-      if (window.isFetchingMembers) {
-          // If already fetching, maybe we can store callbacks?
-          // Since it's complex, we just return. The fetch in progress will update the cache anyway.
+      if (offset === 0 && window.isFetchingMembers) {
+          // Cegah eksekusi ganda hanya di pemanggilan pertama
           return;
       }
       window.isFetchingMembers = true;
+      
+      const ind = document.getElementById('swrIndicator');
+      if (ind && accumulatedMembers.length > 0) {
+         ind.innerHTML = `<i class="fas fa-sync fa-spin"></i> Menyinkronkan data... (${accumulatedMembers.length} profil diambil)`;
+      }
+
       google.script.run
         .withSuccessHandler(function (res) {
-          window.isFetchingMembers = false;
-          window.isMembersFullyLoaded = true;
           if (res && res.success && res.members) {
-            saveToCache('members', res.members);
+            const allFetchedSoFar = accumulatedMembers.concat(res.members);
             
-            // Set limit to full so "Load More" button doesn't show anymore
-            window.galleryLimit = res.members.length;
-            window.adminMemberLimit = res.members.length;
+            // Simpan partial (atau full) hasil ke cache sementara
+            saveToCache('members', allFetchedSoFar);
+            if (!window.appData) window.appData = {};
+            window.appData.members = allFetchedSoFar;
             
-            if (typeof callback === 'function') callback(res.members);
+            // Perbarui limit ke total yang berhasil ditarik sejauh ini supaya tidak terpotong (Load More hilang)
+            window.galleryLimit = allFetchedSoFar.length;
+            window.adminMemberLimit = allFetchedSoFar.length;
             
-            // Re-render UI jika sedang berada di view yang berhubungan
+            if (typeof callback === 'function') callback(allFetchedSoFar);
+            
+            // Render partial UI
             if (window.currentView === 'members' && typeof renderMembersList === 'function') {
-              renderMembersList(res.members);
+              renderMembersList(allFetchedSoFar);
             }
             if (window.currentView === 'gallery' && typeof renderGallery === 'function') {
-              renderGallery(res.members);
+              renderGallery(allFetchedSoFar);
             }
+            
+            if (res.hasMore) {
+              // Terus tarik data part selanjutnya
+              backgroundSyncMembers(callback, offset + limit, limit, allFetchedSoFar);
+            } else {
+              // Selesai seluruhnya
+              window.isFetchingMembers = false;
+              window.isMembersFullyLoaded = true;
+              if (ind) ind.remove();
+            }
+          } else {
+            window.isFetchingMembers = false;
+            if (ind) ind.remove();
           }
         })
         .withFailureHandler(function (err) {
           window.isFetchingMembers = false;
-          console.warn('Background sync members failed:', err);
+          console.warn('Background sync members failed (offset: ' + offset + '):', err);
+          if (ind) ind.remove();
         })
-        .getAllMembers('All');
+        .getAllMembers('All', limit, offset);
     }
     
 
@@ -4533,178 +4555,179 @@
     }
 
     function renderGallery(members) {
-      const existingSearch = document.getElementById('gallerySearch') ? document.getElementById('gallerySearch').value : '';
-      const existingDate = document.getElementById('galleryDateFilter') ? document.getElementById('galleryDateFilter').value : '';
-
       const el = document.getElementById('contentArea');
-      el.innerHTML = `
-        <div class="dashboard-header-flex">
-          <div class="dashboard-section-title"><i class="fas fa-users-cog"></i> Manajemen Member</div>
-          <div style="display:flex; gap:12px; align-items:center">
-            ${(currentUser.role === 'Admin' || currentUser.role === 'Staff' || currentUser.role === 'Kasir') ? `
-              <button class="btn btn-success btn-sm" onclick="loadMemberForm()">
-                <i class="fas fa-user-plus"></i> Registrasi Baru
-              </button>
-            ` : ''}
-            <div class="stat-card" style="padding:8px 16px; flex-direction:row; align-items:center; gap:12px; margin-bottom:0; background:white; border-radius:14px">
-              <i class="fas fa-calendar-alt" style="color:#94a3b8"></i>
-              <input type="date" id="galleryDateFilter" value="${existingDate}" style="background:none; border:none; color:#1e293b; outline:none; font-size:14px">
+      
+      // Setup kerangka utama jika belum ada
+      if (!document.getElementById('galleryMainContainer')) {
+        el.innerHTML = `
+          <div id="galleryMainContainer">
+            <div class="dashboard-header-flex">
+              <div class="dashboard-section-title"><i class="fas fa-users-cog"></i> Manajemen Member</div>
+              <div style="display:flex; gap:12px; align-items:center">
+                ${(currentUser.role === 'Admin' || currentUser.role === 'Staff' || currentUser.role === 'Kasir') ? `
+                  <button class="btn btn-success btn-sm" onclick="loadMemberForm()">
+                    <i class="fas fa-user-plus"></i> Registrasi Baru
+                  </button>
+                ` : ''}
+                <div class="stat-card" style="padding:8px 16px; flex-direction:row; align-items:center; gap:12px; margin-bottom:0; background:white; border-radius:14px">
+                  <i class="fas fa-calendar-alt" style="color:#94a3b8"></i>
+                  <input type="date" id="galleryDateFilter" style="background:none; border:none; color:#1e293b; outline:none; font-size:14px">
+                </div>
+                <div class="stat-card" style="padding:8px 16px; flex-direction:row; align-items:center; gap:12px; margin-bottom:0; background:white; border-radius:14px">
+                  <i class="fas fa-search" style="color:#94a3b8"></i>
+                  <input type="text" id="gallerySearch" placeholder="Cari nama atau ID..." style="background:none; border:none; color:#1e293b; outline:none; font-size:14px; width:180px">
+                </div>
+              </div>
             </div>
-            <div class="stat-card" style="padding:8px 16px; flex-direction:row; align-items:center; gap:12px; margin-bottom:0; background:white; border-radius:14px">
-              <i class="fas fa-search" style="color:#94a3b8"></i>
-              <input type="text" id="gallerySearch" value="${existingSearch}" placeholder="Cari nama atau ID..." style="background:none; border:none; color:#1e293b; outline:none; font-size:14px; width:180px">
-            </div>
+            <div id="galleryGridContainer"></div>
           </div>
-        </div>
-        <div id="galleryGrid" style="display:grid; grid-template-columns:repeat(auto-fill, minmax(280px, 1fr)); gap:24px; margin-top:24px">
-          ${members.slice(0, window.galleryLimit || 100).map(m => {
-            const isActive = m.status === 'Aktif';
-            const statusColor = isActive ? '#10b981' : '#ef4444';
-            const genderIcon = m.gender === 'Perempuan' ? 'venus' : 'mars';
-            const genderColor = m.gender === 'Perempuan' ? '#ec4899' : '#3b82f6';
-            const isStaffOrKasir = (currentUser.role === 'Staff' || currentUser.role === 'Kasir');
-            
-            let regDateStr = '';
-            if (m.registrationDate) {
-              const d = new Date(m.registrationDate);
-              if (!isNaN(d.getTime())) {
-                regDateStr = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
-              }
-            }
+        `;
 
-            // Staff & Kasir: sembunyikan kartu member seluruhnya
-            if (isStaffOrKasir) return '';
-            
-            return `
-            <div class="gallery-item-premium" data-reg-date="${regDateStr}" style="background:white; border-radius:24px; overflow:hidden; position:relative; box-shadow:0 10px 25px rgba(0,0,0,0.05); border:1px solid #f1f5f9; transition:all 0.3s ease; display:flex; flex-direction:column; animation: fadeIn 0.4s ease forwards">
-              <!-- Header Gradient -->
-              <div style="height:80px; background:linear-gradient(135deg, ${isActive ? '#10b981, #059669' : '#ef4444, #dc2626'}); position:relative">
-                <div class="badge" style="position:absolute; top:12px; right:12px; background:rgba(255,255,255,0.2); backdrop-filter:blur(10px); color:white; border:1px solid rgba(255,255,255,0.3); font-size:10px; padding:4px 10px">
-                  <i class="fas fa-${genderIcon}"></i> ${m.gender || '-'}
-                </div>
-              </div>
-              
-              <!-- Avatar -->
-              <div style="margin:-45px auto 12px; position:relative; z-index:2">
-                <div style="width:100px; height:100px; border-radius:30px; overflow:hidden; border:4px solid white; box-shadow:0 8px 20px rgba(0,0,0,0.1); background:#f8fafc; display:flex; align-items:center; justify-content:center; cursor:${m.photoUrl ? 'pointer' : 'default'}" 
-                     onclick="${m.photoUrl ? `viewPhoto('${getDirectLink(m.photoUrl)}', '${escapeHtml(m.name)}')` : ''}"
-                     title="${m.photoUrl ? 'Klik untuk lihat foto' : ''}">
-                  ${m.photoUrl ? `<img src="${getDirectLink(m.photoUrl)}" style="width:100%; height:100%; object-fit:cover">` : `<i class="fas fa-user fa-3x" style="color:#cbd5e1"></i>`}
-                </div>
-                <div style="position:absolute; bottom:0; right:0; width:24px; height:24px; background:${statusColor}; border:3px solid white; border-radius:50%; box-shadow:0 2px 6px rgba(0,0,0,0.2)"></div>
-              </div>
-
-              <!-- Content -->
-              <div style="padding:0 24px 20px; text-align:center; flex:1">
-                <div style="font-weight:800; color:#1e293b; font-size:18px; line-height:1.2; margin-bottom:4px">${escapeHtml(m.name)}</div>
-                <div style="font-size:12px; color:#64748b; margin-bottom:4px; font-weight:600; letter-spacing:0.5px">ID: ${escapeHtml(m.memberId)}</div>
-                <div style="font-size:11px; color:#94a3b8; margin-bottom:12px; font-weight:600"><i class="fas fa-fingerprint" style="font-size:10px"></i> Face ID: ${escapeHtml(m.faceIdCode || '-')}</div>
-                
-                <div style="display:flex; justify-content:center; gap:8px; margin-bottom:16px">
-                  <span class="badge" style="background:${isActive ? '#ecfdf5' : '#fef2f2'}; color:${statusColor}; border:1px solid ${isActive ? '#d1fae5' : '#fee2e2'}; font-weight:700">
-                    ${m.status.toUpperCase()}
-                  </span>
-                  <span class="badge" style="background:#f1f5f9; color:#475569; border:1px solid #e2e8f0; font-weight:600">
-                    ${m.currentPackage || '-'}
-                  </span>
-                </div>
-
-                <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:auto">
-                  <button class="btn btn-outline btn-sm" style="border-radius:12px; padding:10px" onclick="viewMemberFullDetails('${m.memberId}')">
-                    <i class="fas fa-history"></i> Riwayat
-                  </button>
-                  <button class="btn btn-primary btn-sm" style="border-radius:12px; padding:10px" onclick="openEditProfileModal('${m.memberId}')">
-                    <i class="fas fa-user-edit"></i> Edit
-                  </button>
-                </div>
-              </div>
-
-              <!-- Action Bar (Admin Only) -->
-              ${currentUser.role === 'Admin' ? `
-                <div style="padding:12px 20px; background:#f8fafc; border-top:1px solid #f1f5f9; display:flex; justify-content:space-between; align-items:center">
-                  <div style="display:flex; gap:10px">
-                    <button class="btn-icon" style="color:#6366f1" onclick="viewPhoto('${m.photoUrl ? getDirectLink(m.photoUrl) : ''}', '${escapeHtml(m.name)}')" title="Lihat Foto" ${!m.photoUrl ? 'disabled style="opacity:0.5; cursor:not-allowed"' : ''}>
-                      <i class="fas fa-eye"></i>
-                    </button>
-                    <button class="btn-icon" style="color:#3b82f6" onclick="openChangePhotoModal('${m.memberId}', '${m.photoUrl ? getDirectLink(m.photoUrl) : ''}')" title="Ganti Foto">
-                      <i class="fas fa-camera"></i>
-                    </button>
-                    <button class="btn-icon" style="color:#10b981" onclick="window.open('https://wa.me/${formatWhatsAppNumber(m.phone)}', '_blank')" title="WhatsApp">
-                      <i class="fab fa-whatsapp"></i>
-                    </button>
-                  </div>
-                  <button class="btn-icon" style="color:#ef4444" onclick="confirmDeleteMember('${m.memberId}', '${escapeHtml(m.name)}')" title="Hapus Member">
-                    <i class="fas fa-trash-alt"></i>
-                  </button>
-                </div>
-              ` : ''}
-            </div>
-          `;}).join('')}
-        </div>
-        ${members.length > (window.galleryLimit || 100) ? `
-          <div style="text-align:center; margin-top:32px; margin-bottom:32px;">
-            <button class="btn btn-primary" onclick="window.galleryLimit += 100; renderGallery(window.appData.members);" style="padding:12px 32px; border-radius:24px; display:inline-flex; align-items:center; gap:8px">
-              <i class="fas fa-chevron-down"></i> Muat Lebih Banyak (${window.galleryLimit} dari ${members.length})
-            </button>
-          </div>
-        ` : ''}
-        ${(currentUser.role === 'Staff' || currentUser.role === 'Kasir') ? `
-        <div style="text-align:center; padding:60px 20px; color:#94a3b8">
-          <i class="fas fa-user-plus fa-4x" style="opacity:0.2; margin-bottom:20px; display:block; color:#667eea"></i>
-          <p style="font-size:16px; font-weight:600; color:#475569; margin-bottom:8px">Data profil member tidak dapat ditampilkan</p>
-          <p style="font-size:13px; margin-bottom:20px">Gunakan tombol di atas untuk mendaftarkan member baru.</p>
-        </div>
-        ` : ''}
-      `;
-
-      // CSS for Hover Effect
-      const style = document.createElement('style');
-      style.innerHTML = `
-        .gallery-item-premium:hover {
-          transform: translateY(-8px);
-          box-shadow: 0 20px 40px rgba(0,0,0,0.08);
-          border-color: var(--primary);
-        }
-        .btn-icon {
-          background: white;
-          border: 1px solid #e2e8f0;
-          width: 36px;
-          height: 36px;
-          border-radius: 10px;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          cursor: pointer;
-          transition: 0.2s;
-        }
-        .btn-icon:hover {
-          transform: scale(1.1);
-          border-color: currentColor;
-          background: #f1f5f9;
-        }
-      `;
-      document.head.appendChild(style);
-
-      function filterGallery() {
-        const q = document.getElementById('gallerySearch').value.toLowerCase();
-        const dateFilter = document.getElementById('galleryDateFilter').value;
-        
-        document.querySelectorAll('.gallery-item-premium').forEach(item => {
-          const text = item.textContent.toLowerCase();
-          const matchesText = text.includes(q);
-          const itemDate = item.getAttribute('data-reg-date');
-          const matchesDate = !dateFilter || itemDate === dateFilter;
-          
-          item.style.display = (matchesText && matchesDate) ? 'flex' : 'none';
+        // Event listener untuk filter (dijalankan saat user mengetik)
+        document.getElementById('gallerySearch').addEventListener('input', function() {
+          window.galleryLimit = 100; // Reset limit saat pencarian baru
+          updateGalleryGrid(window.appData.members);
+        });
+        document.getElementById('galleryDateFilter').addEventListener('change', function() {
+          window.galleryLimit = 100;
+          updateGalleryGrid(window.appData.members);
         });
       }
 
-      document.getElementById('gallerySearch').addEventListener('input', filterGallery);
-      document.getElementById('galleryDateFilter').addEventListener('change', filterGallery);
-      
-      if (existingSearch || existingDate) {
-        filterGallery();
+      // Fungsi untuk mengupdate HANYA bagian grid (kartu member) supaya input search tidak kehilangan fokus
+      function updateGalleryGrid(data) {
+        const q = document.getElementById('gallerySearch').value.toLowerCase();
+        const dateFilter = document.getElementById('galleryDateFilter').value;
+        const container = document.getElementById('galleryGridContainer');
+        if (!container) return;
+
+        // Filter data SEBELUM memotong (slice)
+        let filteredMembers = data;
+        if (q || dateFilter) {
+          filteredMembers = data.filter(m => {
+            let matchesText = true;
+            let matchesDate = true;
+            
+            if (q) {
+              const textToSearch = (m.name + ' ' + m.memberId + ' ' + (m.faceIdCode || '')).toLowerCase();
+              matchesText = textToSearch.includes(q);
+            }
+            if (dateFilter) {
+              let regDateStr = '';
+              if (m.registrationDate) {
+                const d = new Date(m.registrationDate);
+                if (!isNaN(d.getTime())) {
+                  regDateStr = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+                }
+              }
+              matchesDate = (regDateStr === dateFilter);
+            }
+            
+            return matchesText && matchesDate;
+          });
+        }
+
+        const isStaffOrKasir = (currentUser.role === 'Staff' || currentUser.role === 'Kasir');
+
+        let html = `
+          <div id="galleryGrid" style="display:grid; grid-template-columns:repeat(auto-fill, minmax(280px, 1fr)); gap:24px; margin-top:24px">
+            ${filteredMembers.slice(0, window.galleryLimit || 100).map(m => {
+              const isActive = m.status === 'Aktif';
+              const statusColor = isActive ? '#10b981' : '#ef4444';
+              const genderIcon = m.gender === 'Perempuan' ? 'venus' : 'mars';
+              
+              if (isStaffOrKasir) return '';
+              
+              return `
+              <div class="gallery-item-premium" style="background:white; border-radius:24px; overflow:hidden; position:relative; box-shadow:0 10px 25px rgba(0,0,0,0.05); border:1px solid #f1f5f9; transition:all 0.3s ease; display:flex; flex-direction:column; animation: fadeIn 0.4s ease forwards">
+                <!-- Header Gradient -->
+                <div style="height:80px; background:linear-gradient(135deg, ${isActive ? '#10b981, #059669' : '#ef4444, #dc2626'}); position:relative">
+                  <div class="badge" style="position:absolute; top:12px; right:12px; background:rgba(255,255,255,0.2); backdrop-filter:blur(10px); color:white; border:1px solid rgba(255,255,255,0.3); font-size:10px; padding:4px 10px">
+                    <i class="fas fa-${genderIcon}"></i> ${m.gender || '-'}
+                  </div>
+                </div>
+                
+                <!-- Avatar -->
+                <div style="margin:-45px auto 12px; position:relative; z-index:2">
+                  <div style="width:100px; height:100px; border-radius:30px; overflow:hidden; border:4px solid white; box-shadow:0 8px 20px rgba(0,0,0,0.1); background:#f8fafc; display:flex; align-items:center; justify-content:center; cursor:${m.photoUrl ? 'pointer' : 'default'}" 
+                       onclick="${m.photoUrl ? `viewPhoto('${getDirectLink(m.photoUrl)}', '${escapeHtml(m.name)}')` : ''}"
+                       title="${m.photoUrl ? 'Klik untuk lihat foto' : ''}">
+                    ${m.photoUrl ? `<img src="${getDirectLink(m.photoUrl)}" style="width:100%; height:100%; object-fit:cover">` : `<i class="fas fa-user fa-3x" style="color:#cbd5e1"></i>`}
+                  </div>
+                  <div style="position:absolute; bottom:0; right:0; width:24px; height:24px; background:${statusColor}; border:3px solid white; border-radius:50%; box-shadow:0 2px 6px rgba(0,0,0,0.2)"></div>
+                </div>
+
+                <!-- Content -->
+                <div style="padding:0 24px 20px; text-align:center; flex:1">
+                  <div style="font-weight:800; color:#1e293b; font-size:18px; line-height:1.2; margin-bottom:4px">${escapeHtml(m.name)}</div>
+                  <div style="font-size:12px; color:#64748b; margin-bottom:4px; font-weight:600; letter-spacing:0.5px">ID: ${escapeHtml(m.memberId)}</div>
+                  <div style="font-size:11px; color:#94a3b8; margin-bottom:12px; font-weight:600"><i class="fas fa-fingerprint" style="font-size:10px"></i> Face ID: ${escapeHtml(m.faceIdCode || '-')}</div>
+                  
+                  <div style="display:flex; justify-content:center; gap:8px; margin-bottom:16px">
+                    <span class="badge" style="background:${isActive ? '#ecfdf5' : '#fef2f2'}; color:${statusColor}; border:1px solid ${isActive ? '#d1fae5' : '#fee2e2'}; font-weight:700">
+                      ${m.status.toUpperCase()}
+                    </span>
+                    <span class="badge" style="background:#f1f5f9; color:#475569; border:1px solid #e2e8f0; font-weight:600">
+                      ${m.currentPackage || '-'}
+                    </span>
+                  </div>
+
+                  <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:auto">
+                    <button class="btn btn-outline btn-sm" style="border-radius:12px; padding:10px" onclick="viewMemberFullDetails('${m.memberId}')">
+                      <i class="fas fa-history"></i> Riwayat
+                    </button>
+                    <button class="btn btn-primary btn-sm" style="border-radius:12px; padding:10px" onclick="openEditProfileModal('${m.memberId}')">
+                      <i class="fas fa-user-edit"></i> Edit
+                    </button>
+                  </div>
+                </div>
+
+                <!-- Action Bar (Admin Only) -->
+                ${currentUser.role === 'Admin' ? `
+                  <div style="padding:12px 20px; background:#f8fafc; border-top:1px solid #f1f5f9; display:flex; justify-content:space-between; align-items:center">
+                    <div style="display:flex; gap:10px">
+                      <button class="btn-icon" style="color:#6366f1" onclick="viewPhoto('${m.photoUrl ? getDirectLink(m.photoUrl) : ''}', '${escapeHtml(m.name)}')" title="Lihat Foto" ${!m.photoUrl ? 'disabled style="opacity:0.5; cursor:not-allowed"' : ''}>
+                        <i class="fas fa-eye"></i>
+                      </button>
+                      <button class="btn-icon" style="color:#3b82f6" onclick="openChangePhotoModal('${m.memberId}', '${m.photoUrl ? getDirectLink(m.photoUrl) : ''}')" title="Ganti Foto">
+                        <i class="fas fa-camera"></i>
+                      </button>
+                      <button class="btn-icon" style="color:#10b981" onclick="window.open('https://wa.me/${formatWhatsAppNumber(m.phone)}', '_blank')" title="WhatsApp">
+                        <i class="fab fa-whatsapp"></i>
+                      </button>
+                    </div>
+                    <button class="btn-icon" style="color:#ef4444" onclick="confirmDeleteMember('${m.memberId}', '${escapeHtml(m.name)}')" title="Hapus Member">
+                      <i class="fas fa-trash-alt"></i>
+                    </button>
+                  </div>
+                ` : ''}
+              </div>
+              `;
+            }).join('')}
+          </div>
+          
+          ${filteredMembers.length > (window.galleryLimit || 100) ? `
+            <div style="text-align:center; margin-top:32px; margin-bottom:32px;">
+              <button class="btn btn-primary" onclick="window.galleryLimit += 100; renderGallery(window.appData.members);" style="padding:12px 32px; border-radius:24px; display:inline-flex; align-items:center; gap:8px">
+                <i class="fas fa-chevron-down"></i> Muat Lebih Banyak (${window.galleryLimit} dari ${filteredMembers.length})
+              </button>
+            </div>
+          ` : ''}
+          
+          ${isStaffOrKasir ? `
+          <div style="text-align:center; padding:60px 20px; color:#94a3b8">
+            <i class="fas fa-user-plus fa-4x" style="opacity:0.2; margin-bottom:20px; display:block; color:#667eea"></i>
+            <p style="font-size:16px; font-weight:600; color:#475569; margin-bottom:8px">Data profil member tidak dapat ditampilkan</p>
+            <p style="font-size:13px; margin-bottom:20px">Gunakan tombol di atas untuk mendaftarkan member baru.</p>
+          </div>
+          ` : ''}
+        `;
+        
+        container.innerHTML = html;
       }
+      
+      // Update grid setiap kali renderGallery dipanggil dengan member baru (misal hasil dari background sync)
+      updateGalleryGrid(members);
     }
 
     function viewMemberFullDetails(memberId) {
@@ -7125,269 +7148,7 @@
       `;
     }
 
-    function showInventoryTools() {
-      const container = document.getElementById('catalogContent');
-      container.innerHTML = `
-        <div class="form-card" style="margin-bottom:24px">
-          <div class="form-card-header">
-            <h3><i class="fas fa-barcode"></i> Stock Opname & Update Harga</h3>
-          </div>
-          <div class="form-card-body" style="text-align:center">
-            <div class="form-group" style="max-width:500px; margin:0 auto 20px auto; position:relative">
-              <label class="form-label" style="text-align:left">Cari Nama atau ID Produk</label>
-              <div style="position:relative">
-                <i class="fas fa-search" style="position:absolute; left:12px; top:12px; color:#94a3b8"></i>
-                <input type="text" id="opnameSearch" class="form-input" style="padding-left:36px" placeholder="Ketik nama produk..." oninput="searchProductForOpname(this.value)">
-              </div>
-              <!-- Floating search results -->
-              <div id="opnameSearchResults" class="search-dropdown" style="display:none"></div>
-            </div>
-            
-            <div style="margin:20px 0; display:flex; align-items:center; gap:12px; justify-content:center">
-              <span style="height:1px; background:#e2e8f0; flex:1"></span>
-              <span style="color:#64748b; font-size:13px; font-weight:600">ATAU SCAN BARCODE</span>
-              <span style="height:1px; background:#e2e8f0; flex:1"></span>
-            </div>
 
-            <div id="invScannerContainer" style="max-width:500px; margin:0 auto; border:2px solid #e2e8f0; border-radius:12px; overflow:hidden; margin-bottom:20px; background:#f1f5f9">
-              <div id="inv-reader" style="width:100%"></div>
-            </div>
-            <div id="invScannerResult" style="margin-bottom:20px; font-weight:600; color:#667eea"></div>
-            <button id="btnStartInvScan" class="btn btn-primary" onclick="startInventoryScanner()">
-              <i class="fas fa-camera"></i> Mulai Scan Barcode
-            </button>
-          </div>
-        </div>
-
-        <div class="form-card">
-          <div class="form-card-header" style="display:flex; justify-content:space-between; align-items:center">
-            <h3 style="margin:0"><i class="fas fa-history"></i> Riwayat Update Inventaris</h3>
-            <div style="display:flex; gap:8px">
-              <input type="date" id="restock_start" class="btn btn-sm btn-outline" style="padding:4px">
-              <input type="date" id="restock_end" class="btn btn-sm btn-outline" style="padding:4px">
-              <button class="btn btn-sm btn-primary" onclick="loadRestockHistory()"><i class="fas fa-filter"></i></button>
-            </div>
-          </div>
-          <div class="form-card-body">
-            <div id="restockHistoryTable">
-              <div style="text-align:center; padding:20px"><i class="fas fa-spinner fa-spin"></i> Memuat riwayat...</div>
-            </div>
-          </div>
-        </div>
-      `;
-      // Set default dates
-      const today = new Date();
-      const toLocalDateStr = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
-      document.getElementById('restock_end').value = toLocalDateStr(today);
-      const monthAgo = new Date(today.getFullYear(), today.getMonth() - 1, today.getDate());
-      document.getElementById('restock_start').value = toLocalDateStr(monthAgo);
-
-      loadRestockHistory();
-    }
-
-    function searchProductForOpname(val) {
-      const resultsEl = document.getElementById('opnameSearchResults');
-      if (!val || val.length < 2) {
-        resultsEl.style.display = 'none';
-        return;
-      }
-
-      const filtered = posProducts.filter(p =>
-        p.name.toLowerCase().includes(val.toLowerCase()) ||
-        p.id.toLowerCase().includes(val.toLowerCase()) ||
-        (p.barcode && p.barcode.includes(val))
-      );
-
-      if (filtered.length === 0) {
-        resultsEl.innerHTML = '<div style="padding:10px; color:#94a3b8">Produk tidak ditemukan</div>';
-        resultsEl.style.display = 'block';
-        return;
-      }
-
-      resultsEl.innerHTML = filtered.map(p => `
-        <div class="search-item" onclick="selectProductForOpname('${p.id}')">
-          <div style="font-weight:600; font-size:13px">${escapeHtml(p.name)}</div>
-          <div style="font-size:11px; color:#64748b">ID: ${p.id} | Stok: ${p.stock} ${p.unit}</div>
-        </div>
-      `).join('');
-      resultsEl.style.display = 'block';
-    }
-
-    function selectProductForOpname(id) {
-      document.getElementById('opnameSearchResults').style.display = 'none';
-      document.getElementById('opnameSearch').value = '';
-
-      // Pastikan posProducts sudah dimuat (biasanya sudah dimuat saat POS atau Catalog dibuka)
-      const p = posProducts.find(x => x.id == id);
-      if (p) {
-        const mappedProd = {
-          'ID Produk': p.id,
-          'Nama Produk': p.name,
-          'Barcode': p.barcode,
-          'Stok': p.stock,
-          'Satuan': p.unit,
-          'Harga Jual': p.price
-        };
-        openQuickUpdateModal(mappedProd);
-      } else {
-        // Jika tidak ada di cache, ambil dari server
-        showLoading();
-        google.script.run
-          .withSuccessHandler(function (res) {
-            hideLoading();
-            if (res.success) {
-              const found = res.products.find(x => x.id == id);
-              if (found) {
-                // Konversi key header sheet ke yang diharapkan openQuickUpdateModal
-                const mapped = {
-                  'ID Produk': found['ID Produk'],
-                  'Nama Produk': found['Nama Produk'],
-                  'Barcode': found['Barcode'],
-                  'Stok': found['Stok'],
-                  'Satuan': found['Satuan'],
-                  'Harga Jual': found['Harga Jual']
-                };
-                openQuickUpdateModal(mapped);
-              }
-            }
-          })
-          .getFullProducts();
-      }
-    }
-
-    function loadRestockHistory() {
-      const start = document.getElementById('restock_start')?.value || '';
-      const end = document.getElementById('restock_end')?.value || '';
-      const el = document.getElementById('restockHistoryTable');
-      if (!el) return;
-
-      el.innerHTML = '<div style="text-align:center; padding:20px"><i class="fas fa-spinner fa-spin"></i> Memuat riwayat...</div>';
-
-      google.script.run
-        .withSuccessHandler(function (res) {
-          if (res.success && res.history.length > 0) {
-            el.innerHTML = `
-              <div style="overflow-x:auto">
-                <table class="data-table">
-                  <thead>
-                    <tr>
-                      <th>Waktu</th>
-                      <th>Produk</th>
-                      <th>Tipe</th>
-                      <th>Awal</th>
-                      <th>Baru</th>
-                      <th>Oleh</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    ${res.history.map(h => `
-                      <tr>
-                        <td><small>${new Date(h['Waktu']).toLocaleString('id-ID', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}</small></td>
-                        <td><b>${escapeHtml(h['Nama Produk'])}</b> <small>(${h['ID Produk']})</small></td>
-                        <td><span class="badge badge-${h['Tipe'] === 'Stok' ? 'info' : 'warning'}">${h['Tipe']}</span></td>
-                        <td>${h['Tipe'] === 'Stok' ? h['Stok Awal'] : formatCurrency(h['Harga Awal'])}</td>
-                        <td><b style="color:#10b981">${h['Tipe'] === 'Stok' ? h['Stok Baru'] : formatCurrency(h['Harga Baru'])}</b></td>
-                        <td><small>${h['User']}</small></td>
-                      </tr>
-                    `).join('')}
-                  </tbody>
-                </table>
-              </div>
-            `;
-          } else {
-            el.innerHTML = '<div style="text-align:center; padding:20px; color:#94a3b8">Belum ada riwayat update pada periode ini.</div>';
-          }
-        })
-        .getFilteredRestockHistory(start, end);
-    }
-
-    let html5QrReader = null;
-    function startInventoryScanner() {
-      if (html5QrReader) {
-        html5QrReader.stop().then(() => {
-          html5QrReader = null;
-          document.getElementById('btnStartInvScan').innerHTML = '<i class="fas fa-camera"></i> Mulai Scan Barcode';
-          document.getElementById('btnStartInvScan').className = 'btn btn-primary';
-        });
-        return;
-      }
-
-      html5QrReader = new Html5Qrcode("inv-reader");
-      const config = { fps: 10, qrbox: { width: 250, height: 150 } };
-
-      html5QrReader.start(
-        { facingMode: "environment" },
-        config,
-        (decodedText) => {
-          document.getElementById('invScannerResult').textContent = 'Terdeteksi: ' + decodedText;
-          handleBarcodeScanned(decodedText);
-        }
-      ).catch(err => {
-        showToast('Gagal akses kamera: ' + err, 'error');
-      });
-
-      document.getElementById('btnStartInvScan').innerHTML = '<i class="fas fa-stop"></i> Stop Scanner';
-      document.getElementById('btnStartInvScan').className = 'btn btn-danger';
-    }
-
-    function handleBarcodeScanned(barcode) {
-      showLoading();
-      google.script.run
-        .withSuccessHandler(function (res) {
-          hideLoading();
-          if (res.success) {
-            const p = res.products.find(x => x['Barcode'] == barcode);
-            if (p) {
-              if (html5QrReader) html5QrReader.stop();
-              html5QrReader = null;
-              document.getElementById('btnStartInvScan').innerHTML = '<i class="fas fa-camera"></i> Mulai Scan Barcode';
-              document.getElementById('btnStartInvScan').className = 'btn btn-primary';
-              openQuickUpdateModal(p);
-            } else {
-              showToast('Barcode tidak terdaftar', 'warning');
-            }
-          }
-        })
-        .getFullProducts(currentBranch);
-    }
-
-    function openQuickUpdateModal(p) {
-      const choice = prompt(
-        `PRODUK DITEMUKAN\n\n` +
-        `Nama: ${p['Nama Produk']}\n` +
-        `Stok Sekarang: ${p['Stok']} ${p['Satuan']}\n` +
-        `Harga Sekarang: ${formatCurrency(p['Harga Jual'])}\n\n` +
-        `Pilih aksi:\n` +
-        `1. Update Stok (Stock Opname)\n` +
-        `2. Update Harga Jual\n` +
-        `0. Batal`,
-        '1'
-      );
-
-      if (choice === '1') {
-        const newVal = prompt(`Masukkan jumlah STOK BARU untuk ${p['Nama Produk']}:`, p['Stok']);
-        if (newVal !== null) saveInventoryUpdate(p['Barcode'], parseFloat(newVal), null);
-      } else if (choice === '2') {
-        const newVal = prompt(`Masukkan HARGA JUAL BARU untuk ${p['Nama Produk']}:`, p['Harga Jual']);
-        if (newVal !== null) saveInventoryUpdate(p['Barcode'], null, parseFloat(newVal));
-      }
-    }
-
-    function saveInventoryUpdate(barcode, stock, price) {
-      showLoading();
-      google.script.run
-        .withSuccessHandler(function (res) {
-          hideLoading();
-          if (res.success) {
-            showToast('✅ Berhasil diupdate', 'success');
-            loadProductList(true);
-            fetchDashboardData(null, null, true); // Force refresh cache
-          } else {
-            showToast('❌ ' + res.message, 'error');
-          }
-        })
-        .updateInventoryByBarcode(barcode, stock, price);
-    }
 
     // RESTOCK & ADJUSTMENT FUNCTIONS
     function openRestockModal(id, name) {
@@ -8145,38 +7906,53 @@
 
       if (localCheckins) {
         renderCheckinsTable(localCheckins);
-        
-        // SWR
-        google.script.run
-          .withSuccessHandler(function (res) {
-            if (res && res.success) {
-              saveToCache(cacheKey, res.checkins || []);
-              if (document.getElementById('todayCheckinsTable')) renderCheckinsTable(res.checkins || []);
-            }
-          })
-          .getTodayCheckins(currentBranch, startDate, endDate);
       } else {
         const el = document.getElementById('todayCheckinsTable');
         if (el) el.innerHTML = '<div style="text-align:center;padding:40px;color:#94a3b8"><i class="fas fa-spinner fa-spin"></i> Memuat data...</div>';
-        
-        google.script.run
+      }
+
+      // Mulai proses penarikan rekursif
+      fetchCheckinsChunk(startDate, endDate, cacheKey, 0, 500, []);
+    }
+    
+    function fetchCheckinsChunk(startDate, endDate, cacheKey, offset, limit, accumulated) {
+       const ind = document.getElementById('swrIndicator');
+       if (ind && accumulated.length > 0) {
+          ind.innerHTML = `<i class="fas fa-sync fa-spin"></i> Menyinkronkan check-in... (${accumulated.length} data)`;
+       }
+       
+       google.script.run
           .withSuccessHandler(function (res) {
-            if (res && res.success) {
-              const list = res.checkins || [];
-              saveToCache(cacheKey, list);
-              renderCheckinsTable(list);
-            } else {
-              renderCheckinsTable([]);
-            }
+             if (res && res.success) {
+                const allFetched = accumulated.concat(res.checkins || []);
+                saveToCache(cacheKey, allFetched);
+                
+                // Set limit ke total agar Load More tidak muncul memotong saat baru load
+                window.checkinLimit = allFetched.length;
+                
+                if (document.getElementById('todayCheckinsTable')) {
+                   renderCheckinsTable(allFetched);
+                }
+                
+                if (res.hasMore) {
+                   fetchCheckinsChunk(startDate, endDate, cacheKey, offset + limit, limit, allFetched);
+                } else {
+                   if (ind) ind.remove();
+                }
+             } else {
+                if (ind) ind.remove();
+                if (accumulated.length === 0) renderCheckinsTable([]);
+             }
           })
           .withFailureHandler(function (err) {
-            const el = document.getElementById('todayCheckinsTable');
-            if (el) {
-              el.innerHTML = '<p class="text-muted" style="padding:20px;text-align:center">Gagal memuat data: ' + err.message + '</p>';
-            }
+             console.warn('Gagal memuat checkin (offset ' + offset + '):', err);
+             if (ind) ind.remove();
+             if (accumulated.length === 0) {
+                const el = document.getElementById('todayCheckinsTable');
+                if (el) el.innerHTML = '<p class="text-muted" style="padding:20px;text-align:center">Gagal memuat data: ' + err.message + '</p>';
+             }
           })
-          .getTodayCheckins(currentBranch, startDate, endDate);
-      }
+          .getTodayCheckins(currentBranch, startDate, endDate, limit, offset);
     }
 
     function autoPreviewCheckin(val) {
@@ -10146,38 +9922,56 @@
 
       if (localTrx && localTrx.length > 0) {
         renderAdminTransactionList(localTrx);
-        
-        // SWR: Background Sync
-        google.script.run
-          .withSuccessHandler(function (res) {
-            if (res && res.success) {
-              saveToCache('admin_transactions', res.transactions);
-              const el = document.getElementById('adminDataView');
-              if (el) renderAdminTransactionList(res.transactions);
-            }
-          })
-          .getTransactionHistory(currentBranch);
       } else {
         adminDataView.innerHTML = `
           <div style="text-align:center;padding:20px;color:#94a3b8">
             <i class="fas fa-spinner fa-spin"></i> Memuat...
           </div>
         `;
+      }
 
-        google.script.run
+      fetchAdminTransactionsChunk(0, 500, []);
+    }
+    
+    function fetchAdminTransactionsChunk(offset, limit, accumulated) {
+       const ind = document.getElementById('swrIndicator');
+       if (ind && accumulated.length > 0) {
+          ind.innerHTML = `<i class="fas fa-sync fa-spin"></i> Menyinkronkan riwayat transaksi... (${accumulated.length} data)`;
+       }
+       
+       google.script.run
           .withSuccessHandler(function (res) {
-            const el = document.getElementById('adminDataView');
-            if (!el) return;
-            const list = (res && res.success) ? res.transactions : [];
-            saveToCache('admin_transactions', list);
-            renderAdminTransactionList(list);
+             if (res && res.success) {
+                const allFetched = accumulated.concat(res.transactions || []);
+                saveToCache('admin_transactions', allFetched);
+                
+                window.adminTrxLimit = allFetched.length;
+                
+                const el = document.getElementById('adminDataView');
+                if (el) renderAdminTransactionList(allFetched);
+                
+                if (res.hasMore) {
+                   fetchAdminTransactionsChunk(offset + limit, limit, allFetched);
+                } else {
+                   if (ind) ind.remove();
+                }
+             } else {
+                if (ind) ind.remove();
+                if (accumulated.length === 0) {
+                   const el = document.getElementById('adminDataView');
+                   if (el) renderAdminTransactionList([]);
+                }
+             }
           })
           .withFailureHandler(function (err) {
-            const el = document.getElementById('adminDataView');
-            if (el) el.innerHTML = '<p class="text-muted">Error: ' + err.message + '</p>';
+             console.warn('Gagal memuat admin transaksi (offset ' + offset + '):', err);
+             if (ind) ind.remove();
+             if (accumulated.length === 0) {
+                const el = document.getElementById('adminDataView');
+                if (el) el.innerHTML = '<p class="text-muted">Error: ' + err.message + '</p>';
+             }
           })
-          .getTransactionHistory(currentBranch);
-      }
+          .getTransactionHistory(currentBranch, limit, offset);
     }
 
     function triggerShowSysInfo() {
@@ -10636,15 +10430,6 @@
       const cached = getFromCache(cacheKey);
       if (cached) {
         renderExpensesTable(cached);
-        // SWR
-        google.script.run
-          .withSuccessHandler(function (res) {
-            if (res && res.success) {
-              saveToCache(cacheKey, res.expenses || []);
-              if (document.getElementById('expensesTableContainer')) renderExpensesTable(res.expenses || []);
-            }
-          })
-          .getExpenses(start === 'all' ? '' : start, end === 'all' ? '' : end, currentBranch);
       } else {
         document.getElementById('expensesTableContainer').innerHTML = `
           <div style="text-align:center; padding:40px; color:#94a3b8">
@@ -10652,21 +10437,51 @@
             <p style="margin-top:12px">Memuat data pengeluaran...</p>
           </div>
         `;
-        
-        google.script.run
+      }
+      
+      fetchExpensesChunk(start, end, cacheKey, 0, 500, []);
+    }
+    
+    function fetchExpensesChunk(start, end, cacheKey, offset, limit, accumulated) {
+       const ind = document.getElementById('swrIndicator');
+       if (ind && accumulated.length > 0) {
+          ind.innerHTML = `<i class="fas fa-sync fa-spin"></i> Menyinkronkan pengeluaran... (${accumulated.length} data)`;
+       }
+       
+       const queryStart = start === 'all' ? '' : start;
+       const queryEnd = end === 'all' ? '' : end;
+       
+       google.script.run
           .withSuccessHandler(function (res) {
-            if (res && res.success) {
-              saveToCache(cacheKey, res.expenses || []);
-              renderExpensesTable(res.expenses || []);
-            } else {
-              showToast('Gagal memuat data: ' + (res.message || 'Error Unknown'), 'error');
-            }
+             if (res && res.success) {
+                const allFetched = accumulated.concat(res.expenses || []);
+                saveToCache(cacheKey, allFetched);
+                window.expensesLimit = allFetched.length;
+                
+                if (document.getElementById('expensesTableContainer')) {
+                   renderExpensesTable(allFetched);
+                }
+                
+                if (res.hasMore) {
+                   fetchExpensesChunk(start, end, cacheKey, offset + limit, limit, allFetched);
+                } else {
+                   if (ind) ind.remove();
+                }
+             } else {
+                if (ind) ind.remove();
+                if (accumulated.length === 0) {
+                   showToast('Gagal memuat data: ' + (res.message || 'Error Unknown'), 'error');
+                }
+             }
           })
           .withFailureHandler(function (err) {
-            showToast('Error: ' + err.message, 'error');
+             console.warn('Gagal memuat expenses (offset ' + offset + '):', err);
+             if (ind) ind.remove();
+             if (accumulated.length === 0) {
+                showToast('Error: ' + err.message, 'error');
+             }
           })
-          .getExpenses(start === 'all' ? '' : start, end === 'all' ? '' : end, currentBranch);
-      }
+          .getExpenses(queryStart, queryEnd, currentBranch, limit, offset);
     }
 
 
@@ -11992,32 +11807,54 @@
       
       if (localTrx && localTrx.length > 0) {
         renderPOSTransactionHistory(localTrx);
-        // SWR: Background Sync
-        google.script.run
-          .withSuccessHandler(function (res) {
-            if (res.success) {
-              saveToCache(cacheKey, res.history);
-              if (document.getElementById('posHistoryTableContainer')) renderPOSTransactionHistory(res.history);
-            }
-          })
-          .getFilteredPOSTransactions(start, end, currentBranch, currentUser.role === 'Admin' ? 'All' : (currentUser.id || currentUser.name));
       } else {
         container.innerHTML = '<div style="text-align:center; padding:40px; color:#94a3b8"><i class="fas fa-spinner fa-spin"></i> Memuat data...</div>';
+      }
 
-        google.script.run
+      fetchPOSTransactionChunk(start, end, cacheKey, 0, 500, []);
+    }
+    
+    function fetchPOSTransactionChunk(start, end, cacheKey, offset, limit, accumulated) {
+       const ind = document.getElementById('swrIndicator');
+       if (ind && accumulated.length > 0) {
+          ind.innerHTML = `<i class="fas fa-sync fa-spin"></i> Menyinkronkan histori POS... (${accumulated.length} data)`;
+       }
+       
+       const staffParam = currentUser.role === 'Admin' ? 'All' : (currentUser.id || currentUser.name);
+       
+       google.script.run
           .withSuccessHandler(function (res) {
-            if (res.success) {
-              saveToCache(cacheKey, res.history);
-              renderPOSTransactionHistory(res.history);
-            } else {
-              container.innerHTML = '<div class="alert alert-error">Gagal: ' + res.message + '</div>';
-            }
+             if (res && res.success) {
+                const allFetched = accumulated.concat(res.history || []);
+                saveToCache(cacheKey, allFetched);
+                window.posTrxLimit = allFetched.length;
+                
+                if (document.getElementById('posHistoryTableContainer')) {
+                   renderPOSTransactionHistory(allFetched);
+                }
+                
+                if (res.hasMore) {
+                   fetchPOSTransactionChunk(start, end, cacheKey, offset + limit, limit, allFetched);
+                } else {
+                   if (ind) ind.remove();
+                }
+             } else {
+                if (ind) ind.remove();
+                if (accumulated.length === 0) {
+                   const container = document.getElementById('posHistoryTableContainer');
+                   if (container) container.innerHTML = '<div class="alert alert-error">Gagal: ' + res.message + '</div>';
+                }
+             }
           })
           .withFailureHandler(function (err) {
-            container.innerHTML = '<div style="text-align:center; padding:40px; color:#ef4444">Error koneksi: ' + err.message + '</div>';
+             console.warn('Gagal memuat histori POS (offset ' + offset + '):', err);
+             if (ind) ind.remove();
+             if (accumulated.length === 0) {
+                const container = document.getElementById('posHistoryTableContainer');
+                if (container) container.innerHTML = '<div style="text-align:center; padding:40px; color:#ef4444">Error koneksi: ' + err.message + '</div>';
+             }
           })
-          .getFilteredPOSTransactions(start, end, currentBranch, currentUser.role === 'Admin' ? 'All' : (currentUser.id || currentUser.name));
-      }
+          .getFilteredPOSTransactions(start, end, currentBranch, staffParam, limit, offset);
     }
 
     // STOCK HISTORY
