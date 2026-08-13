@@ -3191,10 +3191,23 @@
     }
     function backgroundSyncMembers(callback) {
       if (!currentUser) return;
+      if (window.isFetchingMembers) {
+          // If already fetching, maybe we can store callbacks?
+          // Since it's complex, we just return. The fetch in progress will update the cache anyway.
+          return;
+      }
+      window.isFetchingMembers = true;
       google.script.run
         .withSuccessHandler(function (res) {
+          window.isFetchingMembers = false;
+          window.isMembersFullyLoaded = true;
           if (res && res.success && res.members) {
             saveToCache('members', res.members);
+            
+            // Set limit to full so "Load More" button doesn't show anymore
+            window.galleryLimit = res.members.length;
+            window.adminMemberLimit = res.members.length;
+            
             if (typeof callback === 'function') callback(res.members);
             
             // Re-render UI jika sedang berada di view yang berhubungan
@@ -3207,6 +3220,7 @@
           }
         })
         .withFailureHandler(function (err) {
+          window.isFetchingMembers = false;
           console.warn('Background sync members failed:', err);
         })
         .getAllMembers('All');
@@ -4469,45 +4483,52 @@
     window.galleryLimit = 100;
     
     function loadGalleryView() {
-      window.galleryLimit = 100; // Reset limit
+      if (typeof window.galleryLimit === 'undefined') {
+        window.galleryLimit = 100;
+      }
+      
       const localMembers = getFromCache('members');
       
       if (localMembers && localMembers.length > 0) {
-        // 1. Tampilkan dari cache secara instan (0.1 detik)
+        if (window.isMembersFullyLoaded) {
+           window.galleryLimit = localMembers.length;
+        }
+        
+        // 1. Tampilkan dari cache secara instan
         renderGallery(localMembers);
         
-        // 2. Tampilkan indikator SWR kecil
-        const swrIndicator = document.createElement('div');
-        swrIndicator.id = 'swrIndicator';
-        swrIndicator.style.cssText = 'position:fixed; bottom:24px; right:24px; background:var(--primary); color:white; padding:8px 16px; border-radius:24px; font-size:12px; font-weight:600; box-shadow:0 4px 12px rgba(0,0,0,0.15); z-index:9999; display:flex; align-items:center; gap:8px; animation:slideUp 0.3s ease';
-        swrIndicator.innerHTML = '<i class="fas fa-sync fa-spin"></i> Menyinkronkan data...';
-        document.body.appendChild(swrIndicator);
-        
-        // 3. Tarik data terbaru di belakang layar
-        backgroundSyncMembers((updatedMembers) => {
-          const ind = document.getElementById('swrIndicator');
-          if (ind) ind.remove();
-          // Tabel akan otomatis di-render ulang oleh callback di backgroundSyncMembers
-        });
+        // 2. Tarik data terbaru di belakang layar jika belum sinkron penuh
+        if (!window.isFetchingMembers && !window.isMembersFullyLoaded) {
+          window.isFetchingMembers = true;
+          
+          const swrIndicator = document.createElement('div');
+          swrIndicator.id = 'swrIndicator';
+          swrIndicator.style.cssText = 'position:fixed; bottom:24px; right:24px; background:var(--primary); color:white; padding:8px 16px; border-radius:24px; font-size:12px; font-weight:600; box-shadow:0 4px 12px rgba(0,0,0,0.15); z-index:9999; display:flex; align-items:center; gap:8px; animation:slideUp 0.3s ease';
+          swrIndicator.innerHTML = '<i class="fas fa-sync fa-spin"></i> Menyinkronkan data...';
+          document.body.appendChild(swrIndicator);
+          
+          backgroundSyncMembers((updatedMembers) => {
+            const ind = document.getElementById('swrIndicator');
+            if (ind) ind.remove();
+          });
+        }
       } else {
         // Fallback jika tidak ada cache sama sekali (misal login pertama kali)
-        showLoading();
-        google.script.run
-          .withSuccessHandler(function (res) {
-            hideLoading();
-            if (res.success) {
-              if (window.appData) window.appData.members = res.members;
-              saveToCache('members', res.members);
-              renderGallery(res.members);
-            } else {
-              showToast('Gagal memuat galeri: ' + res.message, 'error');
-            }
-          })
-          .withFailureHandler(function (err) {
-            hideLoading();
-            showToast('Gagal memuat galeri: ' + err.message, 'error');
-          })
-          .getAllMembers('All');
+        const el = document.getElementById('contentArea');
+        if (el) {
+          el.innerHTML = `
+            <div style="text-align:center;padding:100px 20px;color:#94a3b8">
+              <i class="fas fa-spinner fa-spin fa-3x" style="margin-bottom:20px; color:#3b82f6"></i>
+              <h3 style="color:#1e293b">Mengambil Seluruh Profil Member</h3>
+              <p>Mohon tunggu sebentar, aplikasi sedang memuat data di latar belakang.</p>
+            </div>
+          `;
+        }
+        
+        if (!window.isFetchingMembers) {
+          window.isFetchingMembers = true;
+          backgroundSyncMembers();
+        }
       }
     }
 
@@ -10017,37 +10038,51 @@
     }
 
     function loadMemberList() {
-      window.adminMemberLimit = 100;
+      if (typeof window.adminMemberLimit === 'undefined') {
+        window.adminMemberLimit = 100;
+      }
+      
       const localMembers = getFromCache('members');
       
       if (localMembers && localMembers.length > 0) {
         let list = localMembers;
         if (currentBranch !== 'All') list = list.filter(m => m.branch === currentBranch);
+        
+        if (window.isMembersFullyLoaded) {
+          window.adminMemberLimit = list.length;
+        }
         renderAdminMembersList(list);
         
-        // SWR
-        backgroundSyncMembers((updatedMembers) => {
-           let ul = updatedMembers;
-           if (currentBranch !== 'All') ul = ul.filter(m => m.branch === currentBranch);
-           renderAdminMembersList(ul);
-        });
+        // SWR (Hanya panggil jika belum ada proses yang berjalan)
+        if (!window.isFetchingMembers && !window.isMembersFullyLoaded) {
+          window.isFetchingMembers = true;
+          backgroundSyncMembers((updatedMembers) => {
+             window.isFetchingMembers = false;
+             window.isMembersFullyLoaded = true;
+             let ul = updatedMembers;
+             if (currentBranch !== 'All') ul = ul.filter(m => m.branch === currentBranch);
+             window.adminMemberLimit = ul.length; // Tampilkan semua
+             renderAdminMembersList(ul);
+          });
+        }
       } else {
         document.getElementById('adminDataView').innerHTML = `
           <div style="text-align:center;padding:20px;color:#94a3b8">
-            <i class="fas fa-spinner fa-spin"></i> Memuat...
+            <i class="fas fa-spinner fa-spin"></i> Mengambil seluruh data member...
           </div>
         `;
-        google.script.run
-          .withSuccessHandler(function (res) {
-            const list = (res && res.success) ? res.members : [];
-            saveToCache('members', list);
-            renderAdminMembersList(list);
-          })
-          .withFailureHandler(function (err) {
-            const el = document.getElementById('adminDataView');
-            if (el) el.innerHTML = '<p class="text-muted">Error: ' + err.message + '</p>';
-          })
-          .getAllMembers(currentBranch);
+        
+        if (!window.isFetchingMembers) {
+          window.isFetchingMembers = true;
+          backgroundSyncMembers((updatedMembers) => {
+             window.isFetchingMembers = false;
+             window.isMembersFullyLoaded = true;
+             let ul = updatedMembers;
+             if (currentBranch !== 'All') ul = ul.filter(m => m.branch === currentBranch);
+             window.adminMemberLimit = ul.length;
+             renderAdminMembersList(ul);
+          });
+        }
       }
     }
 
