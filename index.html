@@ -268,6 +268,8 @@
       updateSyncIndicator();
     }
 
+    window.backgroundSyncText = null;
+
     function updateSyncIndicator() {
       const indicator = document.getElementById('liveIndicator');
       if (!indicator) return;
@@ -275,6 +277,9 @@
       if (!navigator.onLine) {
         indicator.className = 'status-badge offline';
         indicator.innerHTML = '<i class="fas fa-plane"></i> Offline';
+      } else if (window.backgroundSyncText) {
+        indicator.className = 'status-badge syncing';
+        indicator.innerHTML = '<i class="fas fa-sync fa-spin"></i> ' + window.backgroundSyncText;
       } else if (isSyncing) {
         indicator.className = 'status-badge syncing';
         indicator.innerHTML = '<i class="fas fa-sync fa-spin"></i> Syncing...';
@@ -285,6 +290,11 @@
         indicator.className = 'status-badge online';
         indicator.innerHTML = '<i class="fas fa-check-circle"></i> Online';
       }
+    }
+
+    function setBackgroundSyncStatus(text) {
+      window.backgroundSyncText = text;
+      updateSyncIndicator();
     }
 
     window.addEventListener('online', processSyncQueue);
@@ -3197,15 +3207,16 @@
       }
       window.isFetchingMembers = true;
       
-      const ind = document.getElementById('swrIndicator');
-      if (ind && accumulatedMembers.length > 0) {
-         ind.innerHTML = `<i class="fas fa-sync fa-spin"></i> Menyinkronkan data... (${accumulatedMembers.length} profil diambil)`;
-      }
+      if (offset === 0) setBackgroundSyncStatus(`Menyinkronkan data profil... 0%`);
 
       google.script.run
         .withSuccessHandler(function (res) {
           if (res && res.success && res.members) {
             const allFetchedSoFar = accumulatedMembers.concat(res.members);
+            const total = res.totalCount || allFetchedSoFar.length;
+            let pct = total > 0 ? Math.round((allFetchedSoFar.length / total) * 100) : 100;
+            if (pct > 100) pct = 100;
+            setBackgroundSyncStatus(`Menyinkronkan data profil... ${pct}% (${allFetchedSoFar.length}/${total})`);
             
             // Simpan partial (atau full) hasil ke cache sementara
             saveToCache('members', allFetchedSoFar);
@@ -3233,17 +3244,17 @@
               // Selesai seluruhnya
               window.isFetchingMembers = false;
               window.isMembersFullyLoaded = true;
-              if (ind) ind.remove();
+              setBackgroundSyncStatus(null);
             }
           } else {
             window.isFetchingMembers = false;
-            if (ind) ind.remove();
+            setBackgroundSyncStatus(null);
           }
         })
         .withFailureHandler(function (err) {
           window.isFetchingMembers = false;
           console.warn('Background sync members failed (offset: ' + offset + '):', err);
-          if (ind) ind.remove();
+          setBackgroundSyncStatus(null);
         })
         .getAllMembers('All', limit, offset);
     }
@@ -4522,16 +4533,10 @@
         // 2. Tarik data terbaru di belakang layar jika belum sinkron penuh
         if (!window.isFetchingMembers && !window.isMembersFullyLoaded) {
           window.isFetchingMembers = true;
-          
-          const swrIndicator = document.createElement('div');
-          swrIndicator.id = 'swrIndicator';
-          swrIndicator.style.cssText = 'position:fixed; bottom:24px; right:24px; background:var(--primary); color:white; padding:8px 16px; border-radius:24px; font-size:12px; font-weight:600; box-shadow:0 4px 12px rgba(0,0,0,0.15); z-index:9999; display:flex; align-items:center; gap:8px; animation:slideUp 0.3s ease';
-          swrIndicator.innerHTML = '<i class="fas fa-sync fa-spin"></i> Menyinkronkan data...';
-          document.body.appendChild(swrIndicator);
+          setBackgroundSyncStatus('Menyinkronkan data...');
           
           backgroundSyncMembers((updatedMembers) => {
-            const ind = document.getElementById('swrIndicator');
-            if (ind) ind.remove();
+            setBackgroundSyncStatus(null);
           });
         }
       } else {
@@ -7916,15 +7921,17 @@
     }
     
     function fetchCheckinsChunk(startDate, endDate, cacheKey, offset, limit, accumulated) {
-       const ind = document.getElementById('swrIndicator');
-       if (ind && accumulated.length > 0) {
-          ind.innerHTML = `<i class="fas fa-sync fa-spin"></i> Menyinkronkan check-in... (${accumulated.length} data)`;
-       }
+       if (offset === 0) setBackgroundSyncStatus(`Menyinkronkan check-in... 0%`);
        
        google.script.run
           .withSuccessHandler(function (res) {
              if (res && res.success) {
                 const allFetched = accumulated.concat(res.checkins || []);
+                const total = res.count || res.totalCount || allFetched.length;
+                let pct = total > 0 ? Math.round((allFetched.length / total) * 100) : 100;
+                if (pct > 100) pct = 100;
+                setBackgroundSyncStatus(`Menyinkronkan check-in... ${pct}% (${allFetched.length}/${total})`);
+                
                 saveToCache(cacheKey, allFetched);
                 
                 // Set limit ke total agar Load More tidak muncul memotong saat baru load
@@ -7937,16 +7944,16 @@
                 if (res.hasMore) {
                    fetchCheckinsChunk(startDate, endDate, cacheKey, offset + limit, limit, allFetched);
                 } else {
-                   if (ind) ind.remove();
+                   setBackgroundSyncStatus(null);
                 }
              } else {
-                if (ind) ind.remove();
+                setBackgroundSyncStatus(null);
                 if (accumulated.length === 0) renderCheckinsTable([]);
              }
           })
           .withFailureHandler(function (err) {
              console.warn('Gagal memuat checkin (offset ' + offset + '):', err);
-             if (ind) ind.remove();
+             setBackgroundSyncStatus(null);
              if (accumulated.length === 0) {
                 const el = document.getElementById('todayCheckinsTable');
                 if (el) el.innerHTML = '<p class="text-muted" style="padding:20px;text-align:center">Gagal memuat data: ' + err.message + '</p>';
@@ -9934,15 +9941,17 @@
     }
     
     function fetchAdminTransactionsChunk(offset, limit, accumulated) {
-       const ind = document.getElementById('swrIndicator');
-       if (ind && accumulated.length > 0) {
-          ind.innerHTML = `<i class="fas fa-sync fa-spin"></i> Menyinkronkan riwayat transaksi... (${accumulated.length} data)`;
-       }
+       if (offset === 0) setBackgroundSyncStatus(`Menyinkronkan riwayat transaksi... 0%`);
        
        google.script.run
           .withSuccessHandler(function (res) {
              if (res && res.success) {
                 const allFetched = accumulated.concat(res.transactions || []);
+                const total = res.totalCount || allFetched.length;
+                let pct = total > 0 ? Math.round((allFetched.length / total) * 100) : 100;
+                if (pct > 100) pct = 100;
+                setBackgroundSyncStatus(`Menyinkronkan riwayat transaksi... ${pct}% (${allFetched.length}/${total})`);
+                
                 saveToCache('admin_transactions', allFetched);
                 
                 window.adminTrxLimit = allFetched.length;
@@ -9953,10 +9962,10 @@
                 if (res.hasMore) {
                    fetchAdminTransactionsChunk(offset + limit, limit, allFetched);
                 } else {
-                   if (ind) ind.remove();
+                   setBackgroundSyncStatus(null);
                 }
              } else {
-                if (ind) ind.remove();
+                setBackgroundSyncStatus(null);
                 if (accumulated.length === 0) {
                    const el = document.getElementById('adminDataView');
                    if (el) renderAdminTransactionList([]);
@@ -9965,10 +9974,10 @@
           })
           .withFailureHandler(function (err) {
              console.warn('Gagal memuat admin transaksi (offset ' + offset + '):', err);
-             if (ind) ind.remove();
+             setBackgroundSyncStatus(null);
              if (accumulated.length === 0) {
                 const el = document.getElementById('adminDataView');
-                if (el) el.innerHTML = '<p class="text-muted">Error: ' + err.message + '</p>';
+                if (el) el.innerHTML = '<div class="alert alert-error">Error: ' + err.message + '</div>';
              }
           })
           .getTransactionHistory(currentBranch, limit, offset);
@@ -10443,10 +10452,7 @@
     }
     
     function fetchExpensesChunk(start, end, cacheKey, offset, limit, accumulated) {
-       const ind = document.getElementById('swrIndicator');
-       if (ind && accumulated.length > 0) {
-          ind.innerHTML = `<i class="fas fa-sync fa-spin"></i> Menyinkronkan pengeluaran... (${accumulated.length} data)`;
-       }
+       if (offset === 0) setBackgroundSyncStatus(`Menyinkronkan pengeluaran... 0%`);
        
        const queryStart = start === 'all' ? '' : start;
        const queryEnd = end === 'all' ? '' : end;
@@ -10455,6 +10461,11 @@
           .withSuccessHandler(function (res) {
              if (res && res.success) {
                 const allFetched = accumulated.concat(res.expenses || []);
+                const total = res.totalCount || allFetched.length;
+                let pct = total > 0 ? Math.round((allFetched.length / total) * 100) : 100;
+                if (pct > 100) pct = 100;
+                setBackgroundSyncStatus(`Menyinkronkan pengeluaran... ${pct}% (${allFetched.length}/${total})`);
+                
                 saveToCache(cacheKey, allFetched);
                 window.expensesLimit = allFetched.length;
                 
@@ -10465,10 +10476,10 @@
                 if (res.hasMore) {
                    fetchExpensesChunk(start, end, cacheKey, offset + limit, limit, allFetched);
                 } else {
-                   if (ind) ind.remove();
+                   setBackgroundSyncStatus(null);
                 }
              } else {
-                if (ind) ind.remove();
+                setBackgroundSyncStatus(null);
                 if (accumulated.length === 0) {
                    showToast('Gagal memuat data: ' + (res.message || 'Error Unknown'), 'error');
                 }
@@ -10476,7 +10487,7 @@
           })
           .withFailureHandler(function (err) {
              console.warn('Gagal memuat expenses (offset ' + offset + '):', err);
-             if (ind) ind.remove();
+             setBackgroundSyncStatus(null);
              if (accumulated.length === 0) {
                 showToast('Error: ' + err.message, 'error');
              }
@@ -11815,17 +11826,19 @@
     }
     
     function fetchPOSTransactionChunk(start, end, cacheKey, offset, limit, accumulated) {
-       const ind = document.getElementById('swrIndicator');
-       if (ind && accumulated.length > 0) {
-          ind.innerHTML = `<i class="fas fa-sync fa-spin"></i> Menyinkronkan histori POS... (${accumulated.length} data)`;
-       }
+       if (offset === 0) setBackgroundSyncStatus(`Menyinkronkan histori POS... 0%`);
        
        const staffParam = currentUser.role === 'Admin' ? 'All' : (currentUser.id || currentUser.name);
        
        google.script.run
           .withSuccessHandler(function (res) {
              if (res && res.success) {
-                const allFetched = accumulated.concat(res.history || []);
+                const allFetched = accumulated.concat(res.history || res.transactions || []);
+                const total = res.totalCount || allFetched.length;
+                let pct = total > 0 ? Math.round((allFetched.length / total) * 100) : 100;
+                if (pct > 100) pct = 100;
+                setBackgroundSyncStatus(`Menyinkronkan histori POS... ${pct}% (${allFetched.length}/${total})`);
+                
                 saveToCache(cacheKey, allFetched);
                 window.posTrxLimit = allFetched.length;
                 
@@ -11836,10 +11849,10 @@
                 if (res.hasMore) {
                    fetchPOSTransactionChunk(start, end, cacheKey, offset + limit, limit, allFetched);
                 } else {
-                   if (ind) ind.remove();
+                   setBackgroundSyncStatus(null);
                 }
              } else {
-                if (ind) ind.remove();
+                setBackgroundSyncStatus(null);
                 if (accumulated.length === 0) {
                    const container = document.getElementById('posHistoryTableContainer');
                    if (container) container.innerHTML = '<div class="alert alert-error">Gagal: ' + res.message + '</div>';
@@ -11848,7 +11861,7 @@
           })
           .withFailureHandler(function (err) {
              console.warn('Gagal memuat histori POS (offset ' + offset + '):', err);
-             if (ind) ind.remove();
+             setBackgroundSyncStatus(null);
              if (accumulated.length === 0) {
                 const container = document.getElementById('posHistoryTableContainer');
                 if (container) container.innerHTML = '<div style="text-align:center; padding:40px; color:#ef4444">Error koneksi: ' + err.message + '</div>';
