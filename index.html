@@ -4420,14 +4420,14 @@
               </div>
             </div>
             <div class="list-item-action" style="display:flex; gap:8px; align-items:center; margin-left:16px">
-              <button class="btn btn-ghost btn-xs" onclick="printCheckinSlip('${c.id}', decodeURIComponent('${encodeURIComponent(c.memberName)}'), '${escapeHtml(c.type)}', '${formatDateTime(c.checkInTime)}', ${c.price || 0})" title="Cetak Slip">
+              <button class="btn btn-ghost btn-xs" onclick="printCheckinSlip('${c.id}', '${escapeJs(c.memberName)}', '${escapeJs(c.type)}', '${formatDateTime(c.checkInTime)}', ${c.price || 0})" title="Cetak Slip">
                 <i class="fas fa-print"></i>
               </button>
-              <button class="btn btn-ghost btn-xs" style="color:#22c55e" onclick="sendCheckinWhatsApp('${c.id}', '${c.memberId}', decodeURIComponent('${encodeURIComponent(c.memberName)}'), '${formatDateTime(c.checkInTime)}')" title="Kirim WA">
+              <button class="btn btn-ghost btn-xs" style="color:#22c55e" onclick="sendCheckinWhatsApp('${c.id}', '${c.memberId}', '${escapeJs(c.memberName)}', '${formatDateTime(c.checkInTime)}')" title="Kirim WA">
                 <i class="fab fa-whatsapp"></i>
               </button>
               ${(currentUser.role === 'Admin' || currentUser.role === 'Super Admin') ? `
-                <button class="btn btn-ghost btn-xs" style="color:#ef4444" onclick="confirmDeleteCheckin('${c.id}', '${c.memberId}', '${escapeHtml(c.type)}', decodeURIComponent('${encodeURIComponent(c.memberName)}'))" title="Hapus Check-in">
+                <button class="btn btn-ghost btn-xs" style="color:#ef4444" onclick="confirmDeleteCheckin('${c.id}', '${c.memberId}', '${escapeJs(c.type)}', '${escapeJs(c.memberName)}')" title="Hapus Check-in">
                   <i class="fas fa-trash-alt"></i>
                 </button>
               ` : ''}
@@ -4691,7 +4691,7 @@
                 ${currentUser.role === 'Admin' ? `
                   <div style="padding:12px 20px; background:#f8fafc; border-top:1px solid #f1f5f9; display:flex; justify-content:space-between; align-items:center">
                     <div style="display:flex; gap:10px">
-                      <button class="btn-icon" style="color:#6366f1" onclick="viewPhoto('${m.photoUrl ? getDirectLink(m.photoUrl) : ''}', '${escapeHtml(m.name)}')" title="Lihat Foto" ${!m.photoUrl ? 'disabled style="opacity:0.5; cursor:not-allowed"' : ''}>
+                      <button class="btn-icon" style="color:#6366f1" onclick="viewPhoto('${m.photoUrl ? getDirectLink(m.photoUrl) : ''}', '${escapeJs(m.name)}')" title="Lihat Foto" ${!m.photoUrl ? 'disabled style="opacity:0.5; cursor:not-allowed"' : ''}>
                         <i class="fas fa-eye"></i>
                       </button>
                       <button class="btn-icon" style="color:#3b82f6" onclick="openChangePhotoModal('${m.memberId}', '${m.photoUrl ? getDirectLink(m.photoUrl) : ''}')" title="Ganti Foto">
@@ -4701,7 +4701,7 @@
                         <i class="fab fa-whatsapp"></i>
                       </button>
                     </div>
-                    <button class="btn-icon" style="color:#ef4444" onclick="confirmDeleteMember('${m.memberId}', '${escapeHtml(m.name)}')" title="Hapus Member">
+                    <button class="btn-icon" style="color:#ef4444" onclick="confirmDeleteMember('${m.memberId}', '${escapeJs(m.name)}')" title="Hapus Member">
                       <i class="fas fa-trash-alt"></i>
                     </button>
                   </div>
@@ -5457,10 +5457,10 @@
                   </div>
                   
                   <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:16px;flex-wrap:wrap">
-                    <button class="btn btn-sm btn-outline" onclick="printReceipt('registration', { memberId:'${res.memberId}', name:'${res.memberName || name}', package:'${res.currentPackage || pkg.name}', expiry:'${res.expiryDate}', receipt:'${res.receiptNumber}', total:${res.totalAmount || totalAmount}, payment:'${res.paymentMethod || pay}', qr:'${res.qrCodeUrl || ''}' })">
+                    <button class="btn btn-sm btn-outline" onclick="printReceipt('registration', { memberId:'${res.memberId}', name:'${escapeJs(res.memberName || name)}', package:'${escapeJs(res.currentPackage || pkg.name)}', expiry:'${res.expiryDate}', receipt:'${res.receiptNumber}', total:${res.totalAmount || totalAmount}, payment:'${res.paymentMethod || pay}', qr:'${res.qrCodeUrl || ''}' })">
                       <i class="fas fa-print"></i> Cetak Struk
                     </button>
-                    <button class="btn btn-info btn-sm" onclick="const txt = generateReceiptText('registration', { memberId:'${res.memberId}', name:'${res.memberName || name}', package:'${res.currentPackage || pkg.name}', expiry:'${res.expiryDate}', receipt:'${res.receiptNumber}', price:${res.packagePrice || pkg.price}, regFee:${res.registrationFee || 0}, total:${res.totalAmount || totalAmount}, payment:'${res.paymentMethod || pay}', qr:'${res.qrCodeUrl || ''}' }); shareToWhatsApp('${res.memberPhone || phone}', txt)">
+                    <button class="btn btn-info btn-sm" onclick="const txt = generateReceiptText('registration', { memberId:'${res.memberId}', name:'${escapeJs(res.memberName || name)}', package:'${escapeJs(res.currentPackage || pkg.name)}', expiry:'${res.expiryDate}', receipt:'${res.receiptNumber}', price:${res.packagePrice || pkg.price}, regFee:${res.registrationFee || 0}, total:${res.totalAmount || totalAmount}, payment:'${res.paymentMethod || pay}', qr:'${res.qrCodeUrl || ''}' }); shareToWhatsApp('${res.memberPhone || phone}', txt)">
                       <i class="fab fa-whatsapp"></i> Kirim WA
                     </button>
                     <button class="btn btn-primary btn-sm" onclick="isResultActive=false; refreshPage()">
@@ -5713,10 +5713,10 @@
                 if (m.status === 'Aktif') statusClass = 'success';
                 else if (m.status === 'Expired') statusClass = 'danger';
 
-                const memberJson = JSON.stringify(m).replace(/'/g, "&#39;").replace(/"/g, '&quot;');
+                const memberJsonEncoded = encodeURIComponent(JSON.stringify(m)).replace(/'/g, "%27");
 
                 html += `
-                  <div onclick="selectMemberForTrx('${memberJson}')" 
+                  <div onclick="selectMemberForTrx(decodeURIComponent('${memberJsonEncoded}'))" 
                        style="padding:12px 14px;background:white;border:1px solid #e2e8f0;border-radius:8px;cursor:pointer;margin-bottom:6px;font-size:13px;transition:0.2s" 
                        onmouseover="this.style.background='#f0f4ff'" 
                        onmouseout="this.style.background='white'">
@@ -5779,9 +5779,9 @@
             if (res && res.success && res.members && res.members.length > 0) {
               let html = '';
               res.members.slice(0, 5).forEach(m => {
-                const memberJson = JSON.stringify(m).replace(/'/g, "&#39;").replace(/"/g, '&quot;');
+                const memberJsonEncoded = encodeURIComponent(JSON.stringify(m)).replace(/'/g, "%27");
                 html += `
-                  <div onclick="selectMemberForPOS('${memberJson}')" 
+                  <div onclick="selectMemberForPOS(decodeURIComponent('${memberJsonEncoded}'))" 
                        style="padding:10px;background:white;border-bottom:1px solid #f1f5f9;cursor:pointer;font-size:12px">
                     <b>${escapeHtml(m.name)}</b> (${m.memberId})
                     <div style="color:#64748b;font-size:11px">${m.phone}</div>
@@ -6064,10 +6064,10 @@
                   ` : ''}
                   
                   <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:16px;flex-wrap:wrap">
-                    <button class="btn btn-sm btn-outline" onclick="printReceipt('extension', { memberId:'${r.memberId || selectedMember.memberId}', name:'${r.memberName || selectedMember.name}', package:'${r.packageName || pkgName}', expiry:'${r.newExpiry}', receipt:'${r.number}', total:${r.total || price}, payment:'${payEl.value}' })">
+                    <button class="btn btn-sm btn-outline" onclick="printReceipt('extension', { memberId:'${r.memberId || selectedMember.memberId}', name:'${escapeJs(r.memberName || selectedMember.name)}', package:'${escapeJs(r.packageName || pkgName)}', expiry:'${r.newExpiry}', receipt:'${r.number}', total:${r.total || price}, payment:'${payEl.value}' })">
                       <i class="fas fa-print"></i> Cetak Struk
                     </button>
-                    <button class="btn btn-info btn-sm" onclick="const txt = generateReceiptText('extension', { memberId:'${r.memberId || selectedMember.memberId}', name:'${r.memberName || selectedMember.name}', package:'${r.packageName || pkgName}', expiry:'${r.newExpiry}', receipt:'${r.number}', total:${r.total || price}, payment:'${payEl.value}' }); shareToWhatsApp('${selectedMember.phone}', txt)">
+                    <button class="btn btn-info btn-sm" onclick="const txt = generateReceiptText('extension', { memberId:'${r.memberId || selectedMember.memberId}', name:'${escapeJs(r.memberName || selectedMember.name)}', package:'${escapeJs(r.packageName || pkgName)}', expiry:'${r.newExpiry}', receipt:'${r.number}', total:${r.total || price}, payment:'${payEl.value}' }); shareToWhatsApp('${selectedMember.phone}', txt)">
                       <i class="fab fa-whatsapp"></i> Kirim WA
                     </button>
                     <button class="btn btn-primary btn-sm" onclick="isResultActive=false; refreshPage()">
@@ -6176,10 +6176,10 @@
                           <td style="padding:12px"><span class="badge badge-info" style="font-size:10px; padding:4px 8px; border-radius:6px">${t.paymentMethod}</span></td>
                           <td style="padding:12px; border-radius:0 12px 12px 0; text-align:center">
                             <div style="display:flex;gap:6px;justify-content:center">
-                              <button class="btn btn-ghost btn-xs" onclick="printReceipt('${t.type === 'Registrasi Baru' ? 'registration' : 'extension'}', { memberId:'${t.memberId}', name:decodeURIComponent('${encodeURIComponent(t.memberName)}'), package:decodeURIComponent('${encodeURIComponent(t.packageName)}'), receipt:'${t.receiptNumber}', total:${t.totalAmount}, payment:'${t.paymentMethod}', expiry:'${t.expiryDate || getMemberExpiry(t.memberId) || t.transactionDate}', qr: '${t.qrCodeUrl || ''}' })" title="Cetak Struk">
+                              <button class="btn btn-ghost btn-xs" onclick="printReceipt('${t.type === 'Registrasi Baru' ? 'registration' : 'extension'}', { memberId:'${t.memberId}', name:'${escapeJs(t.memberName)}', package:'${escapeJs(t.packageName)}', receipt:'${t.receiptNumber}', total:${t.totalAmount}, payment:'${t.paymentMethod}', expiry:'${t.expiryDate || getMemberExpiry(t.memberId) || t.transactionDate}', qr: '${t.qrCodeUrl || ''}' })" title="Cetak Struk">
                                 <i class="fas fa-print"></i>
                               </button>
-                              <button class="btn btn-ghost btn-xs" style="color:#22c55e" onclick="const txt = generateReceiptText('${t.type === 'Registrasi Baru' ? 'registration' : 'extension'}', { memberId:'${t.memberId}', name:decodeURIComponent('${encodeURIComponent(t.memberName)}'), package:decodeURIComponent('${encodeURIComponent(t.packageName)}'), receipt:'${t.receiptNumber}', price:${t.packagePrice || t.totalAmount}, total:${t.totalAmount}, payment:'${t.paymentMethod}', expiry:'${t.expiryDate || getMemberExpiry(t.memberId) || t.transactionDate}', qr: '${t.qrCodeUrl || ''}' }); shareToWhatsApp(getMemberPhone('${t.memberId}'), txt)" title="Kirim WA">
+                              <button class="btn btn-ghost btn-xs" style="color:#22c55e" onclick="const txt = generateReceiptText('${t.type === 'Registrasi Baru' ? 'registration' : 'extension'}', { memberId:'${t.memberId}', name:'${escapeJs(t.memberName)}', package:'${escapeJs(t.packageName)}', receipt:'${t.receiptNumber}', price:${t.packagePrice || t.totalAmount}, total:${t.totalAmount}, payment:'${t.paymentMethod}', expiry:'${t.expiryDate || getMemberExpiry(t.memberId) || t.transactionDate}', qr: '${t.qrCodeUrl || ''}' }); shareToWhatsApp(getMemberPhone('${t.memberId}'), txt)" title="Kirim WA">
                                 <i class="fab fa-whatsapp"></i>
                               </button>
                             </div>
@@ -6383,10 +6383,10 @@
                         <td><small>${t.cashier}</small></td>
                         <td style="text-align:center">
                           <div style="display:flex; gap:6px; justify-content:center">
-                            <button class="btn btn-ghost btn-xs" onclick="event.stopPropagation(); printReceipt('pos', { receipt: '${t.id}', name: decodeURIComponent('${encodeURIComponent(t.customer)}'), items: JSON.parse(decodeURIComponent('${encodeURIComponent(t.rawItems || '[]')}')), total: ${t.total}, payment: '${t.paymentMethod}' })" title="Cetak Struk">
+                            <button class="btn btn-ghost btn-xs" onclick="event.stopPropagation(); printReceipt('pos', { receipt: '${t.id}', name: '${escapeJs(t.customer)}', items: JSON.parse(decodeURIComponent('${encodeURIComponent(t.rawItems || '[]')}')), total: ${t.total}, payment: '${t.paymentMethod}' })" title="Cetak Struk">
                               <i class="fas fa-print"></i>
                             </button>
-                            <button class="btn btn-ghost btn-xs" style="color:#22c55e" onclick="event.stopPropagation(); sendPOSWhatsApp('${t.id}', '${t.whatsapp}' || getMemberPhone('${t.memberId}'), decodeURIComponent('${encodeURIComponent(t.customer)}'), ${t.subtotal || t.total}, ${t.discount || 0}, ${t.total}, '${t.paymentMethod}', decodeURIComponent('${encodeURIComponent(t.rawItems || '[]')}'))" title="Kirim WA">
+                            <button class="btn btn-ghost btn-xs" style="color:#22c55e" onclick="event.stopPropagation(); sendPOSWhatsApp('${t.id}', '${t.whatsapp}' || getMemberPhone('${t.memberId}'), '${escapeJs(t.customer)}', ${t.subtotal || t.total}, ${t.discount || 0}, ${t.total}, '${t.paymentMethod}', decodeURIComponent('${encodeURIComponent(t.rawItems || '[]')}'))" title="Kirim WA">
                               <i class="fab fa-whatsapp"></i>
                             </button>
                             ${currentUser.role === 'Admin' ? `
@@ -7304,8 +7304,13 @@
     }
 
     function escapeJs(str) {
-      if (!str) return '';
-      return str.replace(/'/g, "\\'").replace(/"/g, '\\"');
+      if (str === undefined || str === null) return '';
+      return String(str)
+        .replace(/\\/g, "\\\\") // Escape backslashes first!
+        .replace(/'/g, "\\'")   // Escape single quotes for JS
+        .replace(/"/g, "&quot;")// Escape double quotes for HTML attribute
+        .replace(/\n/g, "\\n")  // Escape newlines for JS
+        .replace(/\r/g, "\\r"); // Escape carriage returns
     }
 
     // Modal Helpers
@@ -7867,14 +7872,14 @@
                       <td><div style="font-size:11px;color:#64748b">${formatDate(c.checkInTime)}</div></td>
                       <td style="text-align:center">
                         <div style="display:flex; gap:6px; justify-content:center">
-                          <button class="btn btn-ghost btn-xs" onclick="printCheckinSlip('${c.id}', decodeURIComponent('${encodeURIComponent(c.memberName)}'), '${escapeHtml(c.type)}', '${formatDateTime(c.checkInTime)}', ${c.price || 0})" title="Cetak Slip">
+                          <button class="btn btn-ghost btn-xs" onclick="printCheckinSlip('${c.id}', '${escapeJs(c.memberName)}', '${escapeJs(c.type)}', '${formatDateTime(c.checkInTime)}', ${c.price || 0})" title="Cetak Slip">
                             <i class="fas fa-print"></i>
                           </button>
-                          <button class="btn btn-ghost btn-xs" style="color:#22c55e" onclick="sendCheckinWhatsApp('${c.id}', '${c.memberId}', decodeURIComponent('${encodeURIComponent(c.memberName)}'), '${formatDateTime(c.checkInTime)}')" title="Kirim WA">
+                          <button class="btn btn-ghost btn-xs" style="color:#22c55e" onclick="sendCheckinWhatsApp('${c.id}', '${c.memberId}', '${escapeJs(c.memberName)}', '${formatDateTime(c.checkInTime)}')" title="Kirim WA">
                             <i class="fab fa-whatsapp"></i>
                           </button>
                           ${isAdmin ? `
-                            <button class="btn btn-ghost btn-xs" style="color:#ef4444" onclick="confirmDeleteCheckin('${c.id}', '${c.memberId}', '${escapeHtml(c.type)}', decodeURIComponent('${encodeURIComponent(c.memberName)}')); loadTodayCheckins();" title="Hapus">
+                            <button class="btn btn-ghost btn-xs" style="color:#ef4444" onclick="confirmDeleteCheckin('${c.id}', '${c.memberId}', '${escapeJs(c.type)}', '${escapeJs(c.memberName)}'); loadTodayCheckins();" title="Hapus">
                               <i class="fas fa-trash-alt"></i>
                             </button>
                           ` : ''}
@@ -8387,7 +8392,7 @@
                   </div>
                 </div>
                 <div style="display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap">
-                   <button class="btn btn-sm btn-outline" onclick="printReceipt('visit', { name:'Visit Harian (x${qty})', visitType:'${res.visitType || 'Harian'}', receipt:'${res.receiptNumber || '-'}', total:${res.amount || 0}, payment:'${res.paymentMethod || payment}' })">
+                   <button class="btn btn-sm btn-outline" onclick="printReceipt('visit', { name:'Visit Harian (x${qty})', visitType:'${escapeJs(res.visitType || 'Harian')}', receipt:'${res.receiptNumber || '-'}', total:${res.amount || 0}, payment:'${res.paymentMethod || payment}' })">
                     <i class="fas fa-print"></i> Cetak
                   </button>
                   <button class="btn btn-primary btn-sm" onclick="refreshPage()">
@@ -8667,10 +8672,10 @@
                           <td><span class="badge badge-success">${escapeHtml(t.status || 'Berhasil')}</span></td>
                           <td style="text-align:center">
                             <div style="display:flex; gap:6px; justify-content:center">
-                              <button class="btn btn-ghost btn-xs" onclick="printReceipt('pt', { receipt: '${t.receiptNumber}', name: '${escapeHtml(t.memberName)}', package: '${escapeHtml(t.packageName)}', total: ${t.totalAmount}, payment: '${t.paymentMethod}' })" title="Cetak Struk">
+                              <button class="btn btn-ghost btn-xs" onclick="printReceipt('pt', { receipt: '${t.receiptNumber}', name: '${escapeJs(t.memberName)}', package: '${escapeJs(t.packageName)}', total: ${t.totalAmount}, payment: '${t.paymentMethod}' })" title="Cetak Struk">
                                 <i class="fas fa-print"></i>
                               </button>
-                              <button class="btn btn-ghost btn-xs" style="color:#22c55e" onclick="sendPTWhatsApp('${t.receiptNumber}', '${escapeHtml(t.memberName)}', '${escapeHtml(t.packageName)}', ${t.totalAmount}, '${t.paymentMethod}')" title="Kirim WA">
+                              <button class="btn btn-ghost btn-xs" style="color:#22c55e" onclick="sendPTWhatsApp('${t.receiptNumber}', '${escapeJs(t.memberName)}', '${escapeJs(t.packageName)}', ${t.totalAmount}, '${t.paymentMethod}')" title="Kirim WA">
                                 <i class="fab fa-whatsapp"></i>
                               </button>
                               ${isAdmin ? `
@@ -8845,11 +8850,7 @@
                   statusClass = 'warning';
                 }
 
-                const memberJson = JSON.stringify(m)
-                  .replace(/'/g, "&#39;")
-                  .replace(/"/g, '&quot;')
-                  .replace(/\n/g, '\\n')
-                  .replace(/\r/g, '\\r');
+                const memberJsonEncoded = encodeURIComponent(JSON.stringify(m)).replace(/'/g, "%27");
 
                 const canRegisterPT = m.status === 'Aktif';
                 const opacityStyle = canRegisterPT ? '' : 'opacity:0.7';
@@ -8857,7 +8858,7 @@
                 const hoverStyle = canRegisterPT ? 'this.style.background="#f0f4ff"' : '';
 
                 html += `
-                  <div onclick="${canRegisterPT ? `selectMemberForPT('${memberJson}')` : 'showToast(\'Member tidak aktif, tidak bisa registrasi PT\', \'warning\')'}" 
+                  <div onclick="${canRegisterPT ? `selectMemberForPT(decodeURIComponent('${memberJsonEncoded}'))` : 'showToast(\'Member tidak aktif, tidak bisa registrasi PT\', \'warning\')'}" 
                        style="padding:12px 14px;background:white;border:1px solid #e2e8f0;border-radius:8px;cursor:${cursorStyle};margin-bottom:6px;font-size:13px;transition:0.2s;${opacityStyle}" 
                        onmouseover="${canRegisterPT ? hoverStyle : ''}" 
                        onmouseout="this.style.background='white'">
@@ -9397,10 +9398,10 @@
                   ` : ''}
                   
                   <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:16px">
-                    <button class="btn btn-success btn-sm" onclick="approveRequest('${escapeHtml(a.approvalId)}','${escapeHtml(a.type)}')">
+                    <button class="btn btn-success btn-sm" onclick="approveRequest('${escapeJs(a.approvalId)}','${escapeJs(a.type)}')">
                       <i class="fas fa-check"></i> Approve
                     </button>
-                    <button class="btn btn-danger btn-sm" onclick="rejectRequest('${escapeHtml(a.approvalId)}')">
+                    <button class="btn btn-danger btn-sm" onclick="rejectRequest('${escapeJs(a.approvalId)}')">
                       <i class="fas fa-times"></i> Reject
                     </button>
                   </div>
@@ -11782,10 +11783,10 @@
                   <div style="font-size:11px; color:#8E8E93; font-weight:normal">${t['Metode Pembayaran']}</div>
                 </div>
                 <div style="display:flex; gap:8px; margin-top:8px; justify-content:flex-end">
-                  <button class="btn btn-ghost btn-xs" onclick="event.stopPropagation(); printReceipt('pos', { receipt: '${t['ID Transaksi']}', name: decodeURIComponent('${encodeURIComponent(t['Nama Pembeli'])}'), items: JSON.parse(decodeURIComponent('${encodeURIComponent(t.rawItems || '[]')}')), total: ${t.Total}, payment: '${t['Metode Pembayaran']}' })" title="Cetak Struk">
+                  <button class="btn btn-ghost btn-xs" onclick="event.stopPropagation(); printReceipt('pos', { receipt: '${t['ID Transaksi']}', name: '${escapeJs(t['Nama Pembeli'])}', items: JSON.parse(decodeURIComponent('${encodeURIComponent(t.rawItems || '[]')}')), total: ${t.Total}, payment: '${t['Metode Pembayaran']}' })" title="Cetak Struk">
                     <i class="fas fa-print"></i>
                   </button>
-                  <button class="btn btn-ghost btn-xs" style="color:#22c55e" onclick="event.stopPropagation(); sendPOSWhatsApp('${t['ID Transaksi']}', '${t['WhatsApp']}' || getMemberPhone('${t['Member ID']}'), decodeURIComponent('${encodeURIComponent(t['Nama Pembeli'])}'), ${t.Subtotal || t.Total}, ${t.Diskon || 0}, ${t.Total}, '${t['Metode Pembayaran']}', decodeURIComponent('${encodeURIComponent(t.rawItems || '[]')}'))" title="Kirim WA">
+                  <button class="btn btn-ghost btn-xs" style="color:#22c55e" onclick="event.stopPropagation(); sendPOSWhatsApp('${t['ID Transaksi']}', '${t['WhatsApp']}' || getMemberPhone('${t['Member ID']}'), '${escapeJs(t['Nama Pembeli'])}', ${t.Subtotal || t.Total}, ${t.Diskon || 0}, ${t.Total}, '${t['Metode Pembayaran']}', decodeURIComponent('${encodeURIComponent(t.rawItems || '[]')}'))" title="Kirim WA">
                     <i class="fab fa-whatsapp"></i>
                   </button>
                   ${currentUser.role === 'Admin' ? `
