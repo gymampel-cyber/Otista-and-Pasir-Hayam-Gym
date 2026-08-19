@@ -10386,7 +10386,7 @@
                   <label class="form-label">Deskripsi / Keterangan</label>
                   <textarea id="exp_description" class="form-input" rows="2" placeholder="Contoh: Bayar tagihan listrik bulan April" required></textarea>
                 </div>
-                <button type="submit" class="btn btn-primary btn-block">
+                <button type="submit" id="btnSubmitExpense" class="btn btn-primary btn-block">
                   <i class="fas fa-save"></i> Simpan Pengeluaran
                 </button>
               </form>
@@ -10580,7 +10580,9 @@
       document.getElementById('expCountValue').textContent = data.length;
     }
 
+    let isSubmittingExpense = false;
     function submitExpenseForm() {
+      if (isSubmittingExpense) return;
       if (!validateSession()) return;
       
       const payload = {
@@ -10596,6 +10598,13 @@
       if (!payload.category || !payload.amount || !payload.description) {
         showToast('Mohon lengkapi semua data wajib', 'warning');
         return;
+      }
+      
+      isSubmittingExpense = true;
+      const btn = document.getElementById('btnSubmitExpense');
+      if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Menyimpan...';
       }
 
       // ROLLBACK PREPARATION
@@ -10618,6 +10627,11 @@
       payload.gym = currentBranch;
       google.script.run
         .withSuccessHandler(function (res) {
+          isSubmittingExpense = false;
+          if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-save"></i> Simpan Pengeluaran';
+          }
           if (res && res.success) {
             showToast('✅ Pengeluaran berhasil dicatat', 'success');
             // SMART REVALIDATION: Re-fetch to get real ID and server-side state
@@ -10632,6 +10646,11 @@
           }
         })
         .withFailureHandler(function (err) {
+          isSubmittingExpense = false;
+          if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-save"></i> Simpan Pengeluaran';
+          }
           // ROLLBACK
           saveToCache(cacheKey, previousExpenses);
           renderExpensesTable(previousExpenses);
