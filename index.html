@@ -5538,7 +5538,8 @@
               paymentMethod: pay,
               notes: notes,
               memberPhoto: adminMemberPhotoBase64 || null,
-              gym: currentBranch
+              gym: currentBranch,
+              requestId: 'REQ_REG_' + Date.now() + '_' + Math.floor(Math.random() * 1000)
             }, getCurrentStaffIdentifier());
         }
       );
@@ -6121,7 +6122,8 @@
               memberId: selectedMember.memberId,
               packageId: pkgEl.value,
               paymentMethod: payEl.value,
-              gym: currentBranch
+              gym: currentBranch,
+              requestId: 'REQ_REN_' + Date.now() + '_' + Math.floor(Math.random() * 1000)
             }, getCurrentStaffIdentifier());
         }
       );
@@ -7175,7 +7177,8 @@
         productId: document.getElementById('restock_prod_id').value,
         addedQty: parseInt(document.getElementById('restock_qty').value),
         user: getCurrentStaffIdentifier(),
-        gym: currentBranch
+        gym: currentBranch,
+        requestId: 'REQ_RES_' + Date.now() + '_' + Math.floor(Math.random() * 1000)
       };
 
       if (payload.addedQty <= 0) { showToast('Jumlah harus lebih dari 0', 'warning'); return; }
@@ -9187,7 +9190,8 @@
               totalSessions: sessions,
               pricePerSession: price,
               paymentMethod: payment,
-              currentBranch: currentBranch
+              currentBranch: currentBranch,
+              requestId: 'REQ_PT_' + Date.now() + '_' + Math.floor(Math.random() * 1000)
             }, getCurrentStaffIdentifier());
         }
       );
@@ -10347,7 +10351,7 @@
               <h4><i class="fas fa-plus-circle"></i> Catat Pengeluaran Baru</h4>
             </div>
             <div class="form-card-body">
-              <form id="expenseForm" onsubmit="event.preventDefault(); submitExpenseForm();">
+              <form id="expenseForm" novalidate onsubmit="event.preventDefault(); submitExpenseForm();">
                 <div class="form-row">
                   <div class="form-group">
                     <label class="form-label">Tanggal</label>
@@ -10585,20 +10589,33 @@
       if (isSubmittingExpense) return;
       if (!validateSession()) return;
       
-      const payload = {
-        id: 'TEMP_' + Date.now(), // Temporary ID for optimistic UI
-        date: document.getElementById('exp_date').value,
-        category: document.getElementById('exp_category').value,
-        description: document.getElementById('exp_description').value,
-        amount: Number(document.getElementById('exp_amount').value),
-        paymentMethod: document.getElementById('exp_payment').value,
-        user: getCurrentStaffIdentifier()
-      };
+      const form = document.getElementById('expenseForm');
+      if (form && !form.checkValidity()) {
+        form.reportValidity();
+        showToast('Mohon lengkapi semua data wajib dengan benar', 'warning');
+        return;
+      }
+      
+      const dateVal = document.getElementById('exp_date').value;
+      const categoryVal = document.getElementById('exp_category').value;
+      const descriptionVal = document.getElementById('exp_description').value;
+      const amountValStr = document.getElementById('exp_amount').value;
+      const paymentMethodVal = document.getElementById('exp_payment').value;
 
-      if (!payload.category || !payload.amount || !payload.description) {
+      if (!categoryVal || !amountValStr || !descriptionVal) {
         showToast('Mohon lengkapi semua data wajib', 'warning');
         return;
       }
+
+      const payload = {
+        id: 'EXP_' + Date.now() + '_' + Math.floor(Math.random()*1000), // Unique ID yang dikirim ke server untuk mencegah double rekap
+        date: dateVal,
+        category: categoryVal,
+        description: descriptionVal,
+        amount: Number(amountValStr),
+        paymentMethod: paymentMethodVal,
+        user: getCurrentStaffIdentifier()
+      };
       
       isSubmittingExpense = true;
       const btn = document.getElementById('btnSubmitExpense');
@@ -10613,20 +10630,42 @@
       const cacheKey = `expenses_list_${start}_${end}_${currentBranch}`;
       const previousExpenses = getFromCache(cacheKey) || [];
 
+      // Simpan state form jika sewaktu-waktu rollback form
+      const formState = {
+        date: dateVal,
+        category: categoryVal,
+        description: descriptionVal,
+        amount: amountValStr,
+        paymentMethod: paymentMethodVal
+      };
+
       // OPTIMISTIC UPDATE: Add to local state and re-render
       const optimisticExpenses = [payload, ...previousExpenses];
       saveToCache(cacheKey, optimisticExpenses);
       renderExpensesTable(optimisticExpenses);
 
       // Reset form immediately
-      document.getElementById('expenseForm').reset();
+      if (form) form.reset();
       const _expToday2 = new Date();
-      document.getElementById('exp_date').value = `${_expToday2.getFullYear()}-${String(_expToday2.getMonth()+1).padStart(2,'0')}-${String(_expToday2.getDate()).padStart(2,'0')}`;
+      if (document.getElementById('exp_date')) {
+        document.getElementById('exp_date').value = `${_expToday2.getFullYear()}-${String(_expToday2.getMonth()+1).padStart(2,'0')}-${String(_expToday2.getDate()).padStart(2,'0')}`;
+      }
       showToast('Sedang menyimpan...', 'info');
 
       payload.gym = currentBranch;
+      
+      // timeout fallback untuk isSubmittingExpense (menghindari tombol stuck permanen)
+      const timeoutFallback = setTimeout(function() {
+         isSubmittingExpense = false;
+         if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-save"></i> Simpan Pengeluaran';
+         }
+      }, 15000); // 15 seconds max
+
       google.script.run
         .withSuccessHandler(function (res) {
+          clearTimeout(timeoutFallback);
           isSubmittingExpense = false;
           if (btn) {
             btn.disabled = false;
@@ -10639,21 +10678,34 @@
             fetchDashboardData(null, null, true); // Update dashboard stats
             CACHE.clearStats();
           } else {
-            // ROLLBACK
+            // ROLLBACK DATA
             saveToCache(cacheKey, previousExpenses);
             renderExpensesTable(previousExpenses);
+            // ROLLBACK FORM
+            if (document.getElementById('exp_date')) document.getElementById('exp_date').value = formState.date;
+            if (document.getElementById('exp_category')) document.getElementById('exp_category').value = formState.category;
+            if (document.getElementById('exp_description')) document.getElementById('exp_description').value = formState.description;
+            if (document.getElementById('exp_amount')) document.getElementById('exp_amount').value = formState.amount;
+            if (document.getElementById('exp_payment')) document.getElementById('exp_payment').value = formState.paymentMethod;
             showToast('❌ Gagal: ' + (res.message || 'Error'), 'error');
           }
         })
         .withFailureHandler(function (err) {
+          clearTimeout(timeoutFallback);
           isSubmittingExpense = false;
           if (btn) {
             btn.disabled = false;
             btn.innerHTML = '<i class="fas fa-save"></i> Simpan Pengeluaran';
           }
-          // ROLLBACK
+          // ROLLBACK DATA
           saveToCache(cacheKey, previousExpenses);
           renderExpensesTable(previousExpenses);
+          // ROLLBACK FORM
+          if (document.getElementById('exp_date')) document.getElementById('exp_date').value = formState.date;
+          if (document.getElementById('exp_category')) document.getElementById('exp_category').value = formState.category;
+          if (document.getElementById('exp_description')) document.getElementById('exp_description').value = formState.description;
+          if (document.getElementById('exp_amount')) document.getElementById('exp_amount').value = formState.amount;
+          if (document.getElementById('exp_payment')) document.getElementById('exp_payment').value = formState.paymentMethod;
           showToast('Error koneksi: ' + err.message, 'error');
         })
         .saveExpense(payload);
