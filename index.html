@@ -120,7 +120,7 @@
         method: 'POST',
         cache: 'no-store',
         body: JSON.stringify({ action: methodName, args: args }),
-        headers: { 'Content-Type': 'text/plain;charset=utf-8' }
+        headers: { 'Content-Type': 'text/plain' }
       }, 1)
         .then(data => {
           if (!data.success) {
@@ -256,7 +256,7 @@
             method: 'POST',
             cache: 'no-store',
             body: JSON.stringify({ action: item.action, args: item.args }),
-            headers: { 'Content-Type': 'text/plain;charset=utf-8' }
+            headers: { 'Content-Type': 'text/plain' }
           }, 1);
 
           if (res.success) {
