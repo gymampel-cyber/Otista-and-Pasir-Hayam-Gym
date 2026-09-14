@@ -5323,6 +5323,10 @@
         function (ok) {
           if (!ok) return;
 
+          if (!window.currentRegId) {
+            window.currentRegId = 'REQ_REG_' + Date.now() + '_' + Math.floor(Math.random() * 1000);
+          }
+
           const btn = document.getElementById('btnRegMember');
           const originalText = btn.innerHTML;
           btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Mendaftarkan...';
@@ -5334,7 +5338,7 @@
             btn.innerHTML = originalText;
             btn.disabled = false;
             showToast('Request timeout. Silakan coba lagi.', 'error');
-          }, 30000);
+          }, 60000); // 60 seconds
 
 
           google.script.run
@@ -5349,6 +5353,7 @@
               if (!resultEl) return;
 
               if (res && res.success === true) {
+                window.currentRegId = null; // Reset on success
                 const checkinTime = res.checkinTime ? new Date(res.checkinTime) : new Date();
                 const daysLeft = res.daysLeft || 0;
 
@@ -5539,7 +5544,7 @@
               notes: notes,
               memberPhoto: adminMemberPhotoBase64 || null,
               gym: currentBranch,
-              requestId: 'REQ_REG_' + Date.now() + '_' + Math.floor(Math.random() * 1000)
+              requestId: window.currentRegId
             }, getCurrentStaffIdentifier());
         }
       );
@@ -5973,13 +5978,26 @@
         function (ok) {
           if (!ok) return;
 
+          if (!window.currentRenId) {
+            window.currentRenId = 'REQ_REN_' + Date.now() + '_' + Math.floor(Math.random() * 1000);
+          }
+
           const btn = document.getElementById('btnProcessTrx');
+          const originalText = btn.innerHTML;
           btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Memproses...';
           btn.disabled = true;
           showLoading();
 
+          const timeoutId = setTimeout(() => {
+            hideLoading();
+            btn.innerHTML = originalText;
+            btn.disabled = false;
+            showToast('Request timeout. Silakan coba lagi.', 'error');
+          }, 60000); // 60 seconds
+
           google.script.run
             .withSuccessHandler(function (res) {
+              clearTimeout(timeoutId);
               hideLoading();
               btn.innerHTML = '<i class="fas fa-check"></i> Proses Transaksi';
               btn.disabled = false;
@@ -5988,6 +6006,7 @@
               if (!resultEl) return;
 
               if (res && res.success) {
+                window.currentRenId = null; // Reset on success
                 const r = res.receipt || {};
                 const checkinTime = new Date();
                 const daysLeft = r.newExpiry ? Math.ceil((safeParseDate(r.newExpiry) - new Date()) / 86400000) : 0;
@@ -6097,6 +6116,7 @@
               }
             })
             .withFailureHandler(function (err) {
+              clearTimeout(timeoutId);
               hideLoading();
               btn.innerHTML = '<i class="fas fa-check"></i> Proses Transaksi';
               btn.disabled = false;
@@ -6123,7 +6143,7 @@
               packageId: pkgEl.value,
               paymentMethod: payEl.value,
               gym: currentBranch,
-              requestId: 'REQ_REN_' + Date.now() + '_' + Math.floor(Math.random() * 1000)
+              requestId: window.currentRenId
             }, getCurrentStaffIdentifier());
         }
       );
@@ -6653,7 +6673,10 @@
       const capturedMemberPhone = posSelectedMember ? (posSelectedMember.phone || posSelectedMember.memberPhone || '') : '';
       const finalPhoneToSend = whatsapp || capturedMemberPhone;
 
-      const requestId = 'REQ_POS_' + Date.now() + '_' + Math.floor(Math.random() * 1000);
+      if (!window.currentPosId) {
+        window.currentPosId = 'REQ_POS_' + Date.now() + '_' + Math.floor(Math.random() * 1000);
+      }
+      const requestId = window.currentPosId;
 
       showConfirm(`Proses transaksi POS senilai ${formatCurrency(total)}?`, function (ok) {
         if (!ok) return;
@@ -6683,9 +6706,19 @@
         const previousCart = [...posCart];
         resetPOS(); // Reset seluruh UI termasuk identitas dan keranjang
         
+        const timeoutId = setTimeout(() => {
+          if (!isClosed) {
+            document.getElementById('posModalTitle').innerHTML = '<i class="fas fa-times-circle" style="color:#ef4444"></i> Timeout';
+            document.getElementById('posModalDesc').innerHTML = `Request timeout. Silakan cek riwayat transaksi.`;
+          }
+          showToast('Request timeout', 'error');
+        }, 60000);
+
         google.script.run
           .withSuccessHandler(function (res) {
+            clearTimeout(timeoutId);
             if (res.success) {
+              window.currentPosId = null; // Reset on success
               showToast('✅ Transaksi POS berhasil disinkronkan', 'success');
               fetchDashboardData();
               loadTodayPOSTransactions();
@@ -6721,9 +6754,15 @@
                 };
               }
             } else {
+              clearTimeout(timeoutId);
               if (!isClosed) document.body.removeChild(resultDiv);
               showToast('❌ Gagal sinkron: ' + res.message, 'error');
             }
+          })
+          .withFailureHandler(function (err) {
+             clearTimeout(timeoutId);
+             if (!isClosed) document.body.removeChild(resultDiv);
+             showToast('Error koneksi POS', 'error');
           })
           .processPOSTransaction({
             requestId: requestId,
@@ -7173,12 +7212,16 @@
       const btn = document.querySelector('#restockModal .btn-primary');
       const originalHtml = btn.innerHTML;
 
+      if (!window.currentRestockId) {
+        window.currentRestockId = 'REQ_RES_' + Date.now() + '_' + Math.floor(Math.random() * 1000);
+      }
+
       const payload = {
         productId: document.getElementById('restock_prod_id').value,
         addedQty: parseInt(document.getElementById('restock_qty').value),
         user: getCurrentStaffIdentifier(),
         gym: currentBranch,
-        requestId: 'REQ_RES_' + Date.now() + '_' + Math.floor(Math.random() * 1000)
+        requestId: window.currentRestockId
       };
 
       if (payload.addedQty <= 0) { showToast('Jumlah harus lebih dari 0', 'warning'); return; }
@@ -7187,13 +7230,22 @@
       btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
       showLoading();
 
+      const timeoutId = setTimeout(() => {
+        hideLoading();
+        btn.disabled = false;
+        btn.innerHTML = originalHtml;
+        showToast('Request timeout. Silakan coba lagi.', 'error');
+      }, 60000);
+
       google.script.run
         .withSuccessHandler(function (res) {
+          clearTimeout(timeoutId);
           hideLoading();
           btn.disabled = false;
           btn.innerHTML = originalHtml;
 
           if (res.success) {
+            window.currentRestockId = null; // Reset on success
             showToast('✅ ' + res.message, 'success');
             closeRestockModal();
             loadProductList(true);
@@ -7205,6 +7257,7 @@
           }
         })
         .withFailureHandler(function (err) {
+          clearTimeout(timeoutId);
           hideLoading();
           btn.disabled = false;
           btn.innerHTML = originalHtml;
@@ -8084,6 +8137,10 @@
         return;
       }
 
+      if (!window.currentCheckinId) {
+        window.currentCheckinId = 'REQ_CHK_' + Date.now() + '_' + Math.floor(Math.random() * 1000);
+      }
+
       const usePT = document.getElementById('ci_usePT')?.checked || false;
 
       const btn = forcedMid ? document.getElementById('btnConfirmCheckin') : document.getElementById('btnCheckin');
@@ -8097,7 +8154,7 @@
         btn.innerHTML = originalText;
         btn.disabled = false;
         showToast('Request timeout. Silakan coba lagi.', 'error');
-      }, 30000);
+      }, 60000);
 
       google.script.run
         .withSuccessHandler(function (res) {
@@ -8111,6 +8168,7 @@
           if (!el) return;
 
           if (res && res.success === true) {
+            window.currentCheckinId = null; // Reset on success
             document.getElementById('checkinPreviewArea').innerHTML = ''; // Clear preview on success
             // REFRESH DATA
             fetchDashboardData();
@@ -8216,44 +8274,28 @@
             if (errorType === 'already_checked_in') {
               bgColor = '#fef3c7';
               borderColor = '#f59e0b';
-              iconColor = '#f59e0b';
-              icon = 'fa-clock';
-            } else if (errorType === 'inactive' || errorType === 'expired') {
+              iconColor = '#d97706';
+              icon = 'fa-exclamation-triangle';
+            } else if (errorType === 'expired' || errorType === 'member_not_found') {
               bgColor = '#fee2e2';
               borderColor = '#ef4444';
-              iconColor = '#ef4444';
-              icon = 'fa-user-slash';
-            } else {
-              bgColor = '#fee2e2';
-              borderColor = '#ef4444';
-              iconColor = '#ef4444';
+              iconColor = '#b91c1c';
               icon = 'fa-times-circle';
+            } else {
+              bgColor = '#f1f5f9';
+              borderColor = '#94a3b8';
+              iconColor = '#475569';
+              icon = 'fa-info-circle';
             }
 
             el.innerHTML = `
-              <div class="checkin-error-card" style="background:${bgColor};border-left:6px solid ${borderColor};border-radius:12px;padding:20px;margin-bottom:20px">
-                <div style="display:flex;align-items:center;gap:16px;margin-bottom:12px">
-                  <div style="background:${iconColor};color:white;width:56px;height:56px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:24px">
-                    <i class="fas ${icon}"></i>
-                  </div>
-                  <div>
-                    <h3 style="color:#991b1b;margin:0 0 4px 0">❌ ${escapeHtml(errorMessage)}</h3>
-                    <p style="color:#991b1b;opacity:0.8;margin:0;font-size:13px">${formatDateTime(new Date())}</p>
-                  </div>
+              <div class="checkin-error-card" style="background:${bgColor};border-left:6px solid ${borderColor};border-radius:12px;padding:20px;box-shadow:0 4px 15px rgba(0,0,0,0.05)">
+                <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px">
+                  <i class="fas ${icon} fa-2x" style="color:${iconColor}"></i>
+                  <h3 style="color:${iconColor};margin:0">${escapeHtml(errorMessage)}</h3>
                 </div>
-                
-                <div class="info-box" style="background:white;border-radius:10px;padding:16px;margin:12px 0">
-                  <p style="margin:0 0 8px 0"><i class="fas fa-info-circle" style="color:#64748b"></i> ${escapeHtml(errorDetails)}</p>
-                  ${memberInfo ? `<p style="margin:0"><i class="fas fa-user" style="color:#64748b"></i> ${escapeHtml(memberInfo)}</p>` : ''}
-                </div>
-                
-                ${errorType === 'inactive' || errorType === 'expired' ? `
-                  <div style="margin-top:12px">
-                    <button class="btn btn-warning btn-sm" onclick="showView('transactions')">
-                      <i class="fas fa-sync-alt"></i> Perpanjang Sekarang
-                    </button>
-                  </div>
-                ` : ''}
+                ${memberInfo ? `<p style="margin:0 0 8px 0;font-weight:600;color:#334155">${escapeHtml(memberInfo)}</p>` : ''}
+                ${errorDetails ? `<p style="margin:0;font-size:14px;color:#475569;background:white;padding:10px;border-radius:8px">${escapeHtml(errorDetails)}</p>` : ''}
               </div>
             `;
           }
@@ -8278,7 +8320,8 @@
         .processCheckInWithPT({
           memberId: mid,
           usePT: usePT,
-          gym: currentBranch
+          gym: currentBranch,
+          requestId: window.currentCheckinId
         }, getCurrentStaffIdentifier());
     }
 
@@ -8349,6 +8392,10 @@
 
       if (qty < 1) { showToast('Jumlah minimal 1', 'warning'); return; }
 
+      if (!window.currentVisitId) {
+        window.currentVisitId = 'REQ_VIS_' + Date.now() + '_' + Math.floor(Math.random() * 1000);
+      }
+
       showLoading();
       const btn = document.getElementById('btnSubmitVisit');
       const originalText = btn.innerHTML;
@@ -8360,7 +8407,7 @@
         btn.innerHTML = originalText;
         btn.disabled = false;
         showToast('Request timeout. Silakan coba lagi.', 'error');
-      }, 25000);
+      }, 60000);
 
       google.script.run
         .withSuccessHandler(function (res) {
@@ -8374,6 +8421,7 @@
           if (!el) return;
 
           if (res && res.success) {
+            window.currentVisitId = null; // Reset on success
             const checkinTime = res.checkinTime ? new Date(res.checkinTime) : new Date();
             el.innerHTML = `
               <div class="checkin-success-card">
@@ -8423,7 +8471,8 @@
           qty: qty,
           paymentMethod: payment,
           gym: currentBranch,
-          unitPrice: (window.appData && appData.catalogue) ? (appData.catalogue.find(p => (p.name || '') === type)?.price || 0) : 0
+          unitPrice: (window.appData && appData.catalogue) ? (appData.catalogue.find(p => (p.name || '') === type)?.price || 0) : 0,
+          requestId: window.currentVisitId
         }, getCurrentStaffIdentifier());
     }
 
@@ -9046,13 +9095,26 @@
         function (ok) {
           if (!ok) return;
 
+          if (!window.currentPTId) {
+            window.currentPTId = 'REQ_PT_' + Date.now() + '_' + Math.floor(Math.random() * 1000);
+          }
+
           const btn = document.getElementById('btnRegPT');
+          const originalText = btn.innerHTML;
           btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Memproses...';
           btn.disabled = true;
           showLoading();
 
+          const timeoutId = setTimeout(() => {
+            hideLoading();
+            btn.innerHTML = originalText;
+            btn.disabled = false;
+            showToast('Request timeout. Silakan coba lagi.', 'error');
+          }, 60000);
+
           google.script.run
             .withSuccessHandler(function (res) {
+              clearTimeout(timeoutId);
               hideLoading();
               btn.innerHTML = '<i class="fas fa-save"></i> Registrasi PT';
               btn.disabled = false;
@@ -9061,6 +9123,7 @@
               if (!resultEl) return;
 
               if (res && res.success) {
+                window.currentPTId = null; // Reset on success
                 const checkinTime = new Date();
                 const daysLeft = res.expiryDate ? Math.ceil((safeParseDate(res.expiryDate) - new Date()) / 86400000) : 0;
 
@@ -9088,62 +9151,47 @@
                         <b>${escapeHtml(trainer)}</b>
                       </div>
                       <div>
-                        <span style="color:#64748b">Sesi</span><br>
-                        <b>${sessions}</b>
+                        <span style="color:#64748b">Sesi Dibeli</span><br>
+                        <b>${sessions} Sesi</b>
                       </div>
                       <div>
-                        <span style="color:#64748b">Sisa Sesi</span><br>
-                        <b>${res.sessionsLeft || sessions}</b>
+                        <span style="color:#64748b">Harga/Sesi</span><br>
+                        ${formatCurrency(price)}
+                      </div>
+                      <div>
+                        <span style="color:#64748b">Total Bayar</span><br>
+                        <b style="color:#667eea">${formatCurrency(total)}</b>
                       </div>
                       <div>
                         <span style="color:#64748b">Berlaku s/d</span><br>
-                        <b>${formatDate(res.expiryDate)}</b>
-                      </div>
-                      <div>
-                        <span style="color:#64748b">Sisa Hari</span><br>
-                        <b style="color:${daysLeft <= 7 ? '#f59e0b' : '#22c55e'}">${daysLeft} hari</b>
+                        <b>${formatDate(res.expiryDate)}</b> <span style="font-size:11px;color:#64748b">(${daysLeft} hari)</span>
                       </div>
                     </div>
                   </div>
                   
-                  <div class="payment-info" style="margin:12px 0">
-                    <h4 style="margin-bottom:12px;color:#334155"><i class="fas fa-credit-card"></i> Informasi Pembayaran</h4>
-                    <div class="payment-row">
-                      <span>Total</span>
-                      <span>${formatCurrency(res.totalAmount || total)}</span>
-                    </div>
-                    <div class="payment-row">
-                      <span>Metode</span>
-                      <span><b>${escapeHtml(payment)}</b></span>
-                    </div>
-                    <div class="payment-row">
+                  ${res.receiptNumber ? `
+                    <div class="payment-row" style="margin-top:12px; background:#f8fafc; padding:12px; border-radius:8px">
                       <span>No. Transaksi</span>
-                      <span><code>${escapeHtml(res.receiptNumber || '-')}</code></span>
+                      <span><code>${escapeHtml(res.receiptNumber)}</code></span>
                     </div>
-                  </div>
+                  ` : ''}
                   
                   <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:16px;flex-wrap:wrap">
-                    <button class="btn btn-sm btn-outline" onclick="printReceipt('pt', { name:'${escapeJs(ptSelectedMember.name)}', trainer:'${escapeJs(trainer)}', sessions:${sessions}, expiry:'${res.expiryDate}', receipt:'${res.receiptNumber}', total:${res.totalAmount || total}, payment:'${payment}' })">
+                    <button class="btn btn-sm btn-outline" onclick="printReceipt('pt', { memberId:'${ptSelectedMember.memberId}', name:'${escapeJs(ptSelectedMember.name)}', trainer:'${escapeJs(trainer)}', sessions:${sessions}, price:${price}, total:${total}, receipt:'${res.receiptNumber || '-'}', expiry:'${res.expiryDate}' })">
                       <i class="fas fa-print"></i> Cetak Struk
                     </button>
-                    <button class="btn btn-info btn-sm" onclick="const txt = generateReceiptText('pt', { name:'${escapeJs(ptSelectedMember.name)}', trainer:'${escapeJs(trainer)}', sessions:${sessions}, expiry:'${res.expiryDate}', receipt:'${res.receiptNumber}', total:${res.totalAmount || total}, payment:'${payment}' }); shareToWhatsApp('${ptSelectedMember.phone}', txt)">
+                    <button class="btn btn-info btn-sm" onclick="const txt = generateReceiptText('pt', { memberId:'${ptSelectedMember.memberId}', name:'${escapeJs(ptSelectedMember.name)}', trainer:'${escapeJs(trainer)}', sessions:${sessions}, price:${price}, total:${total}, receipt:'${res.receiptNumber || '-'}', expiry:'${res.expiryDate}' }); shareToWhatsApp('${ptSelectedMember.phone}', txt)">
                       <i class="fab fa-whatsapp"></i> Kirim WA
                     </button>
-                    <button class="btn btn-primary btn-sm" onclick="refreshPage()">
-                      <i class="fas fa-check"></i> Selesai
+                    <button class="btn btn-primary btn-sm" onclick="clearPTForm()">
+                      <i class="fas fa-plus"></i> Transaksi Baru
                     </button>
                   </div>
                 `;
-
-                ptSelectedMember = null;
-                document.getElementById('pt_memberId').value = '';
-                document.getElementById('ptMemberInfo').innerHTML = '<div style="text-align:center;color:#94a3b8"><i class="fas fa-info-circle fa-2x" style="margin-bottom:8px;display:block"></i><p>Belum ada member dipilih.</p></div>';
-                document.getElementById('pt_trainer').value = '';
-                document.getElementById('pt_sessions').value = '10';
-                document.getElementById('pt_price').value = '150000';
-                document.getElementById('pt_payment').selectedIndex = 0;
-                updatePTSummary();
-                loadActivePTSessions();
+                
+                // Refresh data
+                fetchDashboardData(null, null, true);
+                if(typeof loadPTRoster === 'function') loadPTRoster();
 
                 resultEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
               } else {
@@ -9163,8 +9211,9 @@
               }
             })
             .withFailureHandler(function (err) {
+              clearTimeout(timeoutId);
               hideLoading();
-              btn.innerHTML = '<i class="fas fa-save"></i> Registrasi PT';
+              btn.innerHTML = originalText;
               btn.disabled = false;
 
               const resultEl = document.getElementById('ptResult');
@@ -9190,8 +9239,8 @@
               totalSessions: sessions,
               pricePerSession: price,
               paymentMethod: payment,
-              currentBranch: currentBranch,
-              requestId: 'REQ_PT_' + Date.now() + '_' + Math.floor(Math.random() * 1000)
+              gym: currentBranch,
+              requestId: window.currentPTId
             }, getCurrentStaffIdentifier());
         }
       );
@@ -10607,8 +10656,13 @@
         return;
       }
 
+      // Gunakan persistent ID untuk mencegah duplikasi jika disubmit ulang akibat timeout
+      if (!window.currentExpenseId) {
+        window.currentExpenseId = 'EXP_' + Date.now() + '_' + Math.floor(Math.random()*1000);
+      }
+
       const payload = {
-        id: 'EXP_' + Date.now() + '_' + Math.floor(Math.random()*1000), // Unique ID yang dikirim ke server untuk mencegah double rekap
+        id: window.currentExpenseId,
         date: dateVal,
         category: categoryVal,
         description: descriptionVal,
@@ -10661,7 +10715,7 @@
             btn.disabled = false;
             btn.innerHTML = '<i class="fas fa-save"></i> Simpan Pengeluaran';
          }
-      }, 15000); // 15 seconds max
+      }, 60000); // 60 seconds max
 
       google.script.run
         .withSuccessHandler(function (res) {
@@ -10673,6 +10727,7 @@
           }
           if (res && res.success) {
             showToast('✅ Pengeluaran berhasil dicatat', 'success');
+            window.currentExpenseId = null; // Reset ID on success
             // SMART REVALIDATION: Re-fetch to get real ID and server-side state
             refreshExpenses();
             fetchDashboardData(null, null, true); // Update dashboard stats
