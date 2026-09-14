@@ -42,59 +42,61 @@
     let isResultActive = false; // Flag to prevent automatic refresh while success card is shown
     let syncQueue = JSON.parse(localStorage.getItem('otista_gym_sync_queue') || '[]');
 
-    const google = {
-      script: {
-        run: new Proxy({}, {
-          get: function (target, methodName) {
-            const context = {
-              successHandler: null,
-              failureHandler: null
-            };
+    if (typeof window.google === 'undefined' || typeof window.google.script === 'undefined') {
+      window.google = {
+        script: {
+          run: new Proxy({}, {
+            get: function (target, methodName) {
+              const context = {
+                successHandler: null,
+                failureHandler: null
+              };
 
-            const createRunner = (ctx) => {
-              return new Proxy({}, {
-                get: function (t, name) {
-                  if (name === 'withSuccessHandler') {
-                    return function (cb) {
-                      ctx.successHandler = cb;
-                      return createRunner(ctx);
+              const createRunner = (ctx) => {
+                return new Proxy({}, {
+                  get: function (t, name) {
+                    if (name === 'withSuccessHandler') {
+                      return function (cb) {
+                        ctx.successHandler = cb;
+                        return createRunner(ctx);
+                      };
+                    }
+                    if (name === 'withFailureHandler') {
+                      return function (cb) {
+                        ctx.failureHandler = cb;
+                        return createRunner(ctx);
+                      };
+                    }
+                    return function (...args) {
+                      executeAction(name, args, ctx.successHandler, ctx.failureHandler);
                     };
                   }
-                  if (name === 'withFailureHandler') {
-                    return function (cb) {
-                      ctx.failureHandler = cb;
-                      return createRunner(ctx);
-                    };
-                  }
-                  return function (...args) {
-                    executeAction(name, args, ctx.successHandler, ctx.failureHandler);
-                  };
-                }
-              });
-            };
+                });
+              };
 
-            if (methodName !== 'withSuccessHandler' && methodName !== 'withFailureHandler') {
-              return function (...args) {
-                executeAction(methodName, args, null, null);
-              };
-            }
+              if (methodName !== 'withSuccessHandler' && methodName !== 'withFailureHandler') {
+                return function (...args) {
+                  executeAction(methodName, args, null, null);
+                };
+              }
 
-            if (methodName === 'withSuccessHandler') {
-              return function (cb) {
-                context.successHandler = cb;
-                return createRunner(context);
-              };
+              if (methodName === 'withSuccessHandler') {
+                return function (cb) {
+                  context.successHandler = cb;
+                  return createRunner(context);
+                };
+              }
+              if (methodName === 'withFailureHandler') {
+                return function (cb) {
+                  context.failureHandler = cb;
+                  return createRunner(context);
+                };
+              }
             }
-            if (methodName === 'withFailureHandler') {
-              return function (cb) {
-                context.failureHandler = cb;
-                return createRunner(context);
-              };
-            }
-          }
-        })
-      }
-    };
+          })
+        }
+      };
+    }
 
     function executeAction(methodName, args, successHandler, failureHandler) {
       if (WRITE_ACTIONS.includes(methodName)) {
