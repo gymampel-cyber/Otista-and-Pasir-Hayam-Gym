@@ -403,6 +403,16 @@
           <div class="total-amount" id="totalAmount">Rp 0</div>
         </div>
 
+        <!-- Metode Pembayaran -->
+        <div class="form-group">
+          <label class="form-label">Metode Pembayaran <span style="color:#ef4444">*</span></label>
+          <select id="paymentMethod" class="form-input">
+            <option value="">-- Pilih Metode --</option>
+            <option value="Transfer Bank">Transfer Bank</option>
+            <option value="QRIS">QRIS</option>
+          </select>
+        </div>
+
         <div class="form-group">
           <label class="form-label"><i class="fas fa-image"></i> Upload Bukti Pembayaran <span style="color:#ef4444">*</span></label>
           <div class="file-upload">
@@ -770,6 +780,12 @@ function submitExtensionRequest() {
     return;
   }
 
+  const paymentMethod = document.getElementById('paymentMethod')?.value;
+  if (!paymentMethod) {
+    showAlert('Pilih metode pembayaran', 'warning');
+    return;
+  }
+
   if (!selectedFile) {
     showAlert('Upload bukti pembayaran', 'warning');
     return;
@@ -797,7 +813,8 @@ function submitExtensionRequest() {
             `No. Request: ${res.requestId}\n` +
             `Member     : ${currentMember.name}\n` +
             `Paket      : ${selectedPackage.name}\n` +
-            `Total      : ${formatCurrency(res.totalAmount || selectedPackage.total)}\n\n` +
+            `Total      : ${formatCurrency(res.totalAmount || selectedPackage.total)}\n` +
+            `Metode     : ${paymentMethod}\n\n` +
             `Permintaan Anda sedang menunggu persetujuan admin.\n` +
             `${res.emailSent ? '📧 Email konfirmasi telah dikirim ke ' + currentMember.email : ''}`,
             'success'
@@ -828,6 +845,7 @@ function submitExtensionRequest() {
         memberId: currentMember.id,
         packageId: selectedPackage.id,
         paymentProof: base64Data,
+        paymentMethod: paymentMethod,
         branch: currentBranch
       });
   };
