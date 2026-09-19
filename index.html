@@ -4259,7 +4259,7 @@
       }
 
       showToast('Memperbarui data...', 'info');
-      fetchDashboardData(start, end);
+      fetchDashboardData(start, end, true); // <--- Add true to force refresh
       renderPTInfoInDashboard();
     }
 
@@ -10456,7 +10456,7 @@
                 <input type="date" id="exp_start_date" class="form-input" style="padding:6px; font-size:12px; width:auto">
                 <span style="color:#64748b">-</span>
                 <input type="date" id="exp_end_date" class="form-input" style="padding:6px; font-size:12px; width:auto">
-                <button class="btn btn-primary btn-sm" onclick="refreshExpenses()" style="padding:6px 12px; font-size:12px"><i class="fas fa-filter"></i> Filter</button>
+                <button class="btn btn-primary btn-sm" onclick="refreshExpenses(true)" style="padding:6px 12px; font-size:12px"><i class="fas fa-filter"></i> Filter</button>
                 <button class="btn btn-outline btn-sm" onclick="resetExpensesFilter()" style="padding:6px 12px; font-size:12px"><i class="fas fa-undo"></i> Reset</button>
               </div>
             </div>
@@ -10480,19 +10480,21 @@
       if (document.getElementById('exp_start_date')) document.getElementById('exp_start_date').value = toDateStr(_now);
       if (document.getElementById('exp_end_date')) document.getElementById('exp_end_date').value = toDateStr(_now);
 
-      refreshExpenses();
+      refreshExpenses(true);
     }
 
-    function refreshExpenses() {
+    function refreshExpenses(force = false) {
       const start = document.getElementById('exp_start_date')?.value || 'all';
       const end = document.getElementById('exp_end_date')?.value || 'all';
       const cacheKey = `expenses_list_${start}_${end}_${currentBranch}`;
+      
+      if (force) localStorage.removeItem(cacheKey);
       
       window.expensesLimit = 100;
       window.expensesLastStart = start;
       window.expensesLastEnd = end;
 
-      const cached = getFromCache(cacheKey);
+      const cached = force ? null : getFromCache(cacheKey);
       if (cached) {
         renderExpensesTable(cached);
       } else {
