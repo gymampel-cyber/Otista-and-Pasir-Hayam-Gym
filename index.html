@@ -3989,7 +3989,19 @@
     }
 
     // ================ NAVIGATION ================
+    function clearAllRequestIds() {
+      window.currentRegId = null;
+      window.currentRenId = null;
+      window.currentPosId = null;
+      window.currentRestockId = null;
+      window.currentCheckinId = null;
+      window.currentVisitId = null;
+      window.currentPTId = null;
+      window.currentExpenseId = null;
+    }
+
     function showView(view) {
+      clearAllRequestIds(); // Reset idempotency keys when switching views
       isResultActive = false; // Reset lock when manually changing view
 
       document.querySelectorAll('.menu-item').forEach(el =>
@@ -5113,6 +5125,7 @@
     }
 
     function clearMemberForm(keepResult = false) {
+      clearAllRequestIds();
       ['reg_name', 'reg_phone', 'reg_email', 'reg_notes'].forEach(id => {
         const el = document.getElementById(id);
         if (el) el.value = '';
@@ -5923,6 +5936,7 @@
     }
 
     function clearTrxForm(keepResult = false) {
+      clearAllRequestIds();
       selectedMember = null;
       const t = document.getElementById('trx_memberId'); if (t) t.value = '';
       const s = document.getElementById('trx_package'); if (s) s.selectedIndex = 0;
@@ -6627,6 +6641,7 @@
     }
 
     function clearCart() {
+      clearAllRequestIds();
       if (posCart.length === 0) return;
       showConfirm('Kosongkan keranjang?', function (ok) {
         if (ok) {
@@ -7207,6 +7222,7 @@
     }
 
     function closeRestockModal() {
+      clearAllRequestIds();
       document.getElementById('restockModal').style.display = 'none';
     }
 
@@ -8384,6 +8400,7 @@
     }
 
     function closeVisitModal() {
+      clearAllRequestIds();
       document.getElementById('visitModal').style.display = 'none';
     }
 
@@ -8964,7 +8981,20 @@
           .searchMembers(searchInput);
       }, 300);
     }
-
+    function clearPTForm() {
+      clearAllRequestIds();
+      ptSelectedMember = null;
+      document.getElementById('pt_member_search').value = '';
+      document.getElementById('ptMemberResults').innerHTML = '';
+      document.getElementById('ptSelectedMemberInfo').innerHTML = '';
+      document.getElementById('pt_trainer').value = '';
+      document.getElementById('pt_sessions').value = '';
+      document.getElementById('pt_price').value = '';
+      document.getElementById('pt_payment').value = 'Cash';
+      document.getElementById('ptResult').style.display = 'none';
+      document.getElementById('ptResult').innerHTML = '';
+      updatePTSummary();
+    }
     function selectMemberForPT(memberJson) {
       try {
         let member;
