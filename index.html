@@ -3240,7 +3240,7 @@
         .withSuccessHandler(function (res) {
           if (res && res.success && res.members) {
             const allFetchedSoFar = accumulatedMembers.concat(res.members);
-            const total = res.totalCount || allFetchedSoFar.length;
+            const total = res.total || res.totalCount || allFetchedSoFar.length;
             let pct = total > 0 ? Math.round((allFetchedSoFar.length / total) * 100) : 100;
             if (pct > 100) pct = 100;
             setBackgroundSyncStatus(`Menyinkronkan data profil... ${pct}% (${allFetchedSoFar.length}/${total})`);
@@ -4645,9 +4645,13 @@
           </div>
         `;
 
+        let gallerySearchDebounce = null;
         document.getElementById('gallerySearch')?.addEventListener('input', function() {
-          window.galleryLimit = 100;
-          updateGalleryGrid();
+          clearTimeout(gallerySearchDebounce);
+          gallerySearchDebounce = setTimeout(() => {
+            window.galleryLimit = 100;
+            updateGalleryGrid();
+          }, 120);
         });
         document.getElementById('galleryDateFilter')?.addEventListener('change', function() {
           window.galleryLimit = 100;
@@ -8961,7 +8965,7 @@
 
             const isAdmin = isPrivilegedUser();
 
-            const btnDeleteSelected = `<button id="btnMassDelete_Transaction" class="btn btn-primary btn-sm" onclick="executeMassDelete('Transaction')" style="display:none; padding:6px 12px; font-size:12px; margin-bottom:12px; background:#ef4444; border-color:#ef4444"></button>`;
+            const btnDeleteSelected = `<button id="btnMassDelete_PTTrx" class="btn btn-primary btn-sm" onclick="executeMassDelete('PTTrx')" style="display:none; padding:6px 12px; font-size:12px; margin-bottom:12px; background:#ef4444; border-color:#ef4444"></button>`;
 
             let html = `
               ${btnDeleteSelected}
@@ -8970,7 +8974,7 @@
                   <table class="data-table">
                     <thead>
                       <tr>
-                        <th style="width:40px; text-align:center"><input type="checkbox" id="selectAll_Transaction" onclick="toggleSelectAll(this, 'Transaction')"></th>
+                        <th style="width:40px; text-align:center"><input type="checkbox" id="selectAll_PTTrx" onclick="toggleSelectAll(this, 'PTTrx')"></th>
                         <th>No. Kwitansi</th>
                         <th>Member</th>
                         <th>Paket</th>
@@ -8984,7 +8988,7 @@
                     <tbody>
                       ${list.map(t => `
                         <tr>
-                          <td style="text-align:center"><input type="checkbox" class="rowCheckbox" data-type="Transaction" value="${t.receiptNumber}" onclick="toggleSelectRow(this, '${t.receiptNumber}', 'Transaction')"></td>
+                          <td style="text-align:center"><input type="checkbox" class="rowCheckbox" data-type="PTTrx" value="${t.receiptNumber}" onclick="toggleSelectRow(this, '${t.receiptNumber}', 'PTTrx')"></td>
                           <td><code>${escapeHtml(t.receiptNumber || '-')}</code></td>
                           <td><b>${escapeHtml(t.memberName || '-')}</b></td>
                           <td>${escapeHtml(t.packageName || '-')}</td>
@@ -12177,6 +12181,7 @@
     function renderPOSTransactionHistory(list) {
       const container = document.getElementById('posHistoryTableContainer');
       if (!container) return;
+      window.lastLoadedPOSTransactions = Array.isArray(list) ? list : [];
       if (!list || list.length === 0) {
         container.innerHTML = '<div style="text-align:center; padding:40px; color:#94a3b8">Tidak ada transaksi ditemukan</div>';
         return;
@@ -12184,7 +12189,7 @@
       let html = `
         <div class="list-container">
           ${list.slice(0, window.posTrxLimit || 100).map(t => `
-            <div class="list-item" onclick="showPOSReceiptDetail('${t['ID Transaksi']}')">
+            <div class="list-item" onclick="showPOSReceiptDetail('${t['ID Transaksi']}')" style="cursor:pointer">
               <div class="list-item-content">
                 <div class="list-item-title">${escapeHtml(t['Nama Pembeli'] || 'Pelanggan Guest')}</div>
                 <div class="list-item-subtitle">
@@ -12223,6 +12228,21 @@
         ` : ''}
       `;
       container.innerHTML = html;
+    }
+
+    function showPOSReceiptDetail(trxId) {
+      const list = window.lastLoadedPOSTransactions || [];
+      const t = list.find(item => String(item['ID Transaksi'] || item.id) === String(trxId));
+      if (t) {
+        const rawItems = safeParseJSON(t.rawItems || '[]');
+        printReceipt('pos', {
+          receipt: t['ID Transaksi'] || t.id,
+          name: t['Nama Pembeli'] || t.customer || 'Pelanggan Guest',
+          items: rawItems,
+          total: Number(t.Total || t.total) || 0,
+          payment: t['Metode Pembayaran'] || t.paymentMethod || 'Cash'
+        });
+      }
     }
 
     function loadPOSTransactionHistory() {
@@ -12646,6 +12666,11 @@
           hideLoading();
           refreshPage();
           showToast('Berpindah ke Cabang: ' + (document.getElementById('branchSwitcher').options[document.getElementById('branchSwitcher').selectedIndex].text), 'info');
+          // Sinkronisasi data profil member untuk cabang baru secara asinkron
+          if (typeof backgroundSyncMembers === 'function') {
+            window.isFetchingMembers = false;
+            backgroundSyncMembers();
+          }
         });
       } else {
         hideLoading();
@@ -12825,7 +12850,7 @@
       
       const toDeleteBackend = toDelete.map(item => ({
         id: item.id,
-        type: (item.type === 'CheckinTable' || item.type === 'CheckinDash') ? 'Checkin' : item.type
+        type: (item.type === 'CheckinTable' || item.type === 'CheckinDash') ? 'Checkin' : (item.type === 'PTTrx' ? 'Transaction' : item.type)
       }));
       
       showConfirm(`Hapus Massal\n\nApakah Anda yakin ingin menghapus ${toDelete.length} data terpilih?\n(Proses auto-rollback stok/kuota akan tetap berjalan).`, function(ok) {
@@ -12840,8 +12865,9 @@
               selectedForDeletion = selectedForDeletion.filter(item => item.type !== type);
               updateMassDeleteBtn(type);
               
-              if (type === 'Transaction') document.querySelector('.btn-primary[onclick^="loadAdminTrxHistory"]').click();
-              else if (type === 'POS') document.querySelector('.btn-primary[onclick^="loadTodayPOSTransactions"]').click();
+              if (type === 'Transaction') document.querySelector('.btn-primary[onclick^="loadAdminTrxHistory"]')?.click();
+              else if (type === 'PTTrx') document.querySelector('.btn-primary[onclick^="loadPTTrxHistory"]')?.click();
+              else if (type === 'POS') document.querySelector('.btn-primary[onclick^="loadTodayPOSTransactions"]')?.click();
               else if (type === 'CheckinTable') {
                 const btn = document.querySelector('.btn-primary[onclick^="loadTodayCheckins"]');
                 if (btn) btn.click();
