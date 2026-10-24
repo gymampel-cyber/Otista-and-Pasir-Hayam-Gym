@@ -4401,12 +4401,12 @@
         </div>
       `;
 
-      // Zero-Delay: Tampilkan cache harian atau cache stats yang ada seketika (0 ms) sebelum timer berjalan
+      // Zero-Delay: Tampilkan cache harian yang valid seketika (0 ms) sebelum timer berjalan
       const now = new Date();
       const todayStr = getLocalISODate(now);
       const dashKey = `dashboard_stats_${todayStr}_${todayStr}_${currentBranch}`;
-      const immediateCache = getFromCache(dashKey) || getFromCache('stats');
-      if (immediateCache) {
+      const immediateCache = getFromCache(dashKey);
+      if (immediateCache && (!immediateCache.targetBranch || immediateCache.targetBranch === currentBranch)) {
         renderDashboardUI(immediateCache);
         updateDashboardLastSyncTime();
       }
@@ -4419,7 +4419,7 @@
 
         const startVal = startEl?.value || null;
         const endVal = endEl?.value || null;
-        fetchDashboardData(startVal, endVal);
+        fetchDashboardData(startVal, endVal, false);
         renderPTInfoInDashboard();
       }, 100);
     }
@@ -4485,7 +4485,7 @@
         setDashboardStatsLoading(true);
       }
 
-      fetchDashboardData(start, end, false, function () {
+      fetchDashboardData(start, end, true, function () {
         if (btn) {
           btn.disabled = false;
           btn.innerHTML = '<i class="fas fa-sync-alt"></i> Update';
@@ -4553,7 +4553,7 @@
           showToast('Gagal memuat filter dashboard: ' + (err ? err.message || err : 'Error'), 'error');
           if (typeof callback === 'function') callback({ success: false });
         })
-        .getDashboardStats(start, end, currentBranch, getStaffFilterParam());
+        .getDashboardStats(start, end, currentBranch, getStaffFilterParam(), force);
     }
 
     function triggerBackgroundMonthPrefetch() {
