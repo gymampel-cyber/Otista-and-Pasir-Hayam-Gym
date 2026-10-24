@@ -6,42 +6,44 @@
   <title>Registrasi Member</title>
   <script>
     const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyBeSt3SGeDvsDcbwYIlrO0jDAOIs1XUgg9BvxCk9fxeT1W0UsDrHAByGirXeIqZIHn/exec';
-    const google = {
-      script: {
-        run: (function() {
-          function createProxy(handlers) {
-            return new Proxy({}, {
-              get: function(target, name) {
-                if (name === 'withSuccessHandler') {
-                  return function(cb) { return createProxy({ ...handlers, success: cb }); };
+    if (typeof window.google === 'undefined' || typeof window.google.script === 'undefined' || typeof window.google.script.run === 'undefined') {
+      window.google = {
+        script: {
+          run: (function() {
+            function createProxy(handlers) {
+              return new Proxy({}, {
+                get: function(target, name) {
+                  if (name === 'withSuccessHandler') {
+                    return function(cb) { return createProxy({ ...handlers, success: cb }); };
+                  }
+                  if (name === 'withFailureHandler') {
+                    return function(cb) { return createProxy({ ...handlers, failure: cb }); };
+                  }
+                  return function(...args) {
+                    fetch(SCRIPT_URL, {
+                      method: 'POST',
+                      body: JSON.stringify({ action: name, args: args }),
+                      headers: { 'Content-Type': 'text/plain;charset=utf-8' }
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                      if (data.success && handlers.success) handlers.success(data.result || data);
+                      else if (!data.success && handlers.failure) handlers.failure(new Error(data.message));
+                      else if (!data.success) console.error('Backend Error:', data.message);
+                    })
+                    .catch(err => {
+                      if (handlers.failure) handlers.failure(err);
+                      else console.error('Network Error:', err);
+                    });
+                  };
                 }
-                if (name === 'withFailureHandler') {
-                  return function(cb) { return createProxy({ ...handlers, failure: cb }); };
-                }
-                return function(...args) {
-                  fetch(SCRIPT_URL, {
-                    method: 'POST',
-                    body: JSON.stringify({ action: name, args: args }),
-                    headers: { 'Content-Type': 'text/plain;charset=utf-8' }
-                  })
-                  .then(response => response.json())
-                  .then(data => {
-                    if (data.success && handlers.success) handlers.success(data.result || data);
-                    else if (!data.success && handlers.failure) handlers.failure(new Error(data.message));
-                    else if (!data.success) console.error('Backend Error:', data.message);
-                  })
-                  .catch(err => {
-                    if (handlers.failure) handlers.failure(err);
-                    else console.error('Network Error:', err);
-                  });
-                };
-              }
-            });
-          }
-          return createProxy({ success: null, failure: null });
-        })()
-      }
-    };
+              });
+            }
+            return createProxy({ success: null, failure: null });
+          })()
+        }
+      };
+    }
   </script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <style>
