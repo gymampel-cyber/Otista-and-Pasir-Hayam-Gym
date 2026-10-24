@@ -3104,10 +3104,7 @@
     var scanActive = false;
     var selectedMember = null;
     var ptSelectedMember = null;
-    var memberSearchTimeout = null;
     var ptSearchTimeout = null;
-    var activeSearchRequest = null;
-    var activePTSearchRequest = null;
     var productPhotoBase64 = null;
     var productWebcamStream = null;
 
@@ -4348,7 +4345,13 @@
       // Fitness Stats
       if (document.getElementById('statTotal')) document.getElementById('statTotal').textContent = s.total || 0;
       if (document.getElementById('statAktif')) document.getElementById('statAktif').textContent = s.active || 0;
-      if (document.getElementById('statGallery')) document.getElementById('statGallery').textContent = s.galleryCount || 0;
+      if (document.getElementById('statGallery')) {
+        let gCount = s.galleryCount;
+        if ((typeof gCount === 'undefined' || gCount === null || gCount === 0) && window.appData && Array.isArray(window.appData.members)) {
+          gCount = window.appData.members.filter(m => m.photoUrl && m.photoUrl.trim() !== '' && m.photoUrl !== '-').length;
+        }
+        document.getElementById('statGallery').textContent = gCount || 0;
+      }
       if (document.getElementById('statExpiring')) document.getElementById('statExpiring').textContent = s.expiring || 0;
       if (document.getElementById('statExpired')) document.getElementById('statExpired').textContent = s.expired || 0;
       if (document.getElementById('statCheckin')) document.getElementById('statCheckin').textContent = s.checkins || 0;
@@ -4418,7 +4421,7 @@
                       <span style="font-size:11px; color:#64748b">ID: ${item.id || '-'}</span>
                     </div>
                     <span class="badge ${isOutOfStock ? 'badge-danger' : 'badge-warning'}" style="font-size:11px">
-                      ${isOutOfStock ? 'HABIS' : 'Sisa: ' + item.stock} ${item.unit}
+                      ${isOutOfStock ? 'HABIS' : 'Sisa: ' + item.stock} ${item.unit || item.satuan || 'pcs'}
                     </span>
                   </div>
                 `;
@@ -4665,8 +4668,16 @@
             let matchesDate = true;
             
             if (q) {
-              const textToSearch = (m.name + ' ' + m.memberId + ' ' + (m.faceIdCode || '')).toLowerCase();
-              matchesText = textToSearch.includes(q);
+              const textToSearch = (m.name + ' ' + (m.memberId || m.id || '') + ' ' + (m.phone || '') + ' ' + (m.email || '') + ' ' + (m.faceIdCode || '') + ' ' + (m.faceIdName || '')).toLowerCase();
+              let phoneMatch = false;
+              const qDigits = q.replace(/\D/g, '');
+              if (qDigits.length >= 3) {
+                const mDigits = (m.phone || '').replace(/\D/g, '');
+                const qCore = qDigits.replace(/^(?:0|62)/, '');
+                const mCore = mDigits.replace(/^(?:0|62)/, '');
+                phoneMatch = mDigits.includes(qDigits) || (qCore.length >= 3 && mCore.includes(qCore));
+              }
+              matchesText = textToSearch.includes(q) || phoneMatch;
             }
             if (dateFilter) {
               let regDateStr = '';
@@ -4683,16 +4694,12 @@
           });
         }
 
-        const isStaffOrKasir = (currentUser.role === 'Staff' || currentUser.role === 'Kasir');
-
         let html = `
           <div id="galleryGrid" style="display:grid; grid-template-columns:repeat(auto-fill, minmax(280px, 1fr)); gap:24px; margin-top:24px">
             ${filteredMembers.slice(0, window.galleryLimit || 100).map(m => {
               const isActive = m.status === 'Aktif';
               const statusColor = isActive ? '#10b981' : '#ef4444';
               const genderIcon = m.gender === 'Perempuan' ? 'venus' : 'mars';
-              
-              if (isStaffOrKasir) return '';
               
               return `
               <div class="gallery-item-premium" style="background:white; border-radius:24px; overflow:hidden; position:relative; box-shadow:0 10px 25px rgba(0,0,0,0.05); border:1px solid #f1f5f9; transition:all 0.3s ease; display:flex; flex-direction:column; animation: fadeIn 0.4s ease forwards">
@@ -5743,116 +5750,210 @@
       }
     }
 
-    function searchMemberForTrx(query) {
-      if (window.trxSearchTimeout) {
-        clearTimeout(window.trxSearchTimeout);
-      }
+    // ================ INSTANT LOCAL MEMBER SEARCH ================
+    function searchMembersLocally(query, max = 10) {
+      if (!query || !window.appData || !Array.isArray(window.appData.members)) return [];
+      const rawQ = query.trim();
+      const q = rawQ.toLowerCase();
+      if (q.length === 0) return [];
+      const qDigits = rawQ.replace(/\D/g, '');
+      let normQDigits = '';
+      if (qDigits.startsWith('62')) normQDigits = '0' + qDigits.substring(2);
+      else if (qDigits.startsWith('0')) normQDigits = qDigits;
+      else if (qDigits.length > 0) normQDigits = '0' + qDigits;
+      const coreQ = qDigits.replace(/^(?:0|62)/, '');
 
-      const searchInput = query.trim();
+      return window.appData.members.filter(m => {
+        const id = (m.memberId || m.id || '').toLowerCase();
+        const name = (m.name || '').toLowerCase();
+        const email = (m.email || '').toLowerCase();
+        const rawPhone = (m.phone || m.memberPhone || '').replace(/\D/g, '');
+        let normPhone = '';
+        if (rawPhone.startsWith('62')) normPhone = '0' + rawPhone.substring(2);
+        else if (rawPhone.startsWith('0')) normPhone = rawPhone;
+        else if (rawPhone.length > 0) normPhone = '0' + rawPhone;
+        const corePhone = rawPhone.replace(/^(?:0|62)/, '');
+
+        const face = (m.faceIdCode || '').toLowerCase();
+        const faceName = (m.faceIdName || '').toLowerCase();
+
+        return id.includes(q) ||
+               name.includes(q) ||
+               email.includes(q) ||
+               face.includes(q) ||
+               faceName.includes(q) ||
+               (qDigits.length >= 3 && rawPhone.includes(qDigits)) ||
+               (normQDigits.length >= 3 && normPhone.includes(normQDigits)) ||
+               (coreQ.length >= 3 && corePhone.includes(coreQ));
+      }).slice(0, max);
+    }
+
+    function searchMemberForTrx(query) {
+      if (window.trxSearchTimeout) clearTimeout(window.trxSearchTimeout);
+      const searchInput = (query || '').trim();
+      const el = document.getElementById('memberSearchResults');
+      if (!el) return;
+
       if (searchInput.length < 2) {
-        document.getElementById('memberSearchResults').innerHTML = '';
+        el.innerHTML = '';
         return;
       }
 
-      const resultsEl = document.getElementById('memberSearchResults');
-      resultsEl.innerHTML = '<div style="text-align:center;padding:10px;color:#94a3b8"><i class="fas fa-spinner fa-spin"></i> Mencari...</div>';
+      function renderTrxList(members) {
+        if (!members || members.length === 0) {
+          el.innerHTML = `
+            <div style="padding:20px;text-align:center;background:#f8fafc;border-radius:8px">
+              <i class="fas fa-search" style="color:#94a3b8;font-size:24px;margin-bottom:8px;display:block"></i>
+              <p style="color:#64748b;font-size:13px">Tidak ada member ditemukan dengan kata kunci "${escapeHtml(searchInput)}"</p>
+            </div>
+          `;
+          return;
+        }
+        let html = '';
+        members.slice(0, 6).forEach(m => {
+          let statusClass = 'warning';
+          if (m.status === 'Aktif') statusClass = 'success';
+          else if (m.status === 'Expired') statusClass = 'danger';
 
+          const memberJsonEncoded = encodeURIComponent(JSON.stringify(m)).replace(/'/g, "%27");
+          html += `
+            <div onclick="selectMemberForTrx(decodeURIComponent('${memberJsonEncoded}'))" 
+                 style="padding:12px 14px;background:white;border:1px solid #e2e8f0;border-radius:8px;cursor:pointer;margin-bottom:6px;font-size:13px;transition:0.2s" 
+                 onmouseover="this.style.background='#f0f4ff'" 
+                 onmouseout="this.style.background='white'">
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+                <div>
+                  <i class="fas fa-user-circle" style="color:#667eea;margin-right:4px"></i>
+                  <b>${escapeHtml(m.name)}</b>
+                </div>
+                <span class="badge badge-${statusClass}">${escapeHtml(m.status || 'Non Aktif')}</span>
+              </div>
+              <div style="display:flex;gap:12px;color:#475569;margin-top:4px">
+                <span><i class="fas fa-id-card" style="font-size:11px"></i> <code>${escapeHtml(m.memberId)}</code></span>
+                <span><i class="fas fa-fingerprint" style="font-size:11px"></i> <code>${escapeHtml(m.faceIdCode || '-')}</code></span>
+                <span><i class="fas fa-phone"></i> ${escapeHtml(m.phone)}</span>
+              </div>
+              <div style="color:#64748b;font-size:12px;margin-top:4px;padding-top:4px;border-top:1px dashed #e2e8f0">
+                <i class="fas fa-box"></i> ${escapeHtml(m.currentPackage || '-')} · 
+                <i class="far fa-calendar"></i> Exp: ${formatDate(m.expiryDate)}
+              </div>
+            </div>
+          `;
+        });
+        el.innerHTML = html;
+      }
+
+      // 1. Instant local search (0ms)
+      const localMatches = searchMembersLocally(searchInput, 6);
+      if (localMatches.length > 0) {
+        renderTrxList(localMatches);
+      } else {
+        el.innerHTML = '<div style="text-align:center;padding:10px;color:#94a3b8"><i class="fas fa-spinner fa-spin"></i> Mencari...</div>';
+      }
+
+      // 2. Debounced backend search
       window.trxSearchTimeout = setTimeout(function () {
         google.script.run
           .withSuccessHandler(function (res) {
-
-            const el = document.getElementById('memberSearchResults');
-            if (!el) return;
-
             if (res && res.success && res.members && res.members.length > 0) {
-              let html = '';
-              res.members.slice(0, 5).forEach(m => {
-                let statusClass = 'warning';
-                if (m.status === 'Aktif') statusClass = 'success';
-                else if (m.status === 'Expired') statusClass = 'danger';
-
-                const memberJsonEncoded = encodeURIComponent(JSON.stringify(m)).replace(/'/g, "%27");
-
-                html += `
-                  <div onclick="selectMemberForTrx(decodeURIComponent('${memberJsonEncoded}'))" 
-                       style="padding:12px 14px;background:white;border:1px solid #e2e8f0;border-radius:8px;cursor:pointer;margin-bottom:6px;font-size:13px;transition:0.2s" 
-                       onmouseover="this.style.background='#f0f4ff'" 
-                       onmouseout="this.style.background='white'">
-                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
-                      <div>
-                        <i class="fas fa-user-circle" style="color:#667eea;margin-right:4px"></i>
-                        <b>${escapeHtml(m.name)}</b>
-                      </div>
-                      <span class="badge badge-${statusClass}">${escapeHtml(m.status || 'Non Aktif')}</span>
-                    </div>
-                    <div style="display:flex;gap:12px;color:#475569;margin-top:4px">
-                      <span><i class="fas fa-id-card" style="font-size:11px"></i> <code>${escapeHtml(m.memberId)}</code></span>
-                      <span><i class="fas fa-fingerprint" style="font-size:11px"></i> <code>${escapeHtml(m.faceIdCode || '-')}</code></span>
-                      <span><i class="fas fa-phone"></i> ${escapeHtml(m.phone)}</span>
-                    </div>
-                    <div style="color:#64748b;font-size:12px;margin-top:4px;padding-top:4px;border-top:1px dashed #e2e8f0">
-                      <i class="fas fa-box"></i> ${escapeHtml(m.currentPackage || '-')} · 
-                      <i class="far fa-calendar"></i> Exp: ${formatDate(m.expiryDate)}
-                    </div>
-                  </div>
-                `;
-              });
-              el.innerHTML = html;
-            } else {
-              el.innerHTML = `
-                <div style="padding:20px;text-align:center;background:#f8fafc;border-radius:8px">
-                  <i class="fas fa-search" style="color:#94a3b8;font-size:24px;margin-bottom:8px;display:block"></i>
-                  <p style="color:#64748b;font-size:13px">Tidak ada member ditemukan dengan kata kunci "${escapeHtml(searchInput)}"</p>
-                </div>
-              `;
+              renderTrxList(res.members);
+            } else if (localMatches.length === 0) {
+              renderTrxList([]);
             }
           })
           .withFailureHandler(function (err) {
-            const el = document.getElementById('memberSearchResults');
-            if (el) {
-              el.innerHTML = `
-                <div style="padding:15px;text-align:center;background:#fef2f2;border-radius:8px;color:#991b1b">
-                  <i class="fas fa-exclamation-triangle"></i> Gagal mencari: ${err.message}
-                </div>
-              `;
+            if (localMatches.length === 0) {
+              el.innerHTML = `<div style="padding:15px;text-align:center;background:#fef2f2;border-radius:8px;color:#991b1b"><i class="fas fa-exclamation-triangle"></i> Gagal mencari: ${err.message}</div>`;
             }
           })
-          .searchMembers(searchInput);
-      }, 300);
+          .searchMembers(searchInput, currentBranch);
+      }, 250);
+    }
+
+    function setGuestCustomer(name) {
+      posSelectedMember = null;
+      document.getElementById('pos_memberId').value = name;
+      document.getElementById('pos_memberInfo').innerHTML = `<span class="badge badge-outline" style="color:#0284c7; background:#e0f2fe; padding:4px 8px"><i class="fas fa-user"></i> Non-Member: <b>${escapeHtml(name)}</b></span>`;
+      document.getElementById('posMemberResults').innerHTML = '';
     }
 
     function searchMemberForPOS(query) {
       if (window.posSearchTimeout) clearTimeout(window.posSearchTimeout);
-      const searchInput = query.trim();
+      const searchInput = (query || '').trim();
+      const el = document.getElementById('posMemberResults');
+      if (!el) return;
+
       if (searchInput.length < 2) {
-        document.getElementById('posMemberResults').innerHTML = '';
+        el.innerHTML = '';
         return;
       }
-      document.getElementById('posMemberResults').innerHTML = '<div style="text-align:center;padding:10px;color:#94a3b8"><i class="fas fa-spinner fa-spin"></i></div>';
+
+      function renderPOSResults(members) {
+        if (!members || members.length === 0) {
+          el.innerHTML = `
+            <div style="padding:12px; text-align:center; font-size:12px; color:#64748b; background:#f8fafc">
+              <div>Tidak ditemukan member terdaftar</div>
+              <button type="button" class="btn btn-sm btn-primary" style="margin-top:8px; font-size:11px; padding:4px 10px; border-radius:6px" onclick="setGuestCustomer('${escapeJs(searchInput)}')">
+                <i class="fas fa-user-check"></i> Gunakan "${escapeHtml(searchInput)}" sebagai Pembeli
+              </button>
+            </div>
+          `;
+          return;
+        }
+
+        let html = '';
+        members.slice(0, 5).forEach(m => {
+          const memberJsonEncoded = encodeURIComponent(JSON.stringify(m)).replace(/'/g, "%27");
+          html += `
+            <div onclick="selectMemberForPOS(decodeURIComponent('${memberJsonEncoded}'))" 
+                 style="padding:10px 14px;background:white;border-bottom:1px solid #f1f5f9;cursor:pointer;font-size:12px;transition:0.2s"
+                 onmouseover="this.style.background='#f0f4ff'"
+                 onmouseout="this.style.background='white'">
+              <div style="display:flex; justify-content:space-between; align-items:center">
+                <b>${escapeHtml(m.name)}</b>
+                <span class="badge badge-${m.status === 'Aktif' ? 'success' : 'warning'}" style="font-size:10px; padding:2px 6px">${escapeHtml(m.status || 'Non Aktif')}</span>
+              </div>
+              <div style="color:#64748b;font-size:11px; margin-top:2px">
+                <code>${escapeHtml(m.memberId)}</code> · <i class="fas fa-phone" style="font-size:10px"></i> ${escapeHtml(m.phone || '-')}
+              </div>
+            </div>
+          `;
+        });
+        html += `
+          <div style="padding:8px 12px; background:#f8fafc; border-top:1px solid #e2e8f0; font-size:11px; text-align:right">
+            <a href="javascript:void(0)" onclick="setGuestCustomer('${escapeJs(searchInput)}')" style="color:#6366f1; text-decoration:none">
+              <i class="fas fa-user-tag"></i> Bukan member? Gunakan "${escapeHtml(searchInput)}"
+            </a>
+          </div>
+        `;
+        el.innerHTML = html;
+      }
+
+      // 1. Instant local search (0ms)
+      const localMatches = searchMembersLocally(searchInput, 5);
+      if (localMatches.length > 0) {
+        renderPOSResults(localMatches);
+      } else {
+        el.innerHTML = '<div style="text-align:center;padding:10px;color:#94a3b8"><i class="fas fa-spinner fa-spin"></i> Mencari...</div>';
+      }
+
+      // 2. Debounced backend search
       window.posSearchTimeout = setTimeout(function () {
         google.script.run
           .withSuccessHandler(function (res) {
-            const el = document.getElementById('posMemberResults');
-            if (!el) return;
             if (res && res.success && res.members && res.members.length > 0) {
-              let html = '';
-              res.members.slice(0, 5).forEach(m => {
-                const memberJsonEncoded = encodeURIComponent(JSON.stringify(m)).replace(/'/g, "%27");
-                html += `
-                  <div onclick="selectMemberForPOS(decodeURIComponent('${memberJsonEncoded}'))" 
-                       style="padding:10px;background:white;border-bottom:1px solid #f1f5f9;cursor:pointer;font-size:12px">
-                    <b>${escapeHtml(m.name)}</b> (${m.memberId})
-                    <div style="color:#64748b;font-size:11px">${m.phone}</div>
-                  </div>
-                `;
-              });
-              el.innerHTML = html;
-            } else {
-              el.innerHTML = '<div style="padding:10px;text-align:center;font-size:12px;color:#94a3b8">Tidak ditemukan</div>';
+              renderPOSResults(res.members);
+            } else if (localMatches.length === 0) {
+              renderPOSResults([]);
             }
           })
-          .searchMembers(searchInput);
-      }, 300);
+          .withFailureHandler(function (err) {
+            if (localMatches.length === 0) {
+              renderPOSResults([]);
+            }
+          })
+          .searchMembers(searchInput, currentBranch);
+      }, 250);
     }
 
     function selectMemberForPOS(json) {
@@ -6592,8 +6693,10 @@
 
       if (query) {
         filtered = filtered.filter(p =>
-          p.name.toLowerCase().includes(query) ||
-          (p.barcode && p.barcode.toString().includes(query))
+          (p.name && p.name.toLowerCase().includes(query)) ||
+          (p.id && p.id.toString().toLowerCase().includes(query)) ||
+          (p.barcode && p.barcode.toString().toLowerCase().includes(query)) ||
+          (p.category && p.category.toString().toLowerCase().includes(query))
         );
       }
 
@@ -6693,6 +6796,24 @@
       const mid = document.getElementById('pos_memberId').value.trim();
       if (!mid) return;
 
+      // 1. Instant local lookup if member list is in memory
+      if (window.appData && Array.isArray(window.appData.members)) {
+        const localM = window.appData.members.find(x => 
+          (x.memberId && x.memberId.toString().toLowerCase() === mid.toLowerCase()) ||
+          (x.phone && x.phone.toString().replace(/\D/g, '') === mid.replace(/\D/g, ''))
+        );
+        if (localM) {
+          posSelectedMember = localM;
+          document.getElementById('pos_memberInfo').innerHTML = `
+            <div style="background:#f0f9ff; padding:8px; border-radius:6px; color:#0369a1; border:1px solid #bae6fd">
+              <b>${escapeHtml(localM.name)}</b><br>${localM.memberId} | ${localM.phone}
+            </div>
+          `;
+          if (localM.phone) document.getElementById('pos_wa_number').value = localM.phone;
+        }
+      }
+
+      // 2. Server lookup
       google.script.run
         .withSuccessHandler(function (res) {
           if (res && res.success) {
@@ -6705,10 +6826,14 @@
             if (res.member.phone) {
               document.getElementById('pos_wa_number').value = res.member.phone;
             }
-          } else {
-            showToast('Member tidak ditemukan', 'warning');
-            posSelectedMember = null;
-            document.getElementById('pos_memberInfo').textContent = 'Guest Customer';
+          } else if (!posSelectedMember) {
+            // Treat as guest customer with custom name
+            document.getElementById('pos_memberInfo').innerHTML = `<span class="badge badge-outline" style="color:#0284c7; background:#e0f2fe; padding:4px 8px"><i class="fas fa-user"></i> Non-Member: <b>${escapeHtml(mid)}</b></span>`;
+          }
+        })
+        .withFailureHandler(function (err) {
+          if (!posSelectedMember) {
+            document.getElementById('pos_memberInfo').innerHTML = `<span class="badge badge-outline" style="color:#0284c7; background:#e0f2fe; padding:4px 8px"><i class="fas fa-user"></i> Non-Member: <b>${escapeHtml(mid)}</b></span>`;
           }
         })
         .getMemberDetail(mid);
@@ -6723,7 +6848,7 @@
       const total = subtotal - (subtotal * discPercent / 100);
       const payment = document.getElementById('pos_payment').value;
       const whatsapp = document.getElementById('pos_wa_number').value.trim();
-      const customerName = posSelectedMember ? posSelectedMember.name : 'Guest';
+      const customerName = posSelectedMember ? posSelectedMember.name : (document.getElementById('pos_memberId')?.value.trim() || 'Guest');
       const capturedMemberPhone = posSelectedMember ? (posSelectedMember.phone || posSelectedMember.memberPhone || '') : '';
       const finalPhoneToSend = whatsapp || capturedMemberPhone;
 
@@ -7897,11 +8022,12 @@
                 <div class="form-group">
                   <label class="form-label">Member ID / Nama / HP</label>
                   <div style="display:flex; gap:8px">
-                    <input id="ci_memberId" class="form-input" placeholder="Ketik ID atau No. HP..." oninput="autoPreviewCheckin(this.value)" onkeydown="if(event.key==='Enter') previewMemberCheckin()">
+                    <input id="ci_memberId" class="form-input" placeholder="Ketik ID, Nama, atau No. HP..." oninput="autoPreviewCheckin(this.value)" onkeydown="if(event.key==='Enter') previewMemberCheckin()">
                     <button class="btn btn-primary" onclick="previewMemberCheckin()" style="white-space:nowrap">
                       <i class="fas fa-search"></i> Cari
                     </button>
                   </div>
+                  <div id="ciMemberResults" style="margin-top:8px;max-height:220px;overflow-y:auto;border-radius:8px"></div>
                 </div>
                 <p style="font-size:13px;color:#64748b;margin-bottom:12px">Setelah data dipilih, detail member akan muncul untuk konfirmasi.</p>
               </div>
@@ -8082,20 +8208,73 @@
 
     function autoPreviewCheckin(val) {
       if (window.ciAutoTimeout) clearTimeout(window.ciAutoTimeout);
-      const input = val.trim();
-      if (input.length >= 2) {
+      const input = (val || '').trim();
+      const resultsEl = document.getElementById('ciMemberResults');
+      if (!input || input.length < 2) {
+        if (resultsEl) resultsEl.innerHTML = '';
+        return;
+      }
+
+      // 1. Instant local search preview dropdown
+      const localMatches = searchMembersLocally(input, 5);
+      if (resultsEl) {
+        if (localMatches.length > 0) {
+          let html = '';
+          localMatches.forEach(m => {
+            const statusClass = m.status === 'Aktif' ? 'success' : (m.status === 'Expired' ? 'danger' : 'warning');
+            const cleanId = (m.memberId || m.id || '').replace(/'/g, "\\'");
+            html += `
+              <div onclick="selectMemberForCheckin('${cleanId}')" 
+                   style="padding:10px 12px;background:white;border:1px solid #e2e8f0;border-radius:8px;cursor:pointer;margin-bottom:4px;font-size:12px;transition:0.2s"
+                   onmouseover="this.style.background='#f0f4ff'"
+                   onmouseout="this.style.background='white'">
+                <div style="display:flex;justify-content:space-between;align-items:center">
+                  <b>${escapeHtml(m.name)}</b>
+                  <span class="badge badge-${statusClass}" style="font-size:10px;padding:2px 6px">${escapeHtml(m.status || 'Non Aktif')}</span>
+                </div>
+                <div style="color:#64748b;font-size:11px;margin-top:2px">
+                  <code>${escapeHtml(m.memberId || m.id)}</code> · <i class="fas fa-phone"></i> ${escapeHtml(m.phone || '-')}
+                </div>
+              </div>
+            `;
+          });
+          resultsEl.innerHTML = html;
+        } else {
+          resultsEl.innerHTML = '';
+        }
+      }
+
+      // 2. Auto-run preview only if input looks complete (e.g. valid ID or 9+ digits phone)
+      const isDigitsOnly = /^\d+$/.test(input);
+      if (!isDigitsOnly && input.length >= 4) {
         window.ciAutoTimeout = setTimeout(function () {
           previewMemberCheckin(input);
-        }, 600);
+        }, 700);
+      } else if (isDigitsOnly && input.length >= 9) {
+        window.ciAutoTimeout = setTimeout(function () {
+          previewMemberCheckin(input);
+        }, 700);
       }
     }
 
+    function selectMemberForCheckin(memberId) {
+      const inputEl = document.getElementById('ci_memberId');
+      if (inputEl) inputEl.value = memberId;
+      const resultsEl = document.getElementById('ciMemberResults');
+      if (resultsEl) resultsEl.innerHTML = '';
+      previewMemberCheckin(memberId);
+    }
+
     function previewMemberCheckin(scannedId) {
-      const mid = scannedId || (document.getElementById('ci_memberId')?.value || '').trim().toUpperCase();
+      let mid = scannedId || (document.getElementById('ci_memberId')?.value || '').trim();
       if (!mid) {
         showToast('Masukkan atau scan Member ID', 'warning');
         return;
       }
+      mid = mid.replace(/^MEMBER:/i, '').trim();
+
+      const resultsEl = document.getElementById('ciMemberResults');
+      if (resultsEl) resultsEl.innerHTML = '';
 
       // Clear previous results/previews
       document.getElementById('checkinResult').innerHTML = '';
@@ -8921,117 +9100,121 @@
     }
 
     function searchMemberForPT(query) {
-      if (window.ptSearchTimeout) {
-        clearTimeout(window.ptSearchTimeout);
-      }
-
-      const searchInput = query.trim();
+      if (window.ptSearchTimeout) clearTimeout(window.ptSearchTimeout);
+      const searchInput = (query || '').trim();
       const resultsEl = document.getElementById('ptMemberResults');
-
-      if (!resultsEl) {
-        return;
-      }
+      if (!resultsEl) return;
 
       if (searchInput.length < 2) {
         resultsEl.innerHTML = '';
         return;
       }
 
-      resultsEl.innerHTML = '<div style="text-align:center;padding:10px;color:#94a3b8"><i class="fas fa-spinner fa-spin"></i> Mencari...</div>';
+      function renderPTResults(members) {
+        if (!members || members.length === 0) {
+          resultsEl.innerHTML = `
+            <div style="padding:20px;text-align:center;background:#f8fafc;border-radius:8px">
+              <i class="fas fa-dumbbell" style="color:#94a3b8;font-size:24px;margin-bottom:8px;display:block"></i>
+              <p style="color:#64748b;font-size:13px">Tidak ada member ditemukan dengan kata kunci "${escapeHtml(searchInput)}"</p>
+              <p style="color:#94a3b8;font-size:12px;margin-top:8px">Coba gunakan nama, ID member, atau nomor telepon</p>
+            </div>
+          `;
+          return;
+        }
 
+        let html = '';
+        members.slice(0, 5).forEach(m => {
+          let statusClass = 'warning';
+          let statusText = m.status || 'Non Aktif';
+
+          if (m.status === 'Aktif') statusClass = 'success';
+          else if (m.status === 'Expired') statusClass = 'danger';
+          else if (m.status === 'Pending') statusClass = 'warning';
+
+          const memberJsonEncoded = encodeURIComponent(JSON.stringify(m)).replace(/'/g, "%27");
+          const canRegisterPT = m.status === 'Aktif';
+          const opacityStyle = canRegisterPT ? '' : 'opacity:0.7';
+          const cursorStyle = canRegisterPT ? 'pointer' : 'not-allowed';
+          const hoverStyle = canRegisterPT ? 'this.style.background="#f0f4ff"' : '';
+
+          html += `
+            <div onclick="${canRegisterPT ? `selectMemberForPT(decodeURIComponent('${memberJsonEncoded}'))` : 'showToast(\'Member tidak aktif, tidak bisa registrasi PT\', \'warning\')'}" 
+                 style="padding:12px 14px;background:white;border:1px solid #e2e8f0;border-radius:8px;cursor:${cursorStyle};margin-bottom:6px;font-size:13px;transition:0.2s;${opacityStyle}" 
+                 onmouseover="${canRegisterPT ? hoverStyle : ''}" 
+                 onmouseout="this.style.background='white'">
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+                <div>
+                  <i class="fas fa-user-circle" style="color:#667eea;margin-right:4px"></i>
+                  <b>${escapeHtml(m.name)}</b>
+                </div>
+                <span class="badge badge-${statusClass}">${escapeHtml(statusText)}</span>
+              </div>
+              <div style="display:flex;gap:12px;color:#475569;margin-top:4px">
+                <span><i class="fas fa-id-card" style="font-size:11px"></i> <code>${escapeHtml(m.memberId)}</code></span>
+                <span><i class="fas fa-fingerprint" style="font-size:11px"></i> <code>${escapeHtml(m.faceIdCode || '-')}</code></span>
+                <span><i class="fas fa-phone"></i> ${escapeHtml(m.phone)}</span>
+              </div>
+              <div style="color:#64748b;font-size:12px;margin-top:4px;padding-top:4px;border-top:1px dashed #e2e8f0">
+                <i class="fas fa-box"></i> Paket: ${escapeHtml(m.currentPackage || '-')} · 
+                <i class="far fa-calendar"></i> Exp: ${formatDate(m.expiryDate)}
+                ${m.daysLeft !== null && typeof m.daysLeft !== 'undefined' ? ` · Sisa: <b>${m.daysLeft}</b> hari` : ''}
+              </div>
+              ${!canRegisterPT ? `
+                <div style="margin-top:6px;color:#f59e0b;font-size:11px">
+                  <i class="fas fa-exclamation-triangle"></i> Member tidak aktif
+                </div>
+              ` : ''}
+            </div>
+          `;
+        });
+        resultsEl.innerHTML = html;
+      }
+
+      // 1. Instant local search (0ms)
+      const localMatches = searchMembersLocally(searchInput, 5);
+      if (localMatches.length > 0) {
+        renderPTResults(localMatches);
+      } else {
+        resultsEl.innerHTML = '<div style="text-align:center;padding:10px;color:#94a3b8"><i class="fas fa-spinner fa-spin"></i> Mencari...</div>';
+      }
+
+      // 2. Debounced backend search
       window.ptSearchTimeout = setTimeout(function () {
-
         google.script.run
           .withSuccessHandler(function (res) {
-
-            if (!resultsEl) return;
-
             if (res && res.success && res.members && res.members.length > 0) {
-              let html = '';
-              res.members.slice(0, 5).forEach(m => {
-                let statusClass = 'warning';
-                let statusText = m.status || 'Non Aktif';
-
-                if (m.status === 'Aktif') {
-                  statusClass = 'success';
-                } else if (m.status === 'Expired') {
-                  statusClass = 'danger';
-                } else if (m.status === 'Pending') {
-                  statusClass = 'warning';
-                }
-
-                const memberJsonEncoded = encodeURIComponent(JSON.stringify(m)).replace(/'/g, "%27");
-
-                const canRegisterPT = m.status === 'Aktif';
-                const opacityStyle = canRegisterPT ? '' : 'opacity:0.7';
-                const cursorStyle = canRegisterPT ? 'pointer' : 'not-allowed';
-                const hoverStyle = canRegisterPT ? 'this.style.background="#f0f4ff"' : '';
-
-                html += `
-                  <div onclick="${canRegisterPT ? `selectMemberForPT(decodeURIComponent('${memberJsonEncoded}'))` : 'showToast(\'Member tidak aktif, tidak bisa registrasi PT\', \'warning\')'}" 
-                       style="padding:12px 14px;background:white;border:1px solid #e2e8f0;border-radius:8px;cursor:${cursorStyle};margin-bottom:6px;font-size:13px;transition:0.2s;${opacityStyle}" 
-                       onmouseover="${canRegisterPT ? hoverStyle : ''}" 
-                       onmouseout="this.style.background='white'">
-                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
-                      <div>
-                        <i class="fas fa-user-circle" style="color:#667eea;margin-right:4px"></i>
-                        <b>${escapeHtml(m.name)}</b>
-                      </div>
-                      <span class="badge badge-${statusClass}">${escapeHtml(statusText)}</span>
-                    </div>
-                    <div style="display:flex;gap:12px;color:#475569;margin-top:4px">
-                      <span><i class="fas fa-id-card" style="font-size:11px"></i> <code>${escapeHtml(m.memberId)}</code></span>
-                      <span><i class="fas fa-fingerprint" style="font-size:11px"></i> <code>${escapeHtml(m.faceIdCode || '-')}</code></span>
-                      <span><i class="fas fa-phone"></i> ${escapeHtml(m.phone)}</span>
-                    </div>
-                    <div style="color:#64748b;font-size:12px;margin-top:4px;padding-top:4px;border-top:1px dashed #e2e8f0">
-                      <i class="fas fa-box"></i> Paket: ${escapeHtml(m.currentPackage || '-')} · 
-                      <i class="far fa-calendar"></i> Exp: ${formatDate(m.expiryDate)}
-                      ${m.daysLeft !== null ? ` · Sisa: <b>${m.daysLeft}</b> hari` : ''}
-                    </div>
-                    ${!canRegisterPT ? `
-                      <div style="margin-top:6px;color:#f59e0b;font-size:11px">
-                        <i class="fas fa-exclamation-triangle"></i> Member tidak aktif
-                      </div>
-                    ` : ''}
-                  </div>
-                `;
-              });
-              resultsEl.innerHTML = html;
-            } else {
-              resultsEl.innerHTML = `
-                <div style="padding:20px;text-align:center;background:#f8fafc;border-radius:8px">
-                  <i class="fas fa-dumbbell" style="color:#94a3b8;font-size:24px;margin-bottom:8px;display:block"></i>
-                  <p style="color:#64748b;font-size:13px">Tidak ada member ditemukan dengan kata kunci "${escapeHtml(searchInput)}"</p>
-                  <p style="color:#94a3b8;font-size:12px;margin-top:8px">Coba gunakan nama, ID member, atau nomor telepon</p>
-                </div>
-              `;
+              renderPTResults(res.members);
+            } else if (localMatches.length === 0) {
+              renderPTResults([]);
             }
           })
           .withFailureHandler(function (err) {
-            if (resultsEl) {
-              resultsEl.innerHTML = `
-                <div style="padding:15px;text-align:center;background:#fef2f2;border-radius:8px;color:#991b1b">
-                  <i class="fas fa-exclamation-triangle"></i> Gagal mencari: ${err.message}
-                </div>
-              `;
+            if (localMatches.length === 0) {
+              resultsEl.innerHTML = `<div style="padding:15px;text-align:center;background:#fef2f2;border-radius:8px;color:#991b1b"><i class="fas fa-exclamation-triangle"></i> Gagal mencari: ${err.message}</div>`;
             }
           })
-          .searchMembers(searchInput);
-      }, 300);
+          .searchMembers(searchInput, currentBranch);
+      }, 250);
     }
     function clearPTForm() {
       clearAllRequestIds();
       ptSelectedMember = null;
-      document.getElementById('pt_member_search').value = '';
-      document.getElementById('ptMemberResults').innerHTML = '';
-      document.getElementById('ptSelectedMemberInfo').innerHTML = '';
-      document.getElementById('pt_trainer').value = '';
-      document.getElementById('pt_sessions').value = '';
-      document.getElementById('pt_price').value = '';
-      document.getElementById('pt_payment').value = 'Cash';
-      document.getElementById('ptResult').style.display = 'none';
-      document.getElementById('ptResult').innerHTML = '';
+      window.ptSelectedMember = null;
+      const mid = document.getElementById('pt_memberId'); if (mid) mid.value = '';
+      const msearch = document.getElementById('pt_member_search'); if (msearch) msearch.value = '';
+      const mr = document.getElementById('ptMemberResults'); if (mr) mr.innerHTML = '';
+      const mi = document.getElementById('ptMemberInfo'); 
+      if (mi) mi.innerHTML = '<div style="text-align:center;color:#94a3b8"><i class="fas fa-info-circle fa-2x" style="margin-bottom:8px;display:block"></i><p>Belum ada member dipilih.<br>Ketik untuk mencari member.</p></div>';
+      const smi = document.getElementById('ptSelectedMemberInfo'); if (smi) smi.innerHTML = '';
+      const tr = document.getElementById('pt_trainer'); if (tr) tr.value = '';
+      const se = document.getElementById('pt_sessions'); if (se) se.value = '';
+      const pr = document.getElementById('pt_price'); if (pr) pr.value = '';
+      const py = document.getElementById('pt_payment'); if (py) py.value = 'Cash';
+      const res = document.getElementById('ptResult');
+      if (res) {
+        res.style.display = 'none';
+        res.innerHTML = '';
+      }
       updatePTSummary();
     }
     function selectMemberForPT(memberJson) {
@@ -11845,7 +12028,7 @@
                 </tr>
                 <tr class="total-row" style="background: var(--primary); color: white;">
                   <td colspan="6" style="text-align:right; font-weight:800; font-size:16px">SALDO AKHIR GABUNGAN (NET)</td>
-                  <td style="text-align:right; font-weight:800; font-size:16px">${formatCurrency(report.summary.grandNet)}</td>
+                  <td style="text-align:right; font-weight:800; font-size:16px">${formatCurrency(typeof report.summary.grandNet !== 'undefined' ? report.summary.grandNet : ((report.summary.netCash || 0) + (report.summary.netTransfer || 0)))}</td>
                 </tr>
               </tbody>
             </table>
@@ -11871,7 +12054,7 @@
       const dashEnd = document.getElementById('dash_end_date')?.value;
       const isPeriod = !!(dashStart && dashEnd);
       const isAdmin = isPrivilegedUser();
-      const staffFilter = isAdmin ? (document.getElementById('reportStaffFilter')?.value || 'All') : currentUser.id;
+      const staffFilter = isAdmin ? (document.getElementById('reportStaffFilter')?.value || 'All') : (currentUser ? (currentUser.id || currentUser.name) : 'All');
 
       google.script.run
         .withSuccessHandler(function (res) {
@@ -11881,9 +12064,10 @@
           if (res.success) {
             const summary = res.summary;
             const title = isPeriod ? 'LAPORAN PERIODIK KASIR' : 'LAPORAN HARIAN KASIR';
+            const pdfSection = res.url ? `Detail Lengkap (PDF):\n${res.url}\n\n` : '';
             const text = `*${title} - ${currentBranchName.toUpperCase()}*\n` +
               `--------------------------------\n` +
-              `Periode: ${res.periodFormatted || res.fileName.replace('Laporan_Kasir_', '').replace('.pdf', '').replace(/_/g, ' ')}\n` +
+              `Periode: ${res.periodFormatted || (res.fileName ? res.fileName.replace('Laporan_Kasir_', '').replace('Laporan_Periodik_Kasir_', '').replace('.pdf', '').replace(/_/g, ' ') : '-')}\n` +
               `--------------------------------\n` +
               `*Ringkasan Keuangan:*\n` +
               `Total Pendapatan: ${formatCurrency(summary.totalRevenue)}\n` +
@@ -11896,8 +12080,7 @@
               `  • Kas Bersih Tunai: ${formatCurrency(summary.netCash || 0)}\n` +
               `  • Kas Bersih Transfer: ${formatCurrency(summary.netTransfer || 0)}\n` +
               `--------------------------------\n` +
-              `Detail Lengkap (PDF):\n` +
-              `${res.url}\n\n` +
+              pdfSection +
               `_Laporan dikirim otomatis dari System ${currentBranchName}_`;
 
             // Kirim ke nomor owner/manager
@@ -11905,7 +12088,6 @@
             showToast('Laporan berhasil dikirim!', 'success');
           } else {
             showToast('Gagal: ' + res.message, 'error');
-            showToast('Gagal menghasilkan laporan: ' + res.message, 'error');
           }
         })
         .withFailureHandler(function (err) {
