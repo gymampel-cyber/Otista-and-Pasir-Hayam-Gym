@@ -678,6 +678,11 @@
       transform: rotate(90deg);
     }
 
+    .stat-loading {
+      animation: pulse 1.2s infinite ease-in-out;
+      opacity: 0.5 !important;
+    }
+
     @keyframes pulseBtn {
       0% {
         box-shadow: 0 0 0 0 rgba(107, 70, 193, 0.4);
@@ -3129,15 +3134,38 @@
       lastFetch: null
     };
 
+    const CACHE_TTL = {
+      STATS: 3 * 60 * 1000,          // 3 Menit (Dashboard Stats & KPI)
+      CHECKINS: 3 * 60 * 1000,       // 3 Menit
+      TRANSACTIONS: 5 * 60 * 1000,   // 5 Menit
+      EXPENSES: 5 * 60 * 1000,       // 5 Menit
+      MEMBERS: 10 * 60 * 1000,       // 10 Menit
+      CATALOGUE: 30 * 60 * 1000,     // 30 Menit
+      DEFAULT: 5 * 60 * 1000         // 5 Menit Default
+    };
+
+    function getAppropriateTTL(key) {
+      if (!key) return CACHE_TTL.DEFAULT;
+      if (key.includes('stats') || key.includes('dashboard')) return CACHE_TTL.STATS;
+      if (key.includes('checkin')) return CACHE_TTL.CHECKINS;
+      if (key.includes('transaction') || key.includes('pos_hist')) return CACHE_TTL.TRANSACTIONS;
+      if (key.includes('expense')) return CACHE_TTL.EXPENSES;
+      if (key.includes('member')) return CACHE_TTL.MEMBERS;
+      if (key.includes('catalogue') || key.includes('packages') || key.includes('products') || key.includes('settings')) return CACHE_TTL.CATALOGUE;
+      return CACHE_TTL.DEFAULT;
+    }
+
     const CACHE = {
-      clearStats: function () {
+      clearStats: function (targetBranch = null) {
         window.appData.stats = {};
-        // Clear all localStorage keys matching dashboard_stats
+        const b = (targetBranch || currentBranch || 'All').toString().trim();
         for (let i = 0; i < localStorage.length; i++) {
           const key = localStorage.key(i);
-          if (key && key.startsWith(APP_CACHE_KEY) && key.includes('dashboard_stats')) {
-            localStorage.removeItem(key);
-            i--; // Adjust index after removal
+          if (key && key.startsWith(APP_CACHE_KEY) && (key.includes('stats') || key.includes('dashboard'))) {
+            if (!targetBranch || key.includes(b)) {
+              localStorage.removeItem(key);
+              i--;
+            }
           }
         }
       },
@@ -3157,9 +3185,19 @@
     };
 
     function getBranchKey(key) {
-      const branchSpecific = ['members', 'stats', 'catalogue', 'products', 'transactions', 'expenses', 'approvals', 'branding_settings', 'packages_list', 'today_checkins', 'initial_data'];
-      if (branchSpecific.includes(key)) {
-        return (currentBranch || 'All') + '_' + key;
+      if (!key) return '';
+      const b = (currentBranch || 'All').toString().trim();
+      if (key.startsWith(b + '_') || key.endsWith('_' + b)) {
+        return key;
+      }
+      const branchSpecificPrefixes = [
+        'members', 'stats', 'catalogue', 'products', 'transactions', 'expenses', 
+        'approvals', 'branding_settings', 'packages_list', 'today_checkins', 
+        'initial_data', 'admin_transactions', 'pos_hist', 'expenses_list', 'dashboard_stats', 'month_stats'
+      ];
+      const needsBranch = branchSpecificPrefixes.some(prefix => key === prefix || key.startsWith(prefix + '_'));
+      if (needsBranch) {
+        return b + '_' + key;
       }
       return key;
     }
@@ -3182,19 +3220,25 @@
       });
     }
 
-    function getFromCache(key) {
+    function getFromCache(key, customTTL = null) {
       try {
-        if (window.appData[key] && (Array.isArray(window.appData[key]) ? window.appData[key].length > 0 : Object.keys(window.appData[key]).length > 0)) {
-          return window.appData[key];
-        }
         const bKey = getBranchKey(key);
         const cached = localStorage.getItem(APP_CACHE_KEY + bKey);
         if (cached) {
           const parsed = JSON.parse(cached);
+          const ttl = customTTL !== null ? customTTL : getAppropriateTTL(key);
+          const now = Date.now();
+          if (parsed.timestamp && (now - parsed.timestamp > ttl)) {
+            // Cache kadaluarsa (stale)
+            return null;
+          }
           if (['members', 'catalogue', 'products', 'branches', 'settings', 'stats'].includes(key)) {
             window.appData[key] = parsed.payload;
           }
           return parsed.payload;
+        }
+        if (window.appData && window.appData[key] && (Array.isArray(window.appData[key]) ? window.appData[key].length > 0 : Object.keys(window.appData[key]).length > 0)) {
+          return window.appData[key];
         }
         return null;
       } catch (e) { return null; }
@@ -3212,13 +3256,17 @@
             if (d.products) saveToCache('products', d.products);
             if (d.branches) saveToCache('branches', d.branches);
             if (d.settings) saveToCache('settings', d.settings);
-            if (d.stats) saveToCache('stats', d.stats);
+            if (d.stats) {
+              saveToCache('stats', d.stats);
+              // Selaraskan juga dengan kunci dashboard_stats hari ini
+              const todayStr = getLocalISODate();
+              const dashKey = `dashboard_stats_${todayStr}_${todayStr}_${currentBranch}`;
+              saveToCache(dashKey, d.stats);
+            }
 
             window.appData.lastFetch = new Date().toISOString();
             if (typeof callback === 'function') {
               callback(res);
-            } else {
-              refreshPage();
             }
           }
         })
@@ -3227,8 +3275,10 @@
         })
         .getInitialAppData(currentBranch);
     }
+
     function backgroundSyncMembers(callback, offset = 0, limit = 500, accumulatedMembers = []) {
       if (!currentUser) return;
+      const syncBranch = currentBranch;
       if (offset === 0 && window.isFetchingMembers) {
           // Cegah eksekusi ganda hanya di pemanggilan pertama
           return;
@@ -3239,6 +3289,12 @@
 
       google.script.run
         .withSuccessHandler(function (res) {
+          if (syncBranch !== currentBranch) {
+            // User sudah berpindah cabang saat proses rekursif berlangsung, batalkan
+            window.isFetchingMembers = false;
+            setBackgroundSyncStatus(null);
+            return;
+          }
           if (res && res.success && res.members) {
             const allFetchedSoFar = accumulatedMembers.concat(res.members);
             const total = res.total || res.totalCount || allFetchedSoFar.length;
@@ -3246,12 +3302,11 @@
             if (pct > 100) pct = 100;
             setBackgroundSyncStatus(`Menyinkronkan data profil... ${pct}% (${allFetchedSoFar.length}/${total})`);
             
-            // Simpan partial (atau full) hasil ke cache sementara
+            // Simpan partial (atau full) hasil ke cache cabang aktif
             saveToCache('members', allFetchedSoFar);
             if (!window.appData) window.appData = {};
             window.appData.members = allFetchedSoFar;
             
-            // Perbarui limit ke total yang berhasil ditarik sejauh ini supaya tidak terpotong (Load More hilang)
             window.galleryLimit = allFetchedSoFar.length;
             window.adminMemberLimit = allFetchedSoFar.length;
             
@@ -3266,10 +3321,8 @@
             }
             
             if (res.hasMore) {
-              // Terus tarik data part selanjutnya
               backgroundSyncMembers(callback, offset + limit, limit, allFetchedSoFar);
             } else {
-              // Selesai seluruhnya
               window.isFetchingMembers = false;
               window.isMembersFullyLoaded = true;
               setBackgroundSyncStatus(null);
@@ -3284,7 +3337,54 @@
           console.warn('Background sync members failed (offset: ' + offset + '):', err);
           setBackgroundSyncStatus(null);
         })
-        .getAllMembers('All', limit, offset);
+        .getAllMembers(currentBranch || 'All', limit, offset);
+    }
+
+    // ================ SMART PERIODIC SYNC (DELTA HEARTBEAT) ================
+    window.lastSyncHeartbeat = Date.now();
+    window.heartbeatIntervalId = null;
+
+    function initSmartSyncHeartbeat() {
+      if (window.heartbeatIntervalId) clearInterval(window.heartbeatIntervalId);
+
+      window.heartbeatIntervalId = setInterval(function () {
+        if (document.hidden) return; // Jeda polling jika tab diminimize / tidak aktif
+        if (!currentUser) return;
+        runDeltaSyncCheck();
+      }, 60000); // Tiap 60 detik
+
+      document.addEventListener('visibilitychange', function () {
+        if (!document.hidden && currentUser) {
+          const elapsed = Date.now() - (window.lastSyncHeartbeat || 0);
+          if (elapsed > 45000) {
+            runDeltaSyncCheck();
+          }
+        }
+      });
+    }
+
+    function runDeltaSyncCheck() {
+      window.lastSyncHeartbeat = Date.now();
+      const targetBranch = currentBranch;
+      const todayStr = getLocalISODate();
+      const localCheckins = getFromCache(`today_checkins_${todayStr}_${todayStr}_${targetBranch}`) || [];
+      const localTrx = getFromCache(`admin_transactions_${targetBranch}`) || [];
+
+      google.script.run
+        .withSuccessHandler(function (res) {
+          if (!res || !res.success || targetBranch !== currentBranch) return;
+          if (res.hasChanges) {
+            // Terdeteksi data baru/perubahan di backend Google Sheets
+            if (window.currentView === 'dashboard' || currentView === 'dashboard') {
+              const start = document.getElementById('dash_start_date')?.value || todayStr;
+              const end = document.getElementById('dash_end_date')?.value || todayStr;
+              fetchDashboardData(start, end, true);
+            }
+            updateDashboardLastSyncTime();
+          }
+        })
+        .withFailureHandler(function () {})
+        .getSyncCheck(targetBranch, localCheckins.length, localTrx.length);
     }
     
 
@@ -3813,6 +3913,7 @@
             showView('dashboard');
             loadApprovalCount();
             loadAndApplyBranding();
+            initSmartSyncHeartbeat();
             return; // Skip login form
           } catch (e) {
             localStorage.removeItem('otista_gym_current_user');
@@ -3992,6 +4093,7 @@
             backgroundSyncMembers(); // Sync berat dilakukan asinkron di belakang
             showView('dashboard');
             loadApprovalCount();
+            initSmartSyncHeartbeat();
           } else {
             showAlert('loginAlert', res?.message || 'Login gagal', 'error');
           }
@@ -4095,7 +4197,7 @@
         <div class="view-header dashboard-header-flex">
           <div>
             <h2 class="view-title"><i class="fas fa-chart-line"></i> Dashboard Analytics</h2>
-            <p class="view-subtitle">Ringkasan performa operasional dan keuangan ${currentBranchName}</p>
+            <p class="view-subtitle">Ringkasan performa operasional dan keuangan ${currentBranchName} <span id="dashSyncTime" style="font-size:11px; color:#64748b; margin-left:8px; font-weight:normal"></span></p>
           </div>
           <div style="display:flex; flex-wrap:wrap; gap:12px">
             ${(currentUser.role === 'Staff') ? '' : `
@@ -4318,11 +4420,26 @@
           if (isLoading) {
             el.style.transition = 'opacity 0.2s ease';
             el.style.opacity = '0.4';
+            el.classList.add('stat-loading');
           } else {
             el.style.opacity = '1';
+            el.classList.remove('stat-loading');
           }
         }
       });
+    }
+
+    function updateDashboardLastSyncTime() {
+      const el = document.getElementById('dashSyncTime');
+      const now = new Date();
+      const timeStr = ('0' + now.getHours()).slice(-2) + ':' + ('0' + now.getMinutes()).slice(-2);
+      if (el) {
+        el.innerHTML = `<i class="fas fa-check-circle" style="color:#10b981"></i> Diperbarui ${timeStr} WIB`;
+      }
+      const navEl = document.getElementById('lastSyncTime');
+      if (navEl) {
+        navEl.textContent = `Sync: ${timeStr}`;
+      }
     }
 
     function refreshDashboard() {
@@ -4361,11 +4478,15 @@
       refreshDashboard();
     }
 
+    window.activeDashboardReqId = (window.activeDashboardReqId || 0);
+
     function fetchDashboardData(start, end, force = false, callback = null) {
       const cacheKey = `dashboard_stats_${start || 'all'}_${end || 'all'}_${currentBranch}`;
+      const reqId = ++window.activeDashboardReqId;
+      const targetBranch = currentBranch;
 
-      // Stale-While-Revalidate: jika ada cache lokal, tampilkan seketika (0ms)
-      const cached = getFromCache(cacheKey);
+      // Stale-While-Revalidate: jika ada cache lokal valid dan tidak force, tampilkan seketika (0ms)
+      const cached = force ? null : getFromCache(cacheKey);
       if (cached) {
         renderDashboardUI(cached);
       } else {
@@ -4374,20 +4495,58 @@
 
       google.script.run
         .withSuccessHandler(function (res) {
+          // Token Sequence Check: pastikan request id dan branch masih cocok dengan keadaan aktif
+          if (reqId !== window.activeDashboardReqId || targetBranch !== currentBranch) {
+            return;
+          }
           setDashboardStatsLoading(false);
           if (res && res.success) {
             const s = res.stats;
             saveToCache(cacheKey, s);
             renderDashboardUI(s);
+            updateDashboardLastSyncTime();
+            triggerBackgroundMonthPrefetch();
           }
           if (typeof callback === 'function') callback(res);
         })
         .withFailureHandler(function (err) {
+          if (reqId !== window.activeDashboardReqId || targetBranch !== currentBranch) {
+            return;
+          }
           setDashboardStatsLoading(false);
           showToast('Gagal memuat filter dashboard: ' + (err ? err.message || err : 'Error'), 'error');
           if (typeof callback === 'function') callback({ success: false });
         })
         .getDashboardStats(start, end, currentBranch, getStaffFilterParam());
+    }
+
+    function triggerBackgroundMonthPrefetch() {
+      if (window.isMonthPrefetching) return;
+      const now = new Date();
+      const y = now.getFullYear();
+      const m = ('0' + (now.getMonth() + 1)).slice(-2);
+      const startOfMonth = `${y}-${m}-01`;
+      const todayStr = getLocalISODate(now);
+      const monthCacheKey = `dashboard_stats_${startOfMonth}_${todayStr}_${currentBranch}`;
+      
+      // Jika sudah ada cache bulan yang valid dalam 10 menit terakhir, skip
+      if (getFromCache(monthCacheKey, 10 * 60 * 1000)) return;
+
+      window.isMonthPrefetching = true;
+      setTimeout(function () {
+        const branchForPrefetch = currentBranch;
+        google.script.run
+          .withSuccessHandler(function (res) {
+            window.isMonthPrefetching = false;
+            if (res && res.success && branchForPrefetch === currentBranch) {
+              saveToCache(monthCacheKey, res.stats);
+            }
+          })
+          .withFailureHandler(function () {
+            window.isMonthPrefetching = false;
+          })
+          .getDashboardStats(startOfMonth, todayStr, branchForPrefetch, getStaffFilterParam());
+      }, 2500);
     }
 
     function renderDashboardUI(s) {
@@ -12694,6 +12853,7 @@
 
       currentBranch = newBranch;
       localStorage.setItem('otista_current_branch', currentBranch);
+      window.activeDashboardReqId = (window.activeDashboardReqId || 0) + 1; // Invalidate in-flight requests
 
       // RESET ALL CACHES AND STATE TO PREVENT DATA LEAKAGE BETWEEN BRANCHES
       if (typeof __productsCache !== 'undefined') __productsCache = null;
@@ -12703,7 +12863,19 @@
       if (typeof selectedMember !== 'undefined') selectedMember = null;
 
       CACHE.clearMemory();
+      CACHE.clearStats();
       showLoading();
+
+      // Reset KPI display ke placeholder loading agar angka cabang sebelumnya tidak muncul
+      const statIds = [
+        'statTotal', 'statAktif', 'statExpiring', 'statExpired', 'statCheckin',
+        'statFitnessRevenue', 'statPOSRevenue', 'statPOSToday', 'statExpenses',
+        'statFitnessNetProfit', 'statPOSNetProfit', 'statNetProfit'
+      ];
+      statIds.forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.innerHTML = '<i class="fas fa-spinner fa-spin fa-xs" style="color:#94a3b8"></i>';
+      });
 
       loadAndApplyBranding();
 
