@@ -42,6 +42,10 @@
     let isResultActive = false; // Flag to prevent automatic refresh while success card is shown
     let syncQueue = JSON.parse(localStorage.getItem('otista_gym_sync_queue') || '[]');
 
+    function getSessionToken() {
+      return window.currentSessionToken || localStorage.getItem('otista_gym_auth_token') || '';
+    }
+
     if (typeof window.google === 'undefined' || typeof window.google.script === 'undefined') {
       window.google = {
         script: {
@@ -116,7 +120,7 @@
         }
       }
 
-      const tokenToSend = window.currentSessionToken || localStorage.getItem('otista_gym_auth_token') || '';
+      const tokenToSend = getSessionToken();
       fetchWithRetry(SCRIPT_URL, {
         method: 'POST',
         cache: 'no-store',
@@ -150,7 +154,15 @@
         args: args,
         timestamp: new Date().toISOString()
       });
-      localStorage.setItem('otista_gym_sync_queue', JSON.stringify(syncQueue));
+      // Batasi ukuran antrean maksimal 50 item terakhir agar tidak memicu QuotaExceededError
+      if (syncQueue.length > 50) {
+        syncQueue = syncQueue.slice(-50);
+      }
+      try {
+        localStorage.setItem('otista_gym_sync_queue', JSON.stringify(syncQueue));
+      } catch (storageErr) {
+        console.warn('Gagal menyimpan sync queue ke localStorage:', storageErr);
+      }
       updateSyncIndicator();
       processSyncQueue();
     }
@@ -265,7 +277,7 @@
       updateSyncIndicator();
       while (syncQueue.length > 0 && navigator.onLine) {
         const item = syncQueue[0];
-        const syncToken = window.currentSessionToken || localStorage.getItem('otista_gym_auth_token') || '';
+        const syncToken = getSessionToken();
         try {
           const res = await fetchWithRetry(SCRIPT_URL, {
             method: 'POST',
@@ -276,7 +288,9 @@
 
           if (res.success) {
             syncQueue.shift();
-            localStorage.setItem('otista_gym_sync_queue', JSON.stringify(syncQueue));
+            try {
+              localStorage.setItem('otista_gym_sync_queue', JSON.stringify(syncQueue));
+            } catch(storageErr) {}
           } else {
             // DATA-02 Fix: Pindahkan Poison Pill ke antrean gagal (DLQ) agar antrean tidak macet selamanya
             console.warn('Item antrean sinkronisasi ditolak server:', item, res.message);
@@ -4858,7 +4872,7 @@
               showToast(res.message, 'error');
             }
           })
-          .deleteTransactionRecord(id, 'Checkin');
+          .deleteTransactionRecord(id, 'Checkin', getSessionToken());
       });
     }
 
@@ -5209,7 +5223,7 @@
     }
 
     function confirmDeleteMember(id, name) {
-      if (currentUser && currentUser.role !== 'Admin') {
+      if (currentUser && !['Admin', 'Super Admin'].includes(currentUser.role)) {
         showToast('Akses ditolak: Hanya Admin yang dapat menghapus member.', 'warning');
         return;
       }
@@ -5230,12 +5244,12 @@
             hideLoading();
             showToast('Error: ' + err.message, 'error');
           })
-          .deleteMemberRecord(id);
+          .deleteMemberRecord(id, getSessionToken());
       });
     }
 
     function confirmDeleteTransactionRecord(trxId, type, memberId) {
-      if (currentUser && currentUser.role !== 'Admin') {
+      if (currentUser && !['Admin', 'Super Admin'].includes(currentUser.role)) {
         showToast('Akses ditolak: Hanya Admin yang dapat menghapus transaksi.', 'warning');
         return;
       }
@@ -5269,7 +5283,7 @@
             hideLoading();
             showToast('Error: ' + err.message, 'error');
           })
-          .deleteTransactionRecord(trxId, type);
+          .deleteTransactionRecord(trxId, type, getSessionToken());
       });
     }
 
@@ -7802,7 +7816,7 @@
             if (row) row.style.display = '';
             showToast('Error: ' + err.message, 'error');
           })
-          .deletePackage(id);
+          .deletePackage(id, getSessionToken());
       });
     }
 
@@ -7831,7 +7845,7 @@
             if (row) row.style.display = '';
             showToast('Error: ' + err.message, 'error');
           })
-          .deleteProduct(id);
+          .deleteProduct(id, getSessionToken());
       });
     }
 
@@ -7963,7 +7977,7 @@
           showToast('Error: ' + err.message, 'error');
           loadPackageList();
         })
-        .savePackage(data);
+        .savePackage(data, getSessionToken());
     }
 
 
@@ -8162,7 +8176,7 @@
           }
           showToast('Error: ' + err.message, 'error');
         })
-        .saveProduct(data);
+        .saveProduct(data, getSessionToken());
     }
 
 
@@ -10716,7 +10730,7 @@
           role: role,
           email: email,
           password: password
-        }, getCurrentStaffIdentifier());
+        }, getCurrentStaffIdentifier(), getSessionToken());
     }
 
     function showDuplicateCleanupDialog() {
@@ -10929,7 +10943,7 @@
           email: email,
           role: role,
           password: password
-        }, currentUser.username);
+        }, getSessionToken());
     }
 
     function confirmDeleteUser(id, username) {
@@ -10946,7 +10960,7 @@
                 showToast('❌ ' + res.message, 'error');
               }
             })
-            .deleteUserAccount(id, currentUser.username);
+            .deleteUserAccount(id, currentUser.username, getSessionToken());
       });
     }
     function loadExpensesView() {
@@ -11386,7 +11400,7 @@
               renderExpensesTable(previousExpenses);
               showToast('Error koneksi: ' + err.message, 'error');
             })
-            .deleteExpense(id);
+            .deleteExpense(id, getSessionToken());
       });
     }
 
@@ -13195,7 +13209,7 @@
             hideLoading();
             showToast('❌ Error jaringan: ' + err.message, 'error');
           })
-          .deleteMultipleRecords(toDeleteBackend);
+          .deleteMultipleRecords(toDeleteBackend, getSessionToken());
       });
     }
 
