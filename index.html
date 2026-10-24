@@ -4285,10 +4285,9 @@
 
       setTimeout(function () {
         const now = new Date();
-        const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
         const startEl = document.getElementById('dash_start_date');
         const endEl = document.getElementById('dash_end_date');
-        if (startEl && !startEl.value) startEl.value = getLocalISODate(startOfMonth);
+        if (startEl && !startEl.value) startEl.value = getLocalISODate(now);
         if (endEl && !endEl.value) endEl.value = getLocalISODate(now);
 
         const startVal = startEl?.value || null;
@@ -4314,10 +4313,9 @@
 
     function resetDashboardFilter() {
       const now = new Date();
-      const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
       const start = document.getElementById('dash_start_date');
       const end = document.getElementById('dash_end_date');
-      if (start) start.value = getLocalISODate(startOfMonth);
+      if (start) start.value = getLocalISODate(now);
       if (end) end.value = getLocalISODate(now);
 
       refreshDashboard();
