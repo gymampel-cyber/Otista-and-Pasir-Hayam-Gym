@@ -116,14 +116,19 @@
         }
       }
 
+      const tokenToSend = window.currentSessionToken || localStorage.getItem('otista_gym_auth_token') || '';
       fetchWithRetry(SCRIPT_URL, {
         method: 'POST',
         cache: 'no-store',
-        body: JSON.stringify({ action: methodName, args: args }),
+        body: JSON.stringify({ action: methodName, args: args, token: tokenToSend }),
         headers: { 'Content-Type': 'text/plain' }
       }, 1)
         .then(data => {
           if (!data.success) {
+            if (data.isAuthError) {
+              console.warn('Sesi berakhir atau tidak sah. Mengarahkan ke form login...');
+              if (typeof logout === 'function') logout(true);
+            }
             if (failureHandler) failureHandler(new Error(data.message));
             else console.error('Backend Error:', data.message);
           } else {
@@ -260,19 +265,35 @@
       updateSyncIndicator();
       while (syncQueue.length > 0 && navigator.onLine) {
         const item = syncQueue[0];
+        const syncToken = window.currentSessionToken || localStorage.getItem('otista_gym_auth_token') || '';
         try {
           const res = await fetchWithRetry(SCRIPT_URL, {
             method: 'POST',
             cache: 'no-store',
-            body: JSON.stringify({ action: item.action, args: item.args }),
+            body: JSON.stringify({ action: item.action, args: item.args, token: syncToken }),
             headers: { 'Content-Type': 'text/plain' }
           }, 1);
 
           if (res.success) {
             syncQueue.shift();
             localStorage.setItem('otista_gym_sync_queue', JSON.stringify(syncQueue));
-          } else break;
-        } catch (e) { break; }
+          } else {
+            // DATA-02 Fix: Pindahkan Poison Pill ke antrean gagal (DLQ) agar antrean tidak macet selamanya
+            console.warn('Item antrean sinkronisasi ditolak server:', item, res.message);
+            const failedItem = syncQueue.shift();
+            failedItem.error = res.message;
+            failedItem.failedAt = new Date().toISOString();
+            
+            const failedQueue = JSON.parse(localStorage.getItem('otista_gym_failed_sync_queue') || '[]');
+            failedQueue.push(failedItem);
+            if (failedQueue.length > 50) failedQueue.shift();
+            localStorage.setItem('otista_gym_failed_sync_queue', JSON.stringify(failedQueue));
+            localStorage.setItem('otista_gym_sync_queue', JSON.stringify(syncQueue));
+          }
+        } catch (e) { 
+          // Network timeout / error fisik - jeda dan coba lagi saat online
+          break; 
+        }
         updateSyncIndicator();
       }
       isSyncing = false;
@@ -3904,26 +3925,51 @@
     function initApp() {
       try {
         
-        // Restore session if exists
+        // Restore session if exists (Instant Smooth Auto-Login + Silent Background Verification)
         const savedUser = localStorage.getItem('otista_gym_current_user');
+        const savedToken = localStorage.getItem('otista_gym_auth_token');
         if (savedUser) {
           try {
             currentUser = JSON.parse(savedUser);
+            window.currentSessionToken = savedToken || '';
             
+            // 1. Tampilkan Dashboard Seketika (0ms Jeda, Mencegah Layar Kedip Form Login)
             document.getElementById('authView').style.display = 'none';
             document.getElementById('dashboardView').style.display = 'flex';
-            
             applyRolePermissions();
             initMultiGym();
             fetchInitialAppData();
-            backgroundSyncMembers(); // Sync berat dilakukan asinkron di belakang
+            backgroundSyncMembers();
             showView('dashboard');
             loadApprovalCount();
             loadAndApplyBranding();
             initSmartSyncHeartbeat();
-            return; // Skip login form
+            
+            // 2. Verifikasi Token di Latar Belakang (Silent Background Check)
+            if (savedToken) {
+              google.script.run
+                .withSuccessHandler(function(vRes) {
+                  if (vRes && vRes.valid) {
+                    if (vRes.user) {
+                      currentUser = Object.assign({}, currentUser, vRes.user);
+                      applyRolePermissions();
+                    }
+                  } else if (vRes && vRes.valid === false) {
+                    console.warn('Sesi telah berakhir di server:', vRes?.message);
+                    showAlert('loginAlert', 'Sesi login telah berakhir (30 hari). Silakan login kembali.', 'warning');
+                    logout(true);
+                  }
+                })
+                .withFailureHandler(function(err) {
+                  // Gangguan koneksi sementara atau cold start GAS TIDAK BOLEH membatalkan sesi kasir
+                  console.warn('Verifikasi sesi latar belakang ditunda (koneksi/offline):', err.message);
+                })
+                .verifySessionToken(savedToken);
+            }
+            return; // Selesai auto-login mulus
           } catch (e) {
             localStorage.removeItem('otista_gym_current_user');
+            localStorage.removeItem('otista_gym_auth_token');
           }
         }
 
@@ -4089,6 +4135,8 @@
 
           if (res && res.success) {
             currentUser = res.user;
+            window.currentSessionToken = res.token || '';
+            localStorage.setItem('otista_gym_auth_token', res.token || '');
             localStorage.setItem('otista_gym_current_user', JSON.stringify(currentUser));
             
             document.getElementById('authView').style.display = 'none';
@@ -4116,6 +4164,8 @@
     function logout(force = false) {
       const performLogout = function() {
         currentUser = null;
+        window.currentSessionToken = null;
+        localStorage.removeItem('otista_gym_auth_token');
         localStorage.removeItem('otista_gym_current_user');
         stopScanner();
         document.getElementById('dashboardView').style.display = 'none';
@@ -12213,9 +12263,9 @@
               <tbody>
                 ${report.details.expenses.length > 0 ? report.details.expenses.map(e => `
                   <tr>
-                    <td><span class="badge badge-outline">${e.category}</span></td>
-                    <td>${e.description}</td>
-                    <td>${e.payment}</td>
+                    <td><span class="badge badge-outline">${escapeHtml(e.category)}</span></td>
+                    <td>${escapeHtml(e.description)}</td>
+                    <td>${escapeHtml(e.payment)}</td>
                     <td style="text-align:right; color:#ef4444">(${formatCurrency(e.amount)})</td>
                   </tr>
                 `).join('') : '<tr><td colspan="4" style="text-align:center; padding:12px">Tidak ada pengeluaran harian</td></tr>'}
