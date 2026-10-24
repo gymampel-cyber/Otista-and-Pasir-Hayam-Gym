@@ -181,12 +181,20 @@
         } else if (action === 'processPOSTransaction') {
           const tx = args[0];
           appData.stats.posRevenue = (appData.stats.posRevenue || 0) + (tx.total || 0);
+          appData.stats.posCount = (appData.stats.posCount || 0) + 1;
+          let estimatedModal = 0;
           if (tx.items) {
             tx.items.forEach(item => {
               const p = appData.products.find(prod => prod.id === item.id || prod.ID_Produk === item.id);
-              if (p) p.stock = (p.stock || p.Stok || 0) - item.qty;
+              if (p) {
+                p.stock = (p.stock || p.Stok || 0) - item.qty;
+                const buy = Number(p.buyPrice || p['Harga Beli'] || 0);
+                estimatedModal += (buy * Number(item.qty || 1));
+              }
             });
           }
+          appData.stats.posTotalModal = (appData.stats.posTotalModal || 0) + estimatedModal;
+          appData.stats.posNetProfit = (appData.stats.posRevenue || 0) - (appData.stats.posTotalModal || 0);
         } else if (action === 'updateMemberProfile') {
           const profileData = args[0];
           const m = appData.members.find(member => member.memberId === profileData.memberId);
@@ -3071,6 +3079,26 @@
     // ================ GLOBAL VARIABLES ================
     var currentUser = null;
     var currentView = 'dashboard';
+
+    // Global Date & Privileged Role Helpers
+    function getLocalISODate(d = new Date()) {
+      const dateObj = new Date(d);
+      if (isNaN(dateObj.getTime())) return '';
+      const year = dateObj.getFullYear();
+      const month = String(dateObj.getMonth() + 1).padStart(2, '0');
+      const day = String(dateObj.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    }
+
+    function isPrivilegedUser() {
+      if (!currentUser) return false;
+      const role = (currentUser.role || '').toLowerCase().trim();
+      return role === 'admin' || role === 'super admin' || role === 'owner';
+    }
+
+    function getStaffFilterParam() {
+      return isPrivilegedUser() ? 'All' : (currentUser.id || currentUser.name || 'All');
+    }
     var confirmCallback = null;
     var scannerStream = null;
     var scanActive = false;
@@ -4256,7 +4284,15 @@
       `;
 
       setTimeout(function () {
-        fetchDashboardData();
+        const now = new Date();
+        const startEl = document.getElementById('dash_start_date');
+        const endEl = document.getElementById('dash_end_date');
+        if (startEl && !startEl.value) startEl.value = getLocalISODate(now);
+        if (endEl && !endEl.value) endEl.value = getLocalISODate(now);
+
+        const startVal = startEl?.value || null;
+        const endVal = endEl?.value || null;
+        fetchDashboardData(startVal, endVal);
         renderPTInfoInDashboard();
       }, 100);
     }
@@ -4276,10 +4312,11 @@
     }
 
     function resetDashboardFilter() {
+      const now = new Date();
       const start = document.getElementById('dash_start_date');
       const end = document.getElementById('dash_end_date');
-      if (start) start.value = '';
-      if (end) end.value = '';
+      if (start) start.value = getLocalISODate(now);
+      if (end) end.value = getLocalISODate(now);
 
       refreshDashboard();
     }
@@ -4302,7 +4339,7 @@
             renderDashboardUI(s);
           }
         })
-        .getDashboardStats(start, end, currentBranch, currentUser.role === 'Admin' ? 'All' : (currentUser.id || 'Admin'));
+        .getDashboardStats(start, end, currentBranch, getStaffFilterParam());
     }
 
     function renderDashboardUI(s) {
@@ -4440,7 +4477,7 @@
               <button class="btn btn-ghost btn-xs" style="color:#22c55e" onclick="sendCheckinWhatsApp('${c.id}', '${c.memberId}', '${escapeJs(c.memberName)}', '${formatDateTime(c.checkInTime)}')" title="Kirim WA">
                 <i class="fab fa-whatsapp"></i>
               </button>
-              ${(currentUser.role === 'Admin' || currentUser.role === 'Super Admin') ? `
+              ${isPrivilegedUser() ? `
                 <button class="btn btn-ghost btn-xs" style="color:#ef4444" onclick="confirmDeleteCheckin('${c.id}', '${c.memberId}', '${escapeJs(c.type)}', '${escapeJs(c.memberName)}')" title="Hapus Check-in">
                   <i class="fas fa-trash-alt"></i>
                 </button>
@@ -5023,9 +5060,9 @@
             <div class="form-card-header" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px">
               <h3 style="margin:0"><i class="fas fa-history"></i> Riwayat Registrasi Admin</h3>
               <div style="display:flex; gap:8px; align-items:center">
-                <input type="date" id="regStartDate" class="form-input" style="padding:6px; font-size:12px; width:auto" value="${new Date().toISOString().split('T')[0]}">
+                <input type="date" id="regStartDate" class="form-input" style="padding:6px; font-size:12px; width:auto" value="${getLocalISODate()}">
                 <span style="color:#64748b">-</span>
-                <input type="date" id="regEndDate" class="form-input" style="padding:6px; font-size:12px; width:auto" value="${new Date().toISOString().split('T')[0]}">
+                <input type="date" id="regEndDate" class="form-input" style="padding:6px; font-size:12px; width:auto" value="${getLocalISODate()}">
                 <button class="btn btn-primary btn-sm" onclick="loadAdminTrxHistory('Registrasi Baru', 'regHistoryContainer', document.getElementById('regStartDate').value, document.getElementById('regEndDate').value)" style="padding:6px 12px; font-size:12px">Filter</button>
               </div>
             </div>
@@ -5038,7 +5075,7 @@
             </div>
           </div>
         `;
-        loadAdminTrxHistory('Registrasi Baru', 'regHistoryContainer', new Date().toISOString().split('T')[0], new Date().toISOString().split('T')[0]);
+        loadAdminTrxHistory('Registrasi Baru', 'regHistoryContainer', getLocalISODate(), getLocalISODate());
       };
 
       const renderGrid = (pkgs) => {
@@ -5638,9 +5675,9 @@
             <div class="form-card-header" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px">
               <h3 style="margin:0"><i class="fas fa-history"></i> Riwayat Perpanjangan Admin</h3>
               <div style="display:flex; gap:8px; align-items:center">
-                <input type="date" id="extStartDate" class="form-input" style="padding:6px; font-size:12px; width:auto" value="${new Date().toISOString().split('T')[0]}">
+                <input type="date" id="extStartDate" class="form-input" style="padding:6px; font-size:12px; width:auto" value="${getLocalISODate()}">
                 <span style="color:#64748b">-</span>
-                <input type="date" id="extEndDate" class="form-input" style="padding:6px; font-size:12px; width:auto" value="${new Date().toISOString().split('T')[0]}">
+                <input type="date" id="extEndDate" class="form-input" style="padding:6px; font-size:12px; width:auto" value="${getLocalISODate()}">
                 <button class="btn btn-primary btn-sm" onclick="loadAdminTrxHistory('Perpanjangan', 'extHistoryContainer', document.getElementById('extStartDate').value, document.getElementById('extEndDate').value)" style="padding:6px 12px; font-size:12px">Filter</button>
               </div>
             </div>
@@ -5653,7 +5690,7 @@
             </div>
           </div>
         `;
-        loadAdminTrxHistory('Perpanjangan', 'extHistoryContainer', new Date().toISOString().split('T')[0], new Date().toISOString().split('T')[0]);
+        loadAdminTrxHistory('Perpanjangan', 'extHistoryContainer', getLocalISODate(), getLocalISODate());
 
         const packageSelect = document.getElementById('trx_package');
         if (packageSelect) {
@@ -6234,7 +6271,7 @@
             container.innerHTML = `<div style="text-align:center; padding:20px; color:#ef4444">Gagal memuat riwayat: ${res.message}</div>`;
           }
         })
-        .getFilteredTransactionHistory(type, currentBranch, currentUser.role === 'Admin' ? 'All' : (currentUser.id || currentUser.name), startDate, endDate);
+        .getFilteredTransactionHistory(type, currentBranch, getStaffFilterParam(), startDate, endDate);
     }
 
     // ================ POS (POINT OF SALE) ================
@@ -6354,9 +6391,9 @@
               <div class="form-card-header" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px">
                 <h4 style="margin:0"><i class="fas fa-clock"></i> Transaksi Terakhir</h4>
                 <div style="display:flex; gap:8px; align-items:center">
-                  <input type="date" id="pos_wdg_start" class="form-input" style="padding:6px; font-size:12px; width:auto" value="${new Date().toISOString().split('T')[0]}">
+                  <input type="date" id="pos_wdg_start" class="form-input" style="padding:6px; font-size:12px; width:auto" value="${getLocalISODate()}">
                   <span style="color:#64748b">-</span>
-                  <input type="date" id="pos_wdg_end" class="form-input" style="padding:6px; font-size:12px; width:auto" value="${new Date().toISOString().split('T')[0]}">
+                  <input type="date" id="pos_wdg_end" class="form-input" style="padding:6px; font-size:12px; width:auto" value="${getLocalISODate()}">
                   <button class="btn btn-primary btn-sm" onclick="loadTodayPOSTransactions(document.getElementById('pos_wdg_start').value, document.getElementById('pos_wdg_end').value)" style="padding:6px 12px; font-size:12px">Filter</button>
                   <button class="btn btn-sm btn-outline" onclick="loadTodayPOSTransactions(document.getElementById('pos_wdg_start').value, document.getElementById('pos_wdg_end').value)">
                     <i class="fas fa-sync-alt"></i>
@@ -6373,7 +6410,7 @@
         </div>
       `;
       loadPOSProducts();
-      loadTodayPOSTransactions(new Date().toISOString().split('T')[0], new Date().toISOString().split('T')[0]);
+      loadTodayPOSTransactions(getLocalISODate(), getLocalISODate());
     }
 
     function loadTodayPOSTransactions(startDate = null, endDate = null) {
@@ -6427,7 +6464,7 @@
                             <button class="btn btn-ghost btn-xs" style="color:#22c55e" onclick="event.stopPropagation(); sendPOSWhatsApp('${t.id}', '${t.whatsapp}' || getMemberPhone('${t.memberId}'), '${escapeJs(t.customer)}', ${t.subtotal || t.total}, ${t.discount || 0}, ${t.total}, '${t.paymentMethod}', decodeURIComponent('${encodeURIComponent(t.rawItems || '[]')}'))" title="Kirim WA">
                               <i class="fab fa-whatsapp"></i>
                             </button>
-                            ${currentUser.role === 'Admin' ? `
+                            ${isPrivilegedUser() ? `
                               <button class="btn btn-ghost btn-xs" style="color:#ef4444" onclick="event.stopPropagation(); confirmDeleteTransactionRecord('${t.id}', 'POS', null)" title="Hapus Transaksi">
                                 <i class="fas fa-trash-alt"></i>
                               </button>
@@ -6442,7 +6479,7 @@
             `;
           }
         })
-        .getTodayPOSTransactions(currentBranch, currentUser.role === 'Admin' ? 'All' : (currentUser.id || currentUser.name), startDate, endDate);
+        .getTodayPOSTransactions(currentBranch, getStaffFilterParam(), startDate, endDate);
     }
 
     function loadPOSProducts(force = false) {
@@ -6737,8 +6774,10 @@
             if (res.success) {
               window.currentPosId = null; // Reset on success
               showToast('✅ Transaksi POS berhasil disinkronkan', 'success');
-              fetchDashboardData();
-              loadTodayPOSTransactions();
+              fetchDashboardData(null, null, true);
+              const sDate = document.getElementById('pos_wdg_start')?.value || getLocalISODate();
+              const eDate = document.getElementById('pos_wdg_end')?.value || getLocalISODate();
+              loadTodayPOSTransactions(sDate, eDate);
               
               if (!isClosed) {
                 document.getElementById('posModalTitle').innerHTML = '<i class="fas fa-check-circle"></i> Transaksi Berhasil';
@@ -7091,7 +7130,7 @@
         const startEl = document.getElementById('stock_filter_start');
         const endEl = document.getElementById('stock_filter_end');
         if (prodEl) prodEl.value = '';
-        const todayStr = new Date().toISOString().split('T')[0];
+        const todayStr = getLocalISODate();
         if (startEl) startEl.value = todayStr;
         if (endEl) endEl.value = todayStr;
         start = todayStr;
@@ -7871,9 +7910,9 @@
               <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;margin-bottom:12px">
                 <h4 style="font-weight:600;color:#334155;margin:0"><i class="fas fa-list-check"></i> Riwayat Check-In</h4>
                 <div style="display:flex; gap:8px; align-items:center">
-                  <input type="date" id="ci_start_date" class="form-input" style="padding:6px; font-size:12px; width:auto" value="${new Date().toISOString().split('T')[0]}">
+                  <input type="date" id="ci_start_date" class="form-input" style="padding:6px; font-size:12px; width:auto" value="${getLocalISODate()}">
                   <span style="color:#64748b">-</span>
-                  <input type="date" id="ci_end_date" class="form-input" style="padding:6px; font-size:12px; width:auto" value="${new Date().toISOString().split('T')[0]}">
+                  <input type="date" id="ci_end_date" class="form-input" style="padding:6px; font-size:12px; width:auto" value="${getLocalISODate()}">
                   <button class="btn btn-primary btn-sm" onclick="loadTodayCheckins(document.getElementById('ci_start_date').value, document.getElementById('ci_end_date').value)" style="padding:6px 12px; font-size:12px">Filter</button>
                   <button class="btn btn-sm btn-outline" onclick="loadTodayCheckins(document.getElementById('ci_start_date').value, document.getElementById('ci_end_date').value)">
                     <i class="fas fa-sync-alt"></i>
@@ -7889,7 +7928,7 @@
           </div>
         </div>
       `;
-      loadTodayCheckins(new Date().toISOString().split('T')[0], new Date().toISOString().split('T')[0]);
+      loadTodayCheckins(getLocalISODate(), getLocalISODate());
     }
 
     window.checkinLimit = 100;
@@ -7924,7 +7963,7 @@
               <tbody>
                 ${list.slice(0, window.checkinLimit || 100).map((c, i) => {
                   const typeClass = c.type === 'Visit' ? 'primary' : 'success';
-                  const isAdmin = currentUser && (currentUser.role === 'Admin' || currentUser.role === 'Super Admin');
+                  const isAdmin = isPrivilegedUser();
                   let checkinPayment = '-';
                   let checkinTotal = 0;
                   if (c.notes) {
@@ -8669,9 +8708,9 @@
                   <i class="fas fa-history"></i> Riwayat Transaksi PT
                 </h4>
                 <div style="display:flex; gap:8px; align-items:center">
-                  <input type="date" id="ptStartDate" class="form-input" style="padding:6px; font-size:12px; width:auto" value="${new Date().toISOString().split('T')[0]}">
+                  <input type="date" id="ptStartDate" class="form-input" style="padding:6px; font-size:12px; width:auto" value="${getLocalISODate()}">
                   <span style="color:#64748b">-</span>
-                  <input type="date" id="ptEndDate" class="form-input" style="padding:6px; font-size:12px; width:auto" value="${new Date().toISOString().split('T')[0]}">
+                  <input type="date" id="ptEndDate" class="form-input" style="padding:6px; font-size:12px; width:auto" value="${getLocalISODate()}">
                   <button class="btn btn-primary btn-sm" onclick="loadPTTransactionHistory(document.getElementById('ptStartDate').value, document.getElementById('ptEndDate').value)" style="padding:6px 12px; font-size:12px">Filter</button>
                 </div>
               </div>
@@ -8692,7 +8731,7 @@
 
       loadActivePTSessions();
       loadPTCatalogue();
-      loadPTTransactionHistory(new Date().toISOString().split('T')[0], new Date().toISOString().split('T')[0]);
+      loadPTTransactionHistory(getLocalISODate(), getLocalISODate());
     }
 
     function loadPTTransactionHistory(startDate = null, endDate = null) {
@@ -8708,7 +8747,7 @@
               return;
             }
 
-            const isAdmin = currentUser && (currentUser.role === 'Admin' || currentUser.role === 'Super Admin');
+            const isAdmin = isPrivilegedUser();
 
             const btnDeleteSelected = `<button id="btnMassDelete_Transaction" class="btn btn-primary btn-sm" onclick="executeMassDelete('Transaction')" style="display:none; padding:6px 12px; font-size:12px; margin-bottom:12px; background:#ef4444; border-color:#ef4444"></button>`;
 
@@ -10971,7 +11010,7 @@
             container.innerHTML = '<div style="color:red;padding:20px">' + (res.message || 'Gagal memuat data') + '</div>';
           }
         })
-        .getDashboardDetail(type, startDate, endDate, currentBranch, currentUser.role === 'Admin' ? 'All' : (currentUser.id || 'Admin'), currentUser.role);
+        .getDashboardDetail(type, startDate, endDate, currentBranch, getStaffFilterParam(), currentUser.role);
     }
 
     function closeDetailModal() {
@@ -11056,7 +11095,7 @@
         .withFailureHandler(function (err) {
           console.warn('Realtime sync failed (background):', err.message);
         })
-        .getDashboardStats(start, end, currentBranch, currentUser.role === 'Admin' ? 'All' : (currentUser.id || 'Admin'));
+        .getDashboardStats(start, end, currentBranch, getStaffFilterParam());
     }
 
     function updateDashboardCounters(stats) {
@@ -11070,9 +11109,13 @@
       if (document.getElementById('statCheckin')) document.getElementById('statCheckin').textContent = stats.checkins || 0;
       if (document.getElementById('statPending')) document.getElementById('statPending').textContent = stats.pendingApprovals || 0;
       
-      // Financials
+      // Financials & Expenses
       if (document.getElementById('statFitnessRevenue')) document.getElementById('statFitnessRevenue').textContent = formatCurrency(stats.fitnessRevenue || 0);
       if (document.getElementById('statPOSRevenue')) document.getElementById('statPOSRevenue').textContent = formatCurrency(stats.posRevenue || 0);
+      if (document.getElementById('statPOSToday')) document.getElementById('statPOSToday').textContent = stats.posCount || 0;
+      if (document.getElementById('statExpenses')) document.getElementById('statExpenses').textContent = formatCurrency(stats.expenses || 0);
+      if (document.getElementById('statFitnessNetProfit')) document.getElementById('statFitnessNetProfit').textContent = formatCurrency(stats.fitnessNetProfit || 0);
+      if (document.getElementById('statPOSNetProfit')) document.getElementById('statPOSNetProfit').textContent = formatCurrency(stats.posNetProfit || 0);
       if (document.getElementById('statNetProfit')) document.getElementById('statNetProfit').textContent = formatCurrency(stats.netProfit || 0);
 
       // SINKRONISASI TABEL (Safe Check)
@@ -11556,7 +11599,7 @@
       content.innerHTML = `<div style="text-align:center;padding:40px"><i class="fas fa-spinner fa-spin fa-2x"></i><p style="margin-top:10px">Menyiapkan ${isPeriod ? 'laporan periodik' : 'laporan harian'}...</p></div>`;
 
       // Auto-filter for staff: Admin gets 'All' or specific, Staff gets their own ID
-      const isAdmin = currentUser.role === 'Admin' || currentUser.role === 'Super Admin';
+      const isAdmin = isPrivilegedUser();
       const filterStaff = isAdmin ? (staffName || 'All') : currentUser.id;
 
       if (isAdmin && !window.allUsers) {
@@ -11597,7 +11640,7 @@
 
     function renderDailyReport(report, currentFilterStaff) {
       const content = document.getElementById('dailyReportContent');
-      const isAdmin = currentUser.role === 'Admin' || currentUser.role === 'Super Admin';
+      const isAdmin = isPrivilegedUser();
       
       // Resolve display name: if ID matches currentUser, use their name. Otherwise use the ID/Name from report.
       let displayStaff = report.staff || 'Semua Staff';
@@ -11827,7 +11870,7 @@
       const dashStart = document.getElementById('dash_start_date')?.value;
       const dashEnd = document.getElementById('dash_end_date')?.value;
       const isPeriod = !!(dashStart && dashEnd);
-      const isAdmin = currentUser.role === 'Admin' || currentUser.role === 'Super Admin';
+      const isAdmin = isPrivilegedUser();
       const staffFilter = isAdmin ? (document.getElementById('reportStaffFilter')?.value || 'All') : currentUser.id;
 
       google.script.run
@@ -11901,9 +11944,8 @@
 
       // Default dates: today
       const today = new Date();
-      const toLocalDateStr = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
-      document.getElementById('pos_hist_start').value = toLocalDateStr(today);
-      document.getElementById('pos_hist_end').value = toLocalDateStr(today);
+      document.getElementById('pos_hist_start').value = getLocalISODate(today);
+      document.getElementById('pos_hist_end').value = getLocalISODate(today);
 
       loadPOSTransactionHistory();
     }
@@ -11949,7 +11991,7 @@
                   <button class="btn btn-ghost btn-xs" style="color:#22c55e" onclick="event.stopPropagation(); sendPOSWhatsApp('${t['ID Transaksi']}', '${t['WhatsApp']}' || getMemberPhone('${t['Member ID']}'), '${escapeJs(t['Nama Pembeli'])}', ${t.Subtotal || t.Total}, ${t.Diskon || 0}, ${t.Total}, '${t['Metode Pembayaran']}', decodeURIComponent('${encodeURIComponent(t.rawItems || '[]')}'))" title="Kirim WA">
                     <i class="fab fa-whatsapp"></i>
                   </button>
-                  ${currentUser.role === 'Admin' ? `
+                  ${isPrivilegedUser() ? `
                     <button class="btn btn-ghost btn-xs" style="color:#ef4444" onclick="event.stopPropagation(); confirmDeleteTransactionRecord('${t['ID Transaksi']}', 'POS', null)" title="Hapus Transaksi">
                       <i class="fas fa-trash-alt"></i>
                     </button>
@@ -11989,7 +12031,7 @@
     function fetchPOSTransactionChunk(start, end, cacheKey, offset, limit, accumulated) {
        if (offset === 0) setBackgroundSyncStatus(`Menyinkronkan histori POS... 0%`);
        
-       const staffParam = currentUser.role === 'Admin' ? 'All' : (currentUser.id || currentUser.name);
+       const staffParam = getStaffFilterParam();
        
        google.script.run
           .withSuccessHandler(function (res) {
@@ -12340,7 +12382,7 @@
   <script>
     // ================ MULTI-GYM & BRANDING LOGIC ================
     function initMultiGym() {
-      if (currentUser && (currentUser.branch === 'All' || !currentUser.branch) && currentUser.role === 'Admin') {
+      if (currentUser && (currentUser.branch === 'All' || !currentUser.branch) && isPrivilegedUser()) {
         document.getElementById('branchSwitcherContainer').classList.remove('hidden');
         google.script.run
           .withSuccessHandler(function (res) {
