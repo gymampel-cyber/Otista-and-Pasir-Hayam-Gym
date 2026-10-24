@@ -194,7 +194,8 @@
             });
           }
           appData.stats.posTotalModal = (appData.stats.posTotalModal || 0) + estimatedModal;
-          appData.stats.posNetProfit = (appData.stats.posRevenue || 0) - (appData.stats.posTotalModal || 0);
+          appData.stats.posNetProfit = (appData.stats.posRevenue || 0) - (appData.stats.posTotalModal || 0) - (appData.stats.posExpenses || 0);
+          appData.stats.netProfit = (appData.stats.fitnessNetProfit || 0) + appData.stats.posNetProfit;
         } else if (action === 'updateMemberProfile') {
           const profileData = args[0];
           const m = appData.members.find(member => member.memberId === profileData.memberId);
@@ -4104,7 +4105,7 @@
               <span style="color:#cbd5e1">s/d</span>
               <input type="date" id="dash_end_date" class="filter-input" style="border:none; background:transparent">
             </div>
-            <button class="btn btn-primary btn-sm" onclick="refreshDashboard()"><i class="fas fa-sync-alt"></i> Update</button>
+            <button class="btn btn-primary btn-sm" id="btnRefreshDashboard" onclick="refreshDashboard()"><i class="fas fa-sync-alt"></i> Update</button>
             `}
             <button class="btn btn-success btn-sm" onclick="showDailyReportModal()">
               <i class="fas fa-file-invoice-dollar"></i> Laporan Periodik
@@ -4305,6 +4306,25 @@
       }, 100);
     }
 
+    function setDashboardStatsLoading(isLoading) {
+      const statIds = [
+        'statTotal', 'statAktif', 'statExpiring', 'statExpired', 'statCheckin',
+        'statFitnessRevenue', 'statPOSRevenue', 'statPOSToday', 'statExpenses',
+        'statFitnessNetProfit', 'statPOSNetProfit', 'statNetProfit'
+      ];
+      statIds.forEach(id => {
+        const el = document.getElementById(id);
+        if (el) {
+          if (isLoading) {
+            el.style.transition = 'opacity 0.2s ease';
+            el.style.opacity = '0.4';
+          } else {
+            el.style.opacity = '1';
+          }
+        }
+      });
+    }
+
     function refreshDashboard() {
       const start = document.getElementById('dash_start_date')?.value;
       const end = document.getElementById('dash_end_date')?.value;
@@ -4314,8 +4334,20 @@
         return;
       }
 
-      showToast('Memperbarui data...', 'info');
-      fetchDashboardData(start, end, true); // <--- Add true to force refresh
+      const btn = document.getElementById('btnRefreshDashboard');
+      if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Memuat...';
+      }
+      setDashboardStatsLoading(true);
+
+      fetchDashboardData(start, end, true, function () {
+        if (btn) {
+          btn.disabled = false;
+          btn.innerHTML = '<i class="fas fa-sync-alt"></i> Update';
+        }
+        setDashboardStatsLoading(false);
+      });
       renderPTInfoInDashboard();
     }
 
@@ -4329,23 +4361,31 @@
       refreshDashboard();
     }
 
-    function fetchDashboardData(start, end, force = false) {
-      // Force refresh logic: clear local cache if force is true
+    function fetchDashboardData(start, end, force = false, callback = null) {
       const cacheKey = `dashboard_stats_${start || 'all'}_${end || 'all'}_${currentBranch}`;
-      if (force) localStorage.removeItem(cacheKey);
 
-      const cached = force ? null : getFromCache(cacheKey);
+      // Stale-While-Revalidate: jika ada cache lokal, tampilkan seketika (0ms)
+      const cached = getFromCache(cacheKey);
       if (cached) {
         renderDashboardUI(cached);
+      } else {
+        setDashboardStatsLoading(true);
       }
 
       google.script.run
         .withSuccessHandler(function (res) {
+          setDashboardStatsLoading(false);
           if (res && res.success) {
             const s = res.stats;
             saveToCache(cacheKey, s);
             renderDashboardUI(s);
           }
+          if (typeof callback === 'function') callback(res);
+        })
+        .withFailureHandler(function (err) {
+          setDashboardStatsLoading(false);
+          showToast('Gagal memuat filter dashboard: ' + (err ? err.message || err : 'Error'), 'error');
+          if (typeof callback === 'function') callback({ success: false });
         })
         .getDashboardStats(start, end, currentBranch, getStaffFilterParam());
     }
@@ -4619,24 +4659,31 @@
       // Selalu pastikan kerangka utama ada
       if (!document.getElementById('galleryMainContainer')) {
         el.innerHTML = `
-          <div id="galleryMainContainer">
-            <div class="dashboard-header-flex">
-              <div class="dashboard-section-title"><i class="fas fa-users-cog"></i> Manajemen Member</div>
-              <div style="display:flex; gap:12px; align-items:center">
+          <div id="galleryMainContainer" style="padding-top:8px; padding-bottom:32px">
+            <!-- Modern Toolbar Header Card -->
+            <div style="background:white; border-radius:20px; padding:20px 24px; box-shadow:0 4px 20px rgba(0,0,0,0.03); border:1px solid #f1f5f9; margin-bottom:28px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:16px">
+              <div>
+                <h2 style="font-size:20px; font-weight:800; color:#1e293b; margin:0 0 4px 0; display:flex; align-items:center; gap:10px">
+                  <i class="fas fa-users-cog" style="color:#6366f1"></i> Manajemen Member
+                </h2>
+                <p style="font-size:12px; color:#64748b; margin:0">Katalog profil, status keanggotaan, dan riwayat aktivitas member</p>
+              </div>
+              
+              <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap">
                 ${(currentUser && (currentUser.role === 'Admin' || currentUser.role === 'Staff' || currentUser.role === 'Kasir')) ? `
-                  <button class="btn btn-success btn-sm" onclick="loadMemberForm()">
+                  <button class="btn btn-success btn-sm" onclick="loadMemberForm()" style="border-radius:12px; padding:9px 16px; font-weight:600; display:inline-flex; align-items:center; gap:6px">
                     <i class="fas fa-user-plus"></i> Registrasi Baru
                   </button>
                 ` : ''}
-                <div class="stat-card" style="padding:8px 16px; flex-direction:row; align-items:center; gap:12px; margin-bottom:0; background:white; border-radius:14px">
-                  <i class="fas fa-calendar-alt" style="color:#94a3b8"></i>
-                  <input type="date" id="galleryDateFilter" style="background:none; border:none; color:#1e293b; outline:none; font-size:14px">
+                <div style="display:flex; align-items:center; gap:8px; background:#f8fafc; padding:7px 14px; border-radius:12px; border:1px solid #e2e8f0">
+                  <i class="fas fa-calendar-alt" style="color:#94a3b8; font-size:13px"></i>
+                  <input type="date" id="galleryDateFilter" style="background:transparent; border:none; color:#1e293b; outline:none; font-size:13px; font-family:inherit">
                 </div>
-                <div class="stat-card" style="padding:8px 16px; flex-direction:row; align-items:center; gap:12px; margin-bottom:0; background:white; border-radius:14px">
-                  <i class="fas fa-search" style="color:#94a3b8"></i>
-                  <input type="text" id="gallerySearch" placeholder="Cari nama, ID, no HP..." style="background:none; border:none; color:#1e293b; outline:none; font-size:14px; width:180px">
+                <div style="display:flex; align-items:center; gap:8px; background:#f8fafc; padding:7px 14px; border-radius:12px; border:1px solid #e2e8f0">
+                  <i class="fas fa-search" style="color:#94a3b8; font-size:13px"></i>
+                  <input type="text" id="gallerySearch" placeholder="Cari nama, ID, no HP..." style="background:transparent; border:none; color:#1e293b; outline:none; font-size:13px; width:170px; font-family:inherit">
                 </div>
-                <button class="btn btn-outline btn-sm" onclick="forceRefreshGallery()" title="Muat Ulang Data">
+                <button class="btn btn-outline btn-sm" onclick="forceRefreshGallery()" title="Muat Ulang Data" style="border-radius:12px; padding:9px 12px">
                   <i class="fas fa-sync-alt"></i>
                 </button>
               </div>
