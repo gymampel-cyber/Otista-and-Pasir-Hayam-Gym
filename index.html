@@ -3262,6 +3262,13 @@
               const todayStr = getLocalISODate();
               const dashKey = `dashboard_stats_${todayStr}_${todayStr}_${currentBranch}`;
               saveToCache(dashKey, d.stats);
+
+              // Auto-Render: jika user sedang di dashboard, langsung render ke layar seketika (0 ms)!
+              if ((window.currentView === 'dashboard' || currentView === 'dashboard') && typeof renderDashboardUI === 'function') {
+                renderDashboardUI(d.stats);
+                updateDashboardLastSyncTime();
+                setDashboardStatsLoading(false);
+              }
             }
 
             window.appData.lastFetch = new Date().toISOString();
@@ -4394,12 +4401,21 @@
         </div>
       `;
 
+      // Zero-Delay: Tampilkan cache harian atau cache stats yang ada seketika (0 ms) sebelum timer berjalan
+      const now = new Date();
+      const todayStr = getLocalISODate(now);
+      const dashKey = `dashboard_stats_${todayStr}_${todayStr}_${currentBranch}`;
+      const immediateCache = getFromCache(dashKey) || getFromCache('stats');
+      if (immediateCache) {
+        renderDashboardUI(immediateCache);
+        updateDashboardLastSyncTime();
+      }
+
       setTimeout(function () {
-        const now = new Date();
         const startEl = document.getElementById('dash_start_date');
         const endEl = document.getElementById('dash_end_date');
-        if (startEl && !startEl.value) startEl.value = getLocalISODate(now);
-        if (endEl && !endEl.value) endEl.value = getLocalISODate(now);
+        if (startEl && !startEl.value) startEl.value = todayStr;
+        if (endEl && !endEl.value) endEl.value = todayStr;
 
         const startVal = startEl?.value || null;
         const endVal = endEl?.value || null;
@@ -4451,14 +4467,25 @@
         return;
       }
 
-      const btn = document.getElementById('btnRefreshDashboard');
-      if (btn) {
-        btn.disabled = true;
-        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Memuat...';
-      }
-      setDashboardStatsLoading(true);
+      const cacheKey = `dashboard_stats_${start || 'all'}_${end || 'all'}_${currentBranch}`;
+      const localCached = getFromCache(cacheKey);
 
-      fetchDashboardData(start, end, true, function () {
+      const btn = document.getElementById('btnRefreshDashboard');
+      if (localCached) {
+        // Stale-While-Revalidate: render langsung 0ms dari cache lokal
+        renderDashboardUI(localCached);
+        if (btn) {
+          btn.innerHTML = '<i class="fas fa-sync-alt fa-spin"></i> Memperbarui...';
+        }
+      } else {
+        if (btn) {
+          btn.disabled = true;
+          btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Memuat...';
+        }
+        setDashboardStatsLoading(true);
+      }
+
+      fetchDashboardData(start, end, false, function () {
         if (btn) {
           btn.disabled = false;
           btn.innerHTML = '<i class="fas fa-sync-alt"></i> Update';
@@ -4486,7 +4513,16 @@
       const targetBranch = currentBranch;
 
       // Stale-While-Revalidate: jika ada cache lokal valid dan tidak force, tampilkan seketika (0ms)
-      const cached = force ? null : getFromCache(cacheKey);
+      let cached = force ? null : getFromCache(cacheKey);
+      if (!cached && !force) {
+        const now = new Date();
+        const startOfMonth = `${now.getFullYear()}-${('0' + (now.getMonth() + 1)).slice(-2)}-01`;
+        const todayStr = getLocalISODate(now);
+        if (start === startOfMonth && end === todayStr) {
+          cached = getFromCache(`dashboard_stats_${startOfMonth}_${todayStr}_${currentBranch}`);
+        }
+      }
+
       if (cached) {
         renderDashboardUI(cached);
       } else {
