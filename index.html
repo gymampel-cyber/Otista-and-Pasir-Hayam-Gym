@@ -11545,17 +11545,19 @@
 
       const start = document.getElementById('dash_start_date')?.value || null;
       const end = document.getElementById('dash_end_date')?.value || null;
+      const targetBranch = currentBranch;
 
       google.script.run
         .withSuccessHandler(function (res) {
-          if (res.success) {
+          if (targetBranch !== currentBranch || currentView !== 'dashboard') return;
+          if (res && res.success) {
             updateDashboardCounters(res.stats);
             const timeEl = document.getElementById('lastSyncTime');
             if (timeEl) timeEl.textContent = 'LIVE: ' + new Date().toLocaleTimeString('id-ID');
           }
         })
         .withFailureHandler(function (err) {
-          console.warn('Realtime sync failed (background):', err.message);
+          console.warn('Realtime sync failed (background):', err ? err.message || err : '');
         })
         .getDashboardStats(start, end, currentBranch, getStaffFilterParam());
     }
