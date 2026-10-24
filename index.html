@@ -4322,14 +4322,11 @@
           </div>
           <div class="stat-card" style="border-top-color:#8b5cf6; ${(currentUser.role === 'Kasir' || currentUser.role === 'Staff') ? 'display:none' : ''}">
             <div class="stat-header">
-              <span class="stat-label">Total Saldo Bersih (Net)</span>
+              <span class="stat-label">Total Laba Bersih</span>
               <div class="stat-icon" style="background:#f3e8ff; color:#6b46c1"><i class="fas fa-wallet"></i></div>
             </div>
             <div class="stat-value" id="statNetProfit">Rp 0</div>
-            <div class="stat-label" style="display:flex; justify-content:space-between; align-items:center">
-              <span>Sama persis Laporan Kasir</span>
-              <span id="statDrawerCash" title="Laba Akuntansi setelah dikurangi Modal/HPP Toko POS" style="color:#059669; font-weight:600">Akuntansi: Rp 0</span>
-            </div>
+            <div class="stat-label">Gym Net + POS Net</div>
           </div>
         </div>
 
@@ -4692,10 +4689,6 @@
       if (document.getElementById('statFitnessNetProfit')) document.getElementById('statFitnessNetProfit').textContent = formatCurrency(s.fitnessNetProfit || 0);
       if (document.getElementById('statPOSNetProfit')) document.getElementById('statPOSNetProfit').textContent = formatCurrency(s.posNetProfit || 0);
       if (document.getElementById('statNetProfit')) document.getElementById('statNetProfit').textContent = formatCurrency(s.netProfit || 0);
-      if (document.getElementById('statDrawerCash')) {
-        const accVal = s.accountingNetProfit !== undefined ? s.accountingNetProfit : (s.netProfit || 0);
-        document.getElementById('statDrawerCash').textContent = 'Akuntansi: ' + formatCurrency(accVal);
-      }
 
       // Dashboard Period Banner
       const periodBanner = document.getElementById('dashboardPeriod');
@@ -11638,10 +11631,6 @@
       if (document.getElementById('statFitnessNetProfit')) document.getElementById('statFitnessNetProfit').textContent = formatCurrency(stats.fitnessNetProfit || 0);
       if (document.getElementById('statPOSNetProfit')) document.getElementById('statPOSNetProfit').textContent = formatCurrency(stats.posNetProfit || 0);
       if (document.getElementById('statNetProfit')) document.getElementById('statNetProfit').textContent = formatCurrency(stats.netProfit || 0);
-      if (document.getElementById('statDrawerCash')) {
-        const accVal = stats.accountingNetProfit !== undefined ? stats.accountingNetProfit : (stats.netProfit || 0);
-        document.getElementById('statDrawerCash').textContent = 'Akuntansi: ' + formatCurrency(accVal);
-      }
 
       // SINKRONISASI TABEL (Safe Check)
       if (stats.todayCheckinList && typeof renderTodayCheckins === 'function') {
