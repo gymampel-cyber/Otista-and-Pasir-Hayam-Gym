@@ -42,10 +42,6 @@
     let isResultActive = false; // Flag to prevent automatic refresh while success card is shown
     let syncQueue = JSON.parse(localStorage.getItem('otista_gym_sync_queue') || '[]');
 
-    function getSessionToken() {
-      return window.currentSessionToken || localStorage.getItem('otista_gym_auth_token') || '';
-    }
-
     if (typeof window.google === 'undefined' || typeof window.google.script === 'undefined') {
       window.google = {
         script: {
@@ -120,23 +116,14 @@
         }
       }
 
-      const actionTaskId = 'act_' + methodName + '_' + Math.random().toString(36).substr(2, 5);
-      setBackgroundSyncStatus('Menyinkronkan ' + methodName + '...', actionTaskId);
-
-      const tokenToSend = getSessionToken();
       fetchWithRetry(SCRIPT_URL, {
         method: 'POST',
         cache: 'no-store',
-        body: JSON.stringify({ action: methodName, args: args, token: tokenToSend }),
+        body: JSON.stringify({ action: methodName, args: args }),
         headers: { 'Content-Type': 'text/plain' }
       }, 1)
         .then(data => {
-          setBackgroundSyncStatus(null, actionTaskId);
           if (!data.success) {
-            if (data.isAuthError) {
-              console.warn('Sesi berakhir atau tidak sah. Mengarahkan ke form login...');
-              if (typeof logout === 'function') logout(true);
-            }
             if (failureHandler) failureHandler(new Error(data.message));
             else console.error('Backend Error:', data.message);
           } else {
@@ -144,7 +131,6 @@
           }
         })
         .catch(err => {
-          setBackgroundSyncStatus(null, actionTaskId);
           if (failureHandler) failureHandler(err);
           else {
             console.error('Connection Error:', err.message);
@@ -159,15 +145,7 @@
         args: args,
         timestamp: new Date().toISOString()
       });
-      // Batasi ukuran antrean maksimal 50 item terakhir agar tidak memicu QuotaExceededError
-      if (syncQueue.length > 50) {
-        syncQueue = syncQueue.slice(-50);
-      }
-      try {
-        localStorage.setItem('otista_gym_sync_queue', JSON.stringify(syncQueue));
-      } catch (storageErr) {
-        console.warn('Gagal menyimpan sync queue ke localStorage:', storageErr);
-      }
+      localStorage.setItem('otista_gym_sync_queue', JSON.stringify(syncQueue));
       updateSyncIndicator();
       processSyncQueue();
     }
@@ -282,44 +260,25 @@
       updateSyncIndicator();
       while (syncQueue.length > 0 && navigator.onLine) {
         const item = syncQueue[0];
-        const syncToken = getSessionToken();
         try {
           const res = await fetchWithRetry(SCRIPT_URL, {
             method: 'POST',
             cache: 'no-store',
-            body: JSON.stringify({ action: item.action, args: item.args, token: syncToken }),
+            body: JSON.stringify({ action: item.action, args: item.args }),
             headers: { 'Content-Type': 'text/plain' }
           }, 1);
 
           if (res.success) {
             syncQueue.shift();
-            try {
-              localStorage.setItem('otista_gym_sync_queue', JSON.stringify(syncQueue));
-            } catch(storageErr) {}
-          } else {
-            // DATA-02 Fix: Pindahkan Poison Pill ke antrean gagal (DLQ) agar antrean tidak macet selamanya
-            console.warn('Item antrean sinkronisasi ditolak server:', item, res.message);
-            const failedItem = syncQueue.shift();
-            failedItem.error = res.message;
-            failedItem.failedAt = new Date().toISOString();
-            
-            const failedQueue = JSON.parse(localStorage.getItem('otista_gym_failed_sync_queue') || '[]');
-            failedQueue.push(failedItem);
-            if (failedQueue.length > 50) failedQueue.shift();
-            localStorage.setItem('otista_gym_failed_sync_queue', JSON.stringify(failedQueue));
             localStorage.setItem('otista_gym_sync_queue', JSON.stringify(syncQueue));
-          }
-        } catch (e) { 
-          // Network timeout / error fisik - jeda dan coba lagi saat online
-          break; 
-        }
+          } else break;
+        } catch (e) { break; }
         updateSyncIndicator();
       }
       isSyncing = false;
       updateSyncIndicator();
     }
 
-    window.backgroundSyncTasks = new Map();
     window.backgroundSyncText = null;
 
     function updateSyncIndicator() {
@@ -344,22 +303,8 @@
       }
     }
 
-    function setBackgroundSyncStatus(text, taskId = 'default') {
-      if (!window.backgroundSyncTasks) window.backgroundSyncTasks = new Map();
-
-      if (text) {
-        window.backgroundSyncTasks.set(taskId, text);
-      } else {
-        window.backgroundSyncTasks.delete(taskId);
-      }
-
-      if (window.backgroundSyncTasks.size > 0) {
-        const tasks = Array.from(window.backgroundSyncTasks.values());
-        window.backgroundSyncText = tasks[tasks.length - 1];
-      } else {
-        window.backgroundSyncText = null;
-      }
-
+    function setBackgroundSyncStatus(text) {
+      window.backgroundSyncText = text;
       updateSyncIndicator();
     }
 
@@ -3301,11 +3246,9 @@
 
     function fetchInitialAppData(callback) {
       if (!currentUser) return;
-      setBackgroundSyncStatus('Menyinkronkan data aplikasi...', 'initialApp');
 
       google.script.run
         .withSuccessHandler(function (res) {
-          setBackgroundSyncStatus(null, 'initialApp');
           if (res && res.success) {
             const d = res.data;
             if (d.members && d.members.length > 0) saveToCache('members', d.members);
@@ -3335,7 +3278,6 @@
           }
         })
         .withFailureHandler(function (err) {
-          setBackgroundSyncStatus(null, 'initialApp');
           if (typeof callback === 'function') callback({ success: false, message: err });
         })
         .getInitialAppData(currentBranch);
@@ -3962,51 +3904,26 @@
     function initApp() {
       try {
         
-        // Restore session if exists (Instant Smooth Auto-Login + Silent Background Verification)
+        // Restore session if exists
         const savedUser = localStorage.getItem('otista_gym_current_user');
-        const savedToken = localStorage.getItem('otista_gym_auth_token');
         if (savedUser) {
           try {
             currentUser = JSON.parse(savedUser);
-            window.currentSessionToken = savedToken || '';
             
-            // 1. Tampilkan Dashboard Seketika (0ms Jeda, Mencegah Layar Kedip Form Login)
             document.getElementById('authView').style.display = 'none';
             document.getElementById('dashboardView').style.display = 'flex';
+            
             applyRolePermissions();
             initMultiGym();
             fetchInitialAppData();
-            backgroundSyncMembers();
+            backgroundSyncMembers(); // Sync berat dilakukan asinkron di belakang
             showView('dashboard');
             loadApprovalCount();
             loadAndApplyBranding();
             initSmartSyncHeartbeat();
-            
-            // 2. Verifikasi Token di Latar Belakang (Silent Background Check)
-            if (savedToken) {
-              google.script.run
-                .withSuccessHandler(function(vRes) {
-                  if (vRes && vRes.valid) {
-                    if (vRes.user) {
-                      currentUser = Object.assign({}, currentUser, vRes.user);
-                      applyRolePermissions();
-                    }
-                  } else if (vRes && vRes.valid === false) {
-                    console.warn('Sesi telah berakhir di server:', vRes?.message);
-                    showAlert('loginAlert', 'Sesi login telah berakhir (30 hari). Silakan login kembali.', 'warning');
-                    logout(true);
-                  }
-                })
-                .withFailureHandler(function(err) {
-                  // Gangguan koneksi sementara atau cold start GAS TIDAK BOLEH membatalkan sesi kasir
-                  console.warn('Verifikasi sesi latar belakang ditunda (koneksi/offline):', err.message);
-                })
-                .verifySessionToken(savedToken);
-            }
-            return; // Selesai auto-login mulus
+            return; // Skip login form
           } catch (e) {
             localStorage.removeItem('otista_gym_current_user');
-            localStorage.removeItem('otista_gym_auth_token');
           }
         }
 
@@ -4172,8 +4089,6 @@
 
           if (res && res.success) {
             currentUser = res.user;
-            window.currentSessionToken = res.token || '';
-            localStorage.setItem('otista_gym_auth_token', res.token || '');
             localStorage.setItem('otista_gym_current_user', JSON.stringify(currentUser));
             
             document.getElementById('authView').style.display = 'none';
@@ -4201,8 +4116,6 @@
     function logout(force = false) {
       const performLogout = function() {
         currentUser = null;
-        window.currentSessionToken = null;
-        localStorage.removeItem('otista_gym_auth_token');
         localStorage.removeItem('otista_gym_current_user');
         stopScanner();
         document.getElementById('dashboardView').style.display = 'none';
@@ -4616,10 +4529,8 @@
         setDashboardStatsLoading(true);
       }
 
-      setBackgroundSyncStatus('Menyinkronkan rekapitulasi...', 'dashboardRecap');
       google.script.run
         .withSuccessHandler(function (res) {
-          setBackgroundSyncStatus(null, 'dashboardRecap');
           // Token Sequence Check: pastikan request id dan branch masih cocok dengan keadaan aktif
           if (reqId !== window.activeDashboardReqId || targetBranch !== currentBranch) {
             return;
@@ -4635,7 +4546,6 @@
           if (typeof callback === 'function') callback(res);
         })
         .withFailureHandler(function (err) {
-          setBackgroundSyncStatus(null, 'dashboardRecap');
           if (reqId !== window.activeDashboardReqId || targetBranch !== currentBranch) {
             return;
           }
@@ -4898,7 +4808,7 @@
               showToast(res.message, 'error');
             }
           })
-          .deleteTransactionRecord(id, 'Checkin', getSessionToken());
+          .deleteTransactionRecord(id, 'Checkin');
       });
     }
 
@@ -5249,17 +5159,15 @@
     }
 
     function confirmDeleteMember(id, name) {
-      if (currentUser && !['Admin', 'Super Admin'].includes(currentUser.role)) {
+      if (currentUser && currentUser.role !== 'Admin') {
         showToast('Akses ditolak: Hanya Admin yang dapat menghapus member.', 'warning');
         return;
       }
       showConfirm(`HAPUS MEMBER: ${name}\n\nPERHATIAN: Tindakan ini tidak dapat dibatalkan. Menghapus member tidak akan menghapus riwayat transaksinya namun member tersebut tidak akan bisa check-in lagi.\n\nLanjutkan?`, function (ok) {
         if (!ok) return;
         showLoading();
-        setBackgroundSyncStatus('Menghapus data member...', 'deleteMember');
         google.script.run
           .withSuccessHandler(function (res) {
-            setBackgroundSyncStatus(null, 'deleteMember');
             hideLoading();
             if (res.success) {
               showToast(res.message, 'success');
@@ -5269,26 +5177,23 @@
             }
           })
           .withFailureHandler(function (err) {
-            setBackgroundSyncStatus(null, 'deleteMember');
             hideLoading();
             showToast('Error: ' + err.message, 'error');
           })
-          .deleteMemberRecord(id, getSessionToken());
+          .deleteMemberRecord(id);
       });
     }
 
     function confirmDeleteTransactionRecord(trxId, type, memberId) {
-      if (currentUser && !['Admin', 'Super Admin'].includes(currentUser.role)) {
+      if (currentUser && currentUser.role !== 'Admin') {
         showToast('Akses ditolak: Hanya Admin yang dapat menghapus transaksi.', 'warning');
         return;
       }
       showConfirm(`HAPUS TRANSAKSI: ${trxId}\n\nApakah Anda yakin ingin menghapus catatan transaksi ini? Tindakan ini hanya menghapus record dari sistem dan tidak memproses refund uang secara fisik.\n\nLanjutkan?`, function (ok) {
         if (!ok) return;
         showLoading();
-        setBackgroundSyncStatus('Menghapus transaksi...', 'deleteTransaction');
         google.script.run
           .withSuccessHandler(function (res) {
-            setBackgroundSyncStatus(null, 'deleteTransaction');
             hideLoading();
             if (res.success) {
               showToast(res.message, 'success');
@@ -5311,11 +5216,10 @@
             }
           })
           .withFailureHandler(function (err) {
-            setBackgroundSyncStatus(null, 'deleteTransaction');
             hideLoading();
             showToast('Error: ' + err.message, 'error');
           })
-          .deleteTransactionRecord(trxId, type, getSessionToken());
+          .deleteTransactionRecord(trxId, type);
       });
     }
 
@@ -7831,10 +7735,8 @@
         const row = document.getElementById('pkg_row_' + id);
         if (row) row.style.display = 'none';
 
-        setBackgroundSyncStatus('Menghapus paket...', 'deletePkg');
         google.script.run
           .withSuccessHandler(function (res) {
-            setBackgroundSyncStatus(null, 'deletePkg');
             if (res.success) {
               showToast('✅ ' + res.message, 'success');
               loadPackageList();
@@ -7846,12 +7748,11 @@
             }
           })
           .withFailureHandler(function (err) {
-            setBackgroundSyncStatus(null, 'deletePkg');
             // ROLLBACK: Show the row again on connection failure
             if (row) row.style.display = '';
             showToast('Error: ' + err.message, 'error');
           })
-          .deletePackage(id, getSessionToken());
+          .deletePackage(id);
       });
     }
 
@@ -7863,10 +7764,8 @@
         const row = document.getElementById('prod_row_' + id);
         if (row) row.style.display = 'none';
 
-        setBackgroundSyncStatus('Menghapus produk...', 'deleteProd');
         google.script.run
           .withSuccessHandler(function (res) {
-            setBackgroundSyncStatus(null, 'deleteProd');
             if (res.success) {
               showToast('✅ ' + res.message, 'success');
               loadProductList(true);
@@ -7878,12 +7777,11 @@
             }
           })
           .withFailureHandler(function (err) {
-            setBackgroundSyncStatus(null, 'deleteProd');
             // ROLLBACK: Show the row again on connection failure
             if (row) row.style.display = '';
             showToast('Error: ' + err.message, 'error');
           })
-          .deleteProduct(id, getSessionToken());
+          .deleteProduct(id);
       });
     }
 
@@ -8000,10 +7898,8 @@
       closePackageModal();
       showToast('Menyimpan paket...', 'info');
 
-      setBackgroundSyncStatus('Menyimpan paket...', 'savePkg');
       google.script.run
         .withSuccessHandler(function (res) {
-          setBackgroundSyncStatus(null, 'savePkg');
           if (res.success) {
             showToast('✅ Paket disimpan', 'success');
             loadPackageList();
@@ -8014,11 +7910,10 @@
           }
         })
         .withFailureHandler(function (err) {
-          setBackgroundSyncStatus(null, 'savePkg');
           showToast('Error: ' + err.message, 'error');
           loadPackageList();
         })
-        .savePackage(data, getSessionToken());
+        .savePackage(data);
     }
 
 
@@ -8194,10 +8089,8 @@
       closeProductModal();
       showToast('Menyimpan produk...', 'info');
 
-      setBackgroundSyncStatus('Menyimpan produk...', 'saveProd');
       google.script.run
         .withSuccessHandler(function (res) {
-          setBackgroundSyncStatus(null, 'saveProd');
           if (res.success) {
             showToast('✅ Produk disimpan', 'success');
             loadProductList(true); // Re-sync with server for real IDs/URLs
@@ -8212,7 +8105,6 @@
           }
         })
         .withFailureHandler(function (err) {
-          setBackgroundSyncStatus(null, 'saveProd');
           // ROLLBACK
           if (previousCache) {
             __productsCache = previousCache;
@@ -8220,7 +8112,7 @@
           }
           showToast('Error: ' + err.message, 'error');
         })
-        .saveProduct(data, getSessionToken());
+        .saveProduct(data);
     }
 
 
@@ -10774,7 +10666,7 @@
           role: role,
           email: email,
           password: password
-        }, getCurrentStaffIdentifier(), getSessionToken());
+        }, getCurrentStaffIdentifier());
     }
 
     function showDuplicateCleanupDialog() {
@@ -10966,11 +10858,9 @@
       btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Menyimpan...';
       btn.disabled = true;
       showLoading();
-      setBackgroundSyncStatus('Menyimpan akun user...', 'saveUser');
 
       google.script.run
         .withSuccessHandler(function (res) {
-          setBackgroundSyncStatus(null, 'saveUser');
           hideLoading();
           btn.innerHTML = originalText;
           btn.disabled = false;
@@ -10983,30 +10873,21 @@
             showAlert('editUserAlert', '❌ ' + res.message, 'error');
           }
         })
-        .withFailureHandler(function (err) {
-          setBackgroundSyncStatus(null, 'saveUser');
-          hideLoading();
-          btn.innerHTML = originalText;
-          btn.disabled = false;
-          showAlert('editUserAlert', 'Error: ' + err.message, 'error');
-        })
         .updateUserAccount(id, {
           name: name,
           phone: phone,
           email: email,
           role: role,
           password: password
-        }, getSessionToken());
+        }, currentUser.username);
     }
 
     function confirmDeleteUser(id, username) {
       showConfirm(`Hapus Akun User\n\nApakah Anda yakin ingin menghapus akun "${username}"?\n\nAkun ini tidak akan dapat login lagi.`, function (ok) {
         if (!ok) return;
           showLoading();
-          setBackgroundSyncStatus('Menghapus user...', 'deleteUser');
           google.script.run
             .withSuccessHandler(function (res) {
-              setBackgroundSyncStatus(null, 'deleteUser');
               hideLoading();
               if (res.success) {
                 showToast('✅ ' + res.message, 'success');
@@ -11015,12 +10896,7 @@
                 showToast('❌ ' + res.message, 'error');
               }
             })
-            .withFailureHandler(function (err) {
-              setBackgroundSyncStatus(null, 'deleteUser');
-              hideLoading();
-              showToast('Error: ' + err.message, 'error');
-            })
-            .deleteUserAccount(id, currentUser.username, getSessionToken());
+            .deleteUserAccount(id, currentUser.username);
       });
     }
     function loadExpensesView() {
@@ -11376,10 +11252,8 @@
          }
       }, 60000); // 60 seconds max
 
-      setBackgroundSyncStatus('Menyimpan pengeluaran...', 'saveExpense');
       google.script.run
         .withSuccessHandler(function (res) {
-          setBackgroundSyncStatus(null, 'saveExpense');
           clearTimeout(timeoutFallback);
           isSubmittingExpense = false;
           if (btn) {
@@ -11407,7 +11281,6 @@
           }
         })
         .withFailureHandler(function (err) {
-          setBackgroundSyncStatus(null, 'saveExpense');
           clearTimeout(timeoutFallback);
           isSubmittingExpense = false;
           if (btn) {
@@ -11444,10 +11317,8 @@
           renderExpensesTable(optimisticExpenses);
           showToast('Menghapus...', 'info');
 
-          setBackgroundSyncStatus('Menghapus pengeluaran...', 'deleteExpense');
           google.script.run
             .withSuccessHandler(function (res) {
-              setBackgroundSyncStatus(null, 'deleteExpense');
               if (res && res.success) {
                 showToast('✅ Pengeluaran dihapus', 'success');
                 refreshExpenses();
@@ -11460,13 +11331,12 @@
               }
             })
             .withFailureHandler(function (err) {
-              setBackgroundSyncStatus(null, 'deleteExpense');
               // ROLLBACK
               saveToCache(cacheKey, previousExpenses);
               renderExpensesTable(previousExpenses);
               showToast('Error koneksi: ' + err.message, 'error');
             })
-            .deleteExpense(id, getSessionToken());
+            .deleteExpense(id);
       });
     }
 
@@ -11677,10 +11547,8 @@
       const end = document.getElementById('dash_end_date')?.value || null;
       const targetBranch = currentBranch;
 
-      setBackgroundSyncStatus('Memperbarui data...', 'realtimeSync');
       google.script.run
         .withSuccessHandler(function (res) {
-          setBackgroundSyncStatus(null, 'realtimeSync');
           if (targetBranch !== currentBranch || currentView !== 'dashboard') return;
           if (res && res.success) {
             updateDashboardCounters(res.stats);
@@ -11689,7 +11557,6 @@
           }
         })
         .withFailureHandler(function (err) {
-          setBackgroundSyncStatus(null, 'realtimeSync');
           console.warn('Realtime sync failed (background):', err ? err.message || err : '');
         })
         .getDashboardStats(start, end, currentBranch, getStaffFilterParam());
@@ -12346,9 +12213,9 @@
               <tbody>
                 ${report.details.expenses.length > 0 ? report.details.expenses.map(e => `
                   <tr>
-                    <td><span class="badge badge-outline">${escapeHtml(e.category)}</span></td>
-                    <td>${escapeHtml(e.description)}</td>
-                    <td>${escapeHtml(e.payment)}</td>
+                    <td><span class="badge badge-outline">${e.category}</span></td>
+                    <td>${e.description}</td>
+                    <td>${e.payment}</td>
                     <td style="text-align:right; color:#ef4444">(${formatCurrency(e.amount)})</td>
                   </tr>
                 `).join('') : '<tr><td colspan="4" style="text-align:center; padding:12px">Tidak ada pengeluaran harian</td></tr>'}
@@ -13247,10 +13114,8 @@
         if (!ok) return;
         
         showLoading();
-        setBackgroundSyncStatus('Menghapus data massal...', 'massDelete');
         google.script.run
           .withSuccessHandler(function(res) {
-            setBackgroundSyncStatus(null, 'massDelete');
             hideLoading();
             if (res.success) {
               showToast('✅ ' + res.message, 'success');
@@ -13277,11 +13142,10 @@
             }
           })
           .withFailureHandler(function(err) {
-            setBackgroundSyncStatus(null, 'massDelete');
             hideLoading();
             showToast('❌ Error jaringan: ' + err.message, 'error');
           })
-          .deleteMultipleRecords(toDeleteBackend, getSessionToken());
+          .deleteMultipleRecords(toDeleteBackend);
       });
     }
 
