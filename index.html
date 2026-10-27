@@ -3319,12 +3319,14 @@
             
             if (typeof callback === 'function') callback(allFetchedSoFar);
             
-            // Render partial UI
-            if ((window.currentView === 'members' || currentView === 'members') && typeof renderMembersList === 'function') {
-              renderMembersList(allFetchedSoFar);
-            }
+            // Render partial UI (hanya jika view yang sesuai sedang aktif)
             if ((window.currentView === 'gallery' || currentView === 'gallery') && typeof renderGallery === 'function') {
               renderGallery(allFetchedSoFar);
+            }
+            if ((window.currentView === 'admin' || currentView === 'admin') && window.activeAdminTab === 'members' && typeof renderAdminMembersList === 'function' && document.getElementById('adminDataView')) {
+              let ul = allFetchedSoFar;
+              if (currentBranch !== 'All') ul = ul.filter(m => m.branch === currentBranch);
+              renderAdminMembersList(ul);
             }
             
             if (res.hasMore) {
@@ -4151,7 +4153,7 @@
       currentView = view;
 
       document.querySelectorAll('.menu-item').forEach(el =>
-        el.classList.toggle('active', el.dataset.view === view)
+        el.classList.toggle('active', el.dataset.view === view || (view === 'members' && el.dataset.view === 'gallery'))
       );
 
       const titles = {
@@ -4176,6 +4178,7 @@
 
       switch (view) {
         case 'dashboard': loadDashboard(null, null, currentBranch); break;
+        case 'members': loadMemberForm(); break;
         case 'gallery': loadGalleryView(); break;
         case 'transactions': loadTransactionForm(); break;
         case 'checkin': loadCheckinView(); break;
@@ -4193,8 +4196,12 @@
       if (isResultActive) {
         return;
       }
-      const active = document.querySelector('.menu-item.active');
-      if (active) showView(active.dataset.view);
+      if (window.currentView) {
+        showView(window.currentView);
+      } else {
+        const active = document.querySelector('.menu-item.active');
+        if (active) showView(active.dataset.view);
+      }
     }
 
     // ================ DASHBOARD ================
@@ -4846,6 +4853,7 @@
     }
 
     function renderGallery(members) {
+      if (window.currentView !== 'gallery' && currentView !== 'gallery') return;
       const el = document.getElementById('contentArea');
       if (!el) return;
 
@@ -4866,7 +4874,7 @@
               
               <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap">
                 ${(currentUser && (currentUser.role === 'Admin' || currentUser.role === 'Staff' || currentUser.role === 'Kasir')) ? `
-                  <button class="btn btn-success btn-sm" onclick="loadMemberForm()" style="border-radius:12px; padding:9px 16px; font-weight:600; display:inline-flex; align-items:center; gap:6px">
+                  <button class="btn btn-success btn-sm" onclick="showView('members')" style="border-radius:12px; padding:9px 16px; font-weight:600; display:inline-flex; align-items:center; gap:6px">
                     <i class="fas fa-user-plus"></i> Registrasi Baru
                   </button>
                 ` : ''}
@@ -4909,7 +4917,9 @@
       window.isFetchingMembers = false;
       backgroundSyncMembers((updated) => {
         showToast('Data member berhasil disinkronkan', 'success');
-        renderGallery(updated);
+        if (window.currentView === 'gallery' || currentView === 'gallery') {
+          renderGallery(updated);
+        }
       });
     }
 
@@ -5232,14 +5242,23 @@
         return;
       }
       
+      window.currentView = 'members';
+      currentView = 'members';
+      if (document.getElementById('pageTitle')) {
+        document.getElementById('pageTitle').textContent = 'Registrasi Member';
+      }
+      
       const cacheKey = `packages_${currentBranch}`;
       const localPkgs = getFromCache(cacheKey);
 
       const buildForm = () => {
         document.getElementById('contentArea').innerHTML = `
           <div class="form-card">
-            <div class="form-card-header">
-              <h3><i class="fas fa-user-plus"></i> Registrasi Member Baru</h3>
+            <div class="form-card-header" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px">
+              <h3 style="margin:0"><i class="fas fa-user-plus"></i> Registrasi Member Baru</h3>
+              <button type="button" class="btn btn-outline btn-sm" onclick="showView('gallery')" style="border-radius:10px; font-size:12px; display:inline-flex; align-items:center; gap:6px">
+                <i class="fas fa-arrow-left"></i> Kembali ke Manajemen Member
+              </button>
             </div>
             <div class="form-card-body">
               <div id="memberResult" class="result-card" style="display:none;"></div>
@@ -5943,7 +5962,7 @@
                       <button class="btn btn-info btn-sm" onclick="const txt = generateReceiptText('registration', { memberId:'${res.memberId}', name:'${escapeJs(res.memberName || name)}', package:'${escapeJs(res.currentPackage || pkg.name)}', expiry:'${res.expiryDate}', receipt:'${res.receiptNumber}', price:${res.packagePrice || pkg.price}, regFee:${res.registrationFee || 0}, total:${res.totalAmount || totalAmount}, payment:'${res.paymentMethod || pay}', qr:'${res.qrCodeUrl || ''}' }); shareToWhatsApp('${res.memberPhone || phone}', txt)">
                         <i class="fab fa-whatsapp"></i> Kirim WA
                       </button>
-                      <button class="btn btn-primary btn-sm" onclick="isResultActive=false; refreshPage()">
+                      <button class="btn btn-primary btn-sm" onclick="isResultActive=false; showView('gallery')">
                         <i class="fas fa-check"></i> Selesai
                       </button>
                     </div>
@@ -10266,6 +10285,7 @@
 
     // ================ ADMIN PANEL ================
     function loadAdminPanel() {
+      window.activeAdminTab = null;
       const role = currentUser?.role?.toLowerCase() || '';
       if (role !== 'admin' && role !== 'super admin') {
         document.getElementById('contentArea').innerHTML = `
@@ -10579,6 +10599,7 @@
     }
 
     function loadMemberList() {
+      window.activeAdminTab = 'members';
       if (typeof window.adminMemberLimit === 'undefined') {
         window.adminMemberLimit = 100;
       }
@@ -10600,10 +10621,12 @@
           backgroundSyncMembers((updatedMembers) => {
              window.isFetchingMembers = false;
              window.isMembersFullyLoaded = true;
-             let ul = updatedMembers;
-             if (currentBranch !== 'All') ul = ul.filter(m => m.branch === currentBranch);
-             window.adminMemberLimit = ul.length; // Tampilkan semua
-             renderAdminMembersList(ul);
+             if (currentView === 'admin' && window.activeAdminTab === 'members' && document.getElementById('adminDataView')) {
+               let ul = updatedMembers;
+               if (currentBranch !== 'All') ul = ul.filter(m => m.branch === currentBranch);
+               window.adminMemberLimit = ul.length; // Tampilkan semua
+               renderAdminMembersList(ul);
+             }
           });
         }
       } else {
@@ -10618,10 +10641,12 @@
           backgroundSyncMembers((updatedMembers) => {
              window.isFetchingMembers = false;
              window.isMembersFullyLoaded = true;
-             let ul = updatedMembers;
-             if (currentBranch !== 'All') ul = ul.filter(m => m.branch === currentBranch);
-             window.adminMemberLimit = ul.length;
-             renderAdminMembersList(ul);
+             if (currentView === 'admin' && window.activeAdminTab === 'members' && document.getElementById('adminDataView')) {
+               let ul = updatedMembers;
+               if (currentBranch !== 'All') ul = ul.filter(m => m.branch === currentBranch);
+               window.adminMemberLimit = ul.length;
+               renderAdminMembersList(ul);
+             }
           });
         }
       }
@@ -10679,6 +10704,7 @@
     }
 
     function loadTransactionList() {
+      window.activeAdminTab = 'transactions';
       const adminDataView = document.getElementById('adminDataView');
       if (!adminDataView) return; 
 
@@ -10714,8 +10740,10 @@
                 
                 window.adminTrxLimit = allFetched.length;
                 
-                const el = document.getElementById('adminDataView');
-                if (el) renderAdminTransactionList(allFetched);
+                if (currentView === 'admin' && window.activeAdminTab === 'transactions') {
+                   const el = document.getElementById('adminDataView');
+                   if (el) renderAdminTransactionList(allFetched);
+                }
                 
                 if (res.hasMore) {
                    fetchAdminTransactionsChunk(offset + limit, limit, allFetched);
@@ -10724,7 +10752,7 @@
                 }
              } else {
                 setBackgroundSyncStatus(null);
-                if (accumulated.length === 0) {
+                if (accumulated.length === 0 && currentView === 'admin' && window.activeAdminTab === 'transactions') {
                    const el = document.getElementById('adminDataView');
                    if (el) renderAdminTransactionList([]);
                 }
@@ -10733,7 +10761,7 @@
           .withFailureHandler(function (err) {
              console.warn('Gagal memuat admin transaksi (offset ' + offset + '):', err);
              setBackgroundSyncStatus(null);
-             if (accumulated.length === 0) {
+             if (accumulated.length === 0 && currentView === 'admin' && window.activeAdminTab === 'transactions') {
                 const el = document.getElementById('adminDataView');
                 if (el) el.innerHTML = '<div class="alert alert-error">Error: ' + err.message + '</div>';
              }
@@ -10896,6 +10924,8 @@
         return;
       }
 
+      window.activeAdminTab = 'users';
+
       document.getElementById('adminDataView').innerHTML = `
         <div style="text-align:center;padding:20px;color:#94a3b8">
           <i class="fas fa-spinner fa-spin"></i> Memuat Daftar User...
@@ -10904,6 +10934,7 @@
 
       google.script.run
         .withSuccessHandler(function (res) {
+          if (currentView !== 'admin' || window.activeAdminTab !== 'users') return;
           const el = document.getElementById('adminDataView');
           if (!el) return;
 
@@ -12807,9 +12838,8 @@
           }
           
           // Re-render views if they are active
-          const activeView = document.querySelector('.menu-item.active')?.dataset.view;
-          if (activeView === 'gallery') renderGallery(appData.members);
-          if (activeView === 'admin') loadMemberList(); // If they are in the admin table view
+          if (currentView === 'gallery') renderGallery(appData.members);
+          if (currentView === 'admin' && window.activeAdminTab === 'members') loadMemberList();
         }
       }
 
