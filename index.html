@@ -3105,6 +3105,18 @@
     function getStaffFilterParam() {
       return isPrivilegedUser() ? 'All' : (currentUser.id || currentUser.name || 'All');
     }
+
+    function isBranchMatchClient(rowBranch, target) {
+      if (!target || target === 'ALL' || target === 'All') return true;
+      if (!rowBranch || rowBranch === 'ALL' || rowBranch === 'All') return true;
+      const b = rowBranch.toString().trim().toUpperCase();
+      const t = target.toString().trim().toUpperCase();
+      if (b === t) return true;
+      const cleanB = b.replace(/[^A-Z0-9]/g, '');
+      const cleanT = t.replace(/[^A-Z0-9]/g, '');
+      if (cleanB.includes(cleanT) || cleanT.includes(cleanB)) return true;
+      return false;
+    }
     var confirmCallback = null;
     var scannerStream = null;
     var scanActive = false;
@@ -3325,7 +3337,7 @@
             }
             if ((window.currentView === 'admin' || currentView === 'admin') && window.activeAdminTab === 'members' && typeof renderAdminMembersList === 'function' && document.getElementById('adminDataView')) {
               let ul = allFetchedSoFar;
-              if (currentBranch !== 'All') ul = ul.filter(m => m.branch === currentBranch);
+              if (currentBranch !== 'All') ul = ul.filter(m => isBranchMatchClient(m.branch, currentBranch));
               renderAdminMembersList(ul);
             }
             
@@ -3346,7 +3358,7 @@
           console.warn('Background sync members failed (offset: ' + offset + '):', err);
           setBackgroundSyncStatus(null);
         })
-        .getAllMembers(currentBranch || 'All', limit, offset);
+        .getAllMembers('All', limit, offset);
     }
 
     // ================ SMART PERIODIC SYNC (DELTA HEARTBEAT) ================
@@ -5399,7 +5411,11 @@
       const renderGrid = (pkgs) => {
         const grid = document.getElementById('regPackageGrid');
         if (!grid) return;
-        grid.innerHTML = pkgs.length ? pkgs.filter(p => p.type && p.type.toLowerCase().includes('regular')).map(p => `
+        grid.innerHTML = pkgs.length ? pkgs.filter(p => {
+          if (!p || !p.type) return true;
+          const t = p.type.toLowerCase();
+          return t.includes('regular') || t.includes('member') || (!t.includes('pt') && !t.includes('visit') && !t.includes('harian'));
+        }).map(p => `
           <div class="pkg-card" data-id="${p.id}" data-price="${p.price}" data-name="${p.name}" data-dur="${p.duration}" onclick="selectPkg(this)">
             <div style="font-weight:600;margin-bottom:6px">${escapeHtml(p.name)}</div>
             <div style="color:#667eea;font-weight:700">${formatCurrency(p.price)}</div>
@@ -6182,7 +6198,11 @@
         
         select.innerHTML = `
           <option value="">-- Pilih Paket --</option>
-          ${pkgs.filter(p => p.type && p.type.toLowerCase().includes('regular')).map(p =>
+          ${pkgs.filter(p => {
+            if (!p || !p.type) return true;
+            const t = p.type.toLowerCase();
+            return t.includes('regular') || t.includes('member') || (!t.includes('pt') && !t.includes('visit') && !t.includes('harian'));
+          }).map(p =>
             `<option value="${p.id}" data-price="${p.price}" data-name="${p.name}" data-duration="${p.duration}">${escapeHtml(p.name)} - ${formatCurrency(p.price)} (${escapeHtml(p.duration)})</option>`
           ).join('')}
         `;
@@ -6293,6 +6313,7 @@
                 <div>
                   <i class="fas fa-user-circle" style="color:#667eea;margin-right:4px"></i>
                   <b>${escapeHtml(m.name)}</b>
+                  ${m.branch && m.branch !== 'All' ? `<span class="badge" style="background:#e0f2fe;color:#0369a1;font-size:10px;margin-left:6px"><i class="fas fa-map-marker-alt"></i> ${escapeHtml(m.branch)}</span>` : ''}
                 </div>
                 <span class="badge badge-${statusClass}">${escapeHtml(m.status || 'Non Aktif')}</span>
               </div>
@@ -6378,7 +6399,10 @@
                  onmouseover="this.style.background='#f0f4ff'"
                  onmouseout="this.style.background='white'">
               <div style="display:flex; justify-content:space-between; align-items:center">
-                <b>${escapeHtml(m.name)}</b>
+                <div>
+                  <b>${escapeHtml(m.name)}</b>
+                  ${m.branch && m.branch !== 'All' ? `<span class="badge" style="background:#e0f2fe;color:#0369a1;font-size:9px;margin-left:4px"><i class="fas fa-map-marker-alt"></i> ${escapeHtml(m.branch)}</span>` : ''}
+                </div>
                 <span class="badge badge-${m.status === 'Aktif' ? 'success' : 'warning'}" style="font-size:10px; padding:2px 6px">${escapeHtml(m.status || 'Non Aktif')}</span>
               </div>
               <div style="color:#64748b;font-size:11px; margin-top:2px">
@@ -8849,15 +8873,19 @@
       const usePT = document.getElementById('ci_usePT')?.checked || false;
 
       const btn = forcedMid ? document.getElementById('btnConfirmCheckin') : document.getElementById('btnCheckin');
-      const originalText = btn.innerHTML;
-      btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Memproses...';
-      btn.disabled = true;
+      const originalText = btn ? btn.innerHTML : '';
+      if (btn) {
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Memproses...';
+        btn.disabled = true;
+      }
       showLoading();
 
       const timeoutId = setTimeout(() => {
         hideLoading();
-        btn.innerHTML = originalText;
-        btn.disabled = false;
+        if (btn) {
+          btn.innerHTML = originalText;
+          btn.disabled = false;
+        }
         showToast('Request timeout. Silakan coba lagi.', 'error');
       }, 60000);
 
@@ -8865,8 +8893,10 @@
         .withSuccessHandler(function (res) {
           clearTimeout(timeoutId);
           hideLoading();
-          btn.innerHTML = originalText;
-          btn.disabled = false;
+          if (btn) {
+            btn.innerHTML = originalText;
+            btn.disabled = false;
+          }
 
 
           const el = document.getElementById('checkinResult');
@@ -9008,8 +9038,10 @@
         .withFailureHandler(function (err) {
           clearTimeout(timeoutId);
           hideLoading();
-          btn.innerHTML = originalText;
-          btn.disabled = false;
+          if (btn) {
+            btn.innerHTML = originalText;
+            btn.disabled = false;
+          }
 
           const el = document.getElementById('checkinResult');
           if (el) {
@@ -9615,6 +9647,7 @@
                 <div>
                   <i class="fas fa-user-circle" style="color:#667eea;margin-right:4px"></i>
                   <b>${escapeHtml(m.name)}</b>
+                  ${m.branch && m.branch !== 'All' ? `<span class="badge" style="background:#e0f2fe;color:#0369a1;font-size:10px;margin-left:6px"><i class="fas fa-map-marker-alt"></i> ${escapeHtml(m.branch)}</span>` : ''}
                 </div>
                 <span class="badge badge-${statusClass}">${escapeHtml(statusText)}</span>
               </div>
@@ -10591,7 +10624,7 @@
           </div>
           ${list.length > (window.adminMemberLimit || 100) ? `
           <div style="text-align:center; padding:16px;">
-            <button class="btn btn-outline" onclick="window.adminMemberLimit += 100; renderAdminMembersList(window.appData.members.filter(m => currentBranch === 'All' || m.branch === currentBranch));">Muat Lebih Banyak (${window.adminMemberLimit} dari ${list.length})</button>
+            <button class="btn btn-outline" onclick="window.adminMemberLimit += 100; renderAdminMembersList(window.appData.members.filter(m => isBranchMatchClient(m.branch, currentBranch)));">Muat Lebih Banyak (${window.adminMemberLimit} dari ${list.length})</button>
           </div>
           ` : ''}
         </div>
@@ -10608,7 +10641,7 @@
       
       if (localMembers && localMembers.length > 0) {
         let list = localMembers;
-        if (currentBranch !== 'All') list = list.filter(m => m.branch === currentBranch);
+        if (currentBranch !== 'All') list = list.filter(m => isBranchMatchClient(m.branch, currentBranch));
         
         if (window.isMembersFullyLoaded) {
           window.adminMemberLimit = list.length;
@@ -10623,7 +10656,7 @@
              window.isMembersFullyLoaded = true;
              if (currentView === 'admin' && window.activeAdminTab === 'members' && document.getElementById('adminDataView')) {
                let ul = updatedMembers;
-               if (currentBranch !== 'All') ul = ul.filter(m => m.branch === currentBranch);
+               if (currentBranch !== 'All') ul = ul.filter(m => isBranchMatchClient(m.branch, currentBranch));
                window.adminMemberLimit = ul.length; // Tampilkan semua
                renderAdminMembersList(ul);
              }
@@ -10643,7 +10676,7 @@
              window.isMembersFullyLoaded = true;
              if (currentView === 'admin' && window.activeAdminTab === 'members' && document.getElementById('adminDataView')) {
                let ul = updatedMembers;
-               if (currentBranch !== 'All') ul = ul.filter(m => m.branch === currentBranch);
+               if (currentBranch !== 'All') ul = ul.filter(m => isBranchMatchClient(m.branch, currentBranch));
                window.adminMemberLimit = ul.length;
                renderAdminMembersList(ul);
              }
