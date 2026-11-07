@@ -3463,26 +3463,31 @@
 
     function safeParseDate(d) {
       if (!d) return null;
-      if (d instanceof Date) return d;
+      if (d instanceof Date) return isNaN(d.getTime()) ? null : d;
       if (typeof d === 'string') {
         const trimmed = d.trim();
-        const match = trimmed.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})(.*)$/);
-        if (match) {
-          const day = parseInt(match[1], 10);
-          const month = parseInt(match[2], 10) - 1;
-          const year = parseInt(match[3], 10);
-          const rest = match[4] ? match[4].trim() : '';
-          
-          if (rest) {
-            const timeMatch = rest.match(/^(\d{1,2}):(\d{1,2})(?::(\d{1,2}))?$/);
-            if (timeMatch) {
-              const hour = parseInt(timeMatch[1], 10);
-              const minute = parseInt(timeMatch[2], 10);
-              const second = timeMatch[3] ? parseInt(timeMatch[3], 10) : 0;
-              return new Date(year, month, day, hour, minute, second);
-            }
-          }
-          return new Date(year, month, day);
+        // 1. Cek format ISO: YYYY-MM-DD atau YYYY/MM/DD dengan optional time
+        const isoMatch = trimmed.match(/^(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})(?:[T\s](\d{1,2}):(\d{1,2})(?::(\d{1,2}))?)?/);
+        if (isoMatch) {
+          const year = parseInt(isoMatch[1], 10);
+          const month = parseInt(isoMatch[2], 10) - 1;
+          const day = parseInt(isoMatch[3], 10);
+          const hour = parseInt(isoMatch[4] || 0, 10);
+          const minute = parseInt(isoMatch[5] || 0, 10);
+          const second = parseInt(isoMatch[6] || 0, 10);
+          return new Date(year, month, day, hour, minute, second);
+        }
+
+        // 2. Cek format DD/MM/YYYY atau DD-MM-YYYY dengan optional time
+        const dmyMatch = trimmed.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})(?:[T\s](\d{1,2}):(\d{1,2})(?::(\d{1,2}))?)?/);
+        if (dmyMatch) {
+          const day = parseInt(dmyMatch[1], 10);
+          const month = parseInt(dmyMatch[2], 10) - 1;
+          const year = parseInt(dmyMatch[3], 10);
+          const hour = parseInt(dmyMatch[4] || 0, 10);
+          const minute = parseInt(dmyMatch[5] || 0, 10);
+          const second = parseInt(dmyMatch[6] || 0, 10);
+          return new Date(year, month, day, hour, minute, second);
         }
       }
       const parsed = new Date(d);
@@ -6661,6 +6666,20 @@
                 resultEl.className = 'result-card success';
                 resultEl.style.display = 'block';
                 isResultActive = true; // Prevent automatic refresh
+
+                // Update local selectedMember & appData.members immediately with new expiry date
+                if (r.newExpiry && selectedMember) {
+                  selectedMember.expiryDate = r.newExpiry;
+                  if (window.appData && Array.isArray(window.appData.members)) {
+                    const mIdx = window.appData.members.findIndex(m => m.memberId === selectedMember.memberId);
+                    if (mIdx !== -1) {
+                      window.appData.members[mIdx].expiryDate = r.newExpiry;
+                      if (r.packageName) window.appData.members[mIdx].currentPackage = r.packageName;
+                      window.appData.members[mIdx].status = 'Aktif';
+                    }
+                  }
+                }
+
                 // Update cache in background without resetting the current success UI
                 if (typeof fetchInitialAppData === 'function') fetchInitialAppData(() => {
                 });
@@ -6845,10 +6864,10 @@
                           <td style="padding:12px"><span class="badge badge-info" style="font-size:10px; padding:4px 8px; border-radius:6px">${t.paymentMethod}</span></td>
                           <td style="padding:12px; border-radius:0 12px 12px 0; text-align:center">
                             <div style="display:flex;gap:6px;justify-content:center">
-                              <button class="btn btn-ghost btn-xs" onclick="printReceipt('${t.type === 'Registrasi Baru' ? 'registration' : 'extension'}', { memberId:'${t.memberId}', name:'${escapeJs(t.memberName)}', package:'${escapeJs(t.packageName)}', receipt:'${t.receiptNumber}', total:${t.totalAmount}, payment:'${t.paymentMethod}', expiry:'${t.expiryDate || getMemberExpiry(t.memberId) || t.transactionDate}', qr: '${t.qrCodeUrl || ''}' })" title="Cetak Struk">
+                              <button class="btn btn-ghost btn-xs" onclick="printReceipt('${t.type === 'Registrasi Baru' ? 'registration' : 'extension'}', { memberId:'${t.memberId}', name:'${escapeJs(t.memberName)}', package:'${escapeJs(t.packageName)}', receipt:'${t.receiptNumber}', total:${t.totalAmount}, payment:'${t.paymentMethod}', expiry:'${t.expiryDate || getMemberExpiry(t.memberId) || ''}', qr: '${t.qrCodeUrl || ''}' })" title="Cetak Struk">
                                 <i class="fas fa-print"></i>
                               </button>
-                              <button class="btn btn-ghost btn-xs" style="color:#22c55e" onclick="const txt = generateReceiptText('${t.type === 'Registrasi Baru' ? 'registration' : 'extension'}', { memberId:'${t.memberId}', name:'${escapeJs(t.memberName)}', package:'${escapeJs(t.packageName)}', receipt:'${t.receiptNumber}', price:${t.packagePrice || t.totalAmount}, total:${t.totalAmount}, payment:'${t.paymentMethod}', expiry:'${t.expiryDate || getMemberExpiry(t.memberId) || t.transactionDate}', qr: '${t.qrCodeUrl || ''}' }); shareToWhatsApp(getMemberPhone('${t.memberId}'), txt)" title="Kirim WA">
+                              <button class="btn btn-ghost btn-xs" style="color:#22c55e" onclick="const txt = generateReceiptText('${t.type === 'Registrasi Baru' ? 'registration' : 'extension'}', { memberId:'${t.memberId}', name:'${escapeJs(t.memberName)}', package:'${escapeJs(t.packageName)}', receipt:'${t.receiptNumber}', price:${t.packagePrice || t.totalAmount}, total:${t.totalAmount}, payment:'${t.paymentMethod}', expiry:'${t.expiryDate || getMemberExpiry(t.memberId) || ''}', qr: '${t.qrCodeUrl || ''}' }); shareToWhatsApp('${t.phone || ''}' || getMemberPhone('${t.memberId}'), txt)" title="Kirim WA">
                                 <i class="fab fa-whatsapp"></i>
                               </button>
                             </div>

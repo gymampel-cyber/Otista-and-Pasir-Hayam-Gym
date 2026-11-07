@@ -885,26 +885,28 @@ function submitExtensionRequest() {
 
     function safeParseDate(d) {
       if (!d) return null;
-      if (d instanceof Date) return d;
+      if (d instanceof Date) return isNaN(d.getTime()) ? null : d;
       if (typeof d === 'string') {
         const trimmed = d.trim();
-        const match = trimmed.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})(.*)$/);
-        if (match) {
-          const day = parseInt(match[1], 10);
-          const month = parseInt(match[2], 10) - 1;
-          const year = parseInt(match[3], 10);
-          const rest = match[4] ? match[4].trim() : '';
-          
-          if (rest) {
-            const timeMatch = rest.match(/^(\d{1,2}):(\d{1,2})(?::(\d{1,2}))?$/);
-            if (timeMatch) {
-              const hour = parseInt(timeMatch[1], 10);
-              const minute = parseInt(timeMatch[2], 10);
-              const second = timeMatch[3] ? parseInt(timeMatch[3], 10) : 0;
-              return new Date(year, month, day, hour, minute, second);
-            }
-          }
-          return new Date(year, month, day);
+        const isoMatch = trimmed.match(/^(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})(?:[T\s](\d{1,2}):(\d{1,2})(?::(\d{1,2}))?)?/);
+        if (isoMatch) {
+          const year = parseInt(isoMatch[1], 10);
+          const month = parseInt(isoMatch[2], 10) - 1;
+          const day = parseInt(isoMatch[3], 10);
+          const hour = parseInt(isoMatch[4] || 0, 10);
+          const minute = parseInt(isoMatch[5] || 0, 10);
+          const second = parseInt(isoMatch[6] || 0, 10);
+          return new Date(year, month, day, hour, minute, second);
+        }
+        const dmyMatch = trimmed.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})(?:[T\s](\d{1,2}):(\d{1,2})(?::(\d{1,2}))?)?/);
+        if (dmyMatch) {
+          const day = parseInt(dmyMatch[1], 10);
+          const month = parseInt(dmyMatch[2], 10) - 1;
+          const year = parseInt(dmyMatch[3], 10);
+          const hour = parseInt(dmyMatch[4] || 0, 10);
+          const minute = parseInt(dmyMatch[5] || 0, 10);
+          const second = parseInt(dmyMatch[6] || 0, 10);
+          return new Date(year, month, day, hour, minute, second);
         }
       }
       const parsed = new Date(d);
@@ -913,15 +915,9 @@ function submitExtensionRequest() {
 
     function formatDate(date) {
       if (!date) return '-';
-      let d = new Date(date);
-      if (typeof date === 'string') {
-        const match = date.trim().match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})/);
-        if (match) {
-          d = new Date(parseInt(match[3], 10), parseInt(match[2], 10) - 1, parseInt(match[1], 10));
-        }
-      }
-      if (isNaN(d.getTime())) return '-';
-      return d.toLocaleDateString('id-ID', { day: '2-digit', month: '2-digit', year: 'numeric' });
+      const dt = safeParseDate(date);
+      if (!dt) return date;
+      return dt.toLocaleDateString('id-ID', { day: '2-digit', month: '2-digit', year: 'numeric' });
     }
   </script>
 </body>
