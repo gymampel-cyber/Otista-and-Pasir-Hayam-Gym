@@ -3466,8 +3466,14 @@
       if (d instanceof Date) return isNaN(d.getTime()) ? null : d;
       if (typeof d === 'string') {
         const trimmed = d.trim();
-        // 1. Cek format ISO: YYYY-MM-DD atau YYYY/MM/DD dengan optional time
-        const isoMatch = trimmed.match(/^(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})(?:[T\s](\d{1,2}):(\d{1,2})(?::(\d{1,2}))?)?/);
+        // 0. Jika string ISO memiliki informasi zona waktu eksplisit (Z atau +/-HH:mm), gunakan native Date parser agar terkonversi dari UTC/offset ke waktu lokal dengan benar
+        if (/^\d{4}[\/\-]\d{1,2}[\/\-]\d{1,2}[T\s]\d{1,2}:\d{1,2}(?::\d{1,2}(?:\.\d+)?)?(?:Z|[+-]\d{2}:?\d{2})$/i.test(trimmed)) {
+          const tzDate = new Date(trimmed);
+          return isNaN(tzDate.getTime()) ? null : tzDate;
+        }
+
+        // 1. Cek format ISO: YYYY-MM-DD atau YYYY/MM/DD dengan optional time (tanpa timezone suffix)
+        const isoMatch = trimmed.match(/^(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})(?:[T\s](\d{1,2}):(\d{1,2})(?::(\d{1,2})(?:\.\d+)?)?)?$/);
         if (isoMatch) {
           const year = parseInt(isoMatch[1], 10);
           const month = parseInt(isoMatch[2], 10) - 1;
@@ -3479,7 +3485,7 @@
         }
 
         // 2. Cek format DD/MM/YYYY atau DD-MM-YYYY dengan optional time
-        const dmyMatch = trimmed.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})(?:[T\s](\d{1,2}):(\d{1,2})(?::(\d{1,2}))?)?/);
+        const dmyMatch = trimmed.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})(?:[T\s](\d{1,2}):(\d{1,2})(?::(\d{1,2})(?:\.\d+)?)?)?$/);
         if (dmyMatch) {
           const day = parseInt(dmyMatch[1], 10);
           const month = parseInt(dmyMatch[2], 10) - 1;
@@ -3502,7 +3508,8 @@
         return dt.toLocaleDateString('id-ID', {
           day: '2-digit',
           month: 'long',
-          year: 'numeric'
+          year: 'numeric',
+          timeZone: 'Asia/Jakarta'
         });
       } catch (e) {
         return d;
@@ -3519,7 +3526,8 @@
           month: 'short',
           year: 'numeric',
           hour: '2-digit',
-          minute: '2-digit'
+          minute: '2-digit',
+          timeZone: 'Asia/Jakarta'
         });
       } catch (e) {
         return d;
@@ -3534,7 +3542,8 @@
         return dt.toLocaleTimeString('id-ID', {
           hour: '2-digit',
           minute: '2-digit',
-          second: '2-digit'
+          second: '2-digit',
+          timeZone: 'Asia/Jakarta'
         });
       } catch (e) {
         return d;
@@ -3603,6 +3612,7 @@
               background: #fff;
               color: #000;
               -webkit-print-color-adjust: exact;
+              print-color-adjust: exact;
             }
             body { 
               font-family: 'Courier New', Courier, monospace; 
@@ -12692,7 +12702,7 @@
                 <div class="list-item-title">${escapeHtml(t['Nama Pembeli'] || 'Pelanggan Guest')}</div>
                 <div class="list-item-subtitle">
                   <span class="badge badge-primary" style="font-size:10px">${t['ID Transaksi']}</span> • 
-                  ${new Date(t.Waktu).toLocaleString('id-ID', { day: '2-digit', month: 'long', hour: '2-digit', minute: '2-digit' })} • 
+                  ${(safeParseDate(t.Waktu) || new Date(t.Waktu)).toLocaleString('id-ID', { day: '2-digit', month: 'long', hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Jakarta' })} • 
                   <i class="fas fa-user-tie"></i> ${t.Kasir}
                 </div>
                 <div style="font-size:11px; color:#64748b; margin-top:4px">${t['Daftar Item'] || '-'}</div>

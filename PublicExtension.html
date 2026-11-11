@@ -888,7 +888,11 @@ function submitExtensionRequest() {
       if (d instanceof Date) return isNaN(d.getTime()) ? null : d;
       if (typeof d === 'string') {
         const trimmed = d.trim();
-        const isoMatch = trimmed.match(/^(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})(?:[T\s](\d{1,2}):(\d{1,2})(?::(\d{1,2}))?)?/);
+        if (/^\d{4}[\/\-]\d{1,2}[\/\-]\d{1,2}[T\s]\d{1,2}:\d{1,2}(?::\d{1,2}(?:\.\d+)?)?(?:Z|[+-]\d{2}:?\d{2})$/i.test(trimmed)) {
+          const tzDate = new Date(trimmed);
+          return isNaN(tzDate.getTime()) ? null : tzDate;
+        }
+        const isoMatch = trimmed.match(/^(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})(?:[T\s](\d{1,2}):(\d{1,2})(?::(\d{1,2})(?:\.\d+)?)?)?$/);
         if (isoMatch) {
           const year = parseInt(isoMatch[1], 10);
           const month = parseInt(isoMatch[2], 10) - 1;
@@ -898,7 +902,7 @@ function submitExtensionRequest() {
           const second = parseInt(isoMatch[6] || 0, 10);
           return new Date(year, month, day, hour, minute, second);
         }
-        const dmyMatch = trimmed.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})(?:[T\s](\d{1,2}):(\d{1,2})(?::(\d{1,2}))?)?/);
+        const dmyMatch = trimmed.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})(?:[T\s](\d{1,2}):(\d{1,2})(?::(\d{1,2})(?:\.\d+)?)?)?$/);
         if (dmyMatch) {
           const day = parseInt(dmyMatch[1], 10);
           const month = parseInt(dmyMatch[2], 10) - 1;
@@ -917,7 +921,7 @@ function submitExtensionRequest() {
       if (!date) return '-';
       const dt = safeParseDate(date);
       if (!dt) return date;
-      return dt.toLocaleDateString('id-ID', { day: '2-digit', month: '2-digit', year: 'numeric' });
+      return dt.toLocaleDateString('id-ID', { day: '2-digit', month: '2-digit', year: 'numeric', timeZone: 'Asia/Jakarta' });
     }
   </script>
 </body>
